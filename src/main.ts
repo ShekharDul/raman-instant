@@ -215,6 +215,7 @@ function renderPlots() {
   }
 
   if (filesToRender.length === 0) {
+    console.log("[RamanInstant] Rendering placeholder...");
     container.innerHTML = `
       <div class="viewer-placeholder">
         <h2>Spectral Viewer</h2>
