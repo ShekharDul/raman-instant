@@ -62,7 +62,7 @@ initSliders();
 initBaselineControls();
 initLayoutControls();
 UI.text('system-status', 'SYSTEM_READY');
-updateUI();
+setTimeout(() => updateUI(), 150);
 
 function initUpload() {
   const input = UI.get('file-input') as HTMLInputElement;
