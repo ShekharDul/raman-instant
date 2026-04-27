@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: '/raman-instant/',
   root: './',
+  optimizeDeps: {
+    exclude: ['xlsx']
+  },
   server: {
     port: 5174,
     strictPort: true,

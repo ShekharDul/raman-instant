@@ -431,6 +431,11 @@ function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
 
+  // Diagnostic Logs for Claude
+  console.log('XLSX object:', XLSX);
+  console.log('writeFile type:', typeof XLSX.writeFile);
+  console.log('utils type:', typeof XLSX.utils);
+
   try {
     const wb = XLSX.utils.book_new();
     const params = { snip: parseInt(UI.val('slider-snip')), sg: 9 };
