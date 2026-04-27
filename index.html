@@ -429,50 +429,52 @@
       box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
     }
 
-    /* ── Viewer Placeholder ── */
+    /* ── Viewer Placeholder (Aesthetic Version) ── */
     .viewer-placeholder {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 450px;
+      width: 100%;
+      max-width: 500px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 50px;
+      padding: 40px;
       text-align: center;
-      border: 2px solid #000;
-      background: #eff6ff;
-      border-radius: 8px;
-      z-index: 9999;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      z-index: 100;
     }
 
     .viewer-placeholder h2 {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.3em;
-      color: var(--text-muted);
-      margin-bottom: 24px;
+      letter-spacing: 0.5em;
+      color: var(--text-main);
+      margin-bottom: 20px;
+      opacity: 0.9;
     }
 
     .viewer-placeholder p {
-      font-size: 14px;
-      color: var(--text-main);
-      max-width: 320px;
-      line-height: 1.5;
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 280px;
+      line-height: 1.6;
       font-weight: 400;
     }
 
     .viewer-placeholder span {
       display: block;
-      margin-top: 12px;
-      font-size: 11px;
+      margin-top: 32px;
+      font-size: 9px;
+      font-family: var(--font-mono);
       color: var(--text-muted);
-      font-style: italic;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
     }
 
     /* Premium Button Suite */
