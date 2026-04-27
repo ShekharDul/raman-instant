@@ -430,7 +430,6 @@ function reprocessAll() {
 async function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
-  UI.text('system-status', 'PREPARING_EXCEL...');
 
   try {
     const workbook = new ExcelJS.Workbook();
@@ -439,7 +438,7 @@ async function exportExcel() {
     // Methodology Sheet
     const summarySheet = workbook.addWorksheet('Analysis Info');
     summarySheet.columns = [{ header: 'Parameter', key: 'p', width: 25 }, { header: 'Value', key: 'v', width: 45 }];
-    summarySheet.addRow({ p: 'Workstation', v: 'RamanInstant Professional v2.0' });
+    summarySheet.addRow({ p: 'Workstation', v: 'raman — instant v2.0' });
     summarySheet.addRow({ p: 'Export Date', v: new Date().toISOString() });
     summarySheet.addRow({ p: 'Baseline (SNIP)', v: params.snip + ' iterations' });
     summarySheet.addRow({ p: 'Smoothing (SG)', v: 'Window size ' + params.sg });
@@ -474,18 +473,17 @@ async function exportExcel() {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const blob = new Blob([new Uint8Array(buffer as ArrayBuffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `RamanInstant_Analysis_${new Date().getTime()}.xlsx`;
+    anchor.download = `raman_analysis_${new Date().getTime()}.xlsx`;
+    document.body.appendChild(anchor);
     anchor.click();
+    document.body.removeChild(anchor);
     window.URL.revokeObjectURL(url);
-
-    UI.text('system-status', 'SYSTEM_READY');
   } catch (err) {
     console.error('Export Error:', err);
-    UI.text('system-status', 'EXPORT_FAILED');
   }
 }
 
@@ -493,8 +491,6 @@ async function exportExcel() {
 (window as any).SpectralProcessor = SpectralProcessor;
 
 async function exportPNG() {
-  UI.text('system-status', 'PREPARING_ROBUST_EXPORT...');
-
   let filesToRender = Array.from(state.comparisonIds)
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
@@ -504,17 +500,11 @@ async function exportPNG() {
     if (active) filesToRender = [active];
   }
 
-  if (filesToRender.length === 0) {
-    UI.text('system-status', 'NO_DATA');
-    return;
-  }
+  if (filesToRender.length === 0) return;
 
   try {
     await ChartRenderer.exportPublicationFigure(state, filesToRender);
-    UI.text('system-status', 'FIGURE_EXPORTED');
   } catch (err) {
-    console.error('[RamanInstant] Robust Export Error:', err);
-    UI.text('system-status', 'EXPORT_FAILED');
+    console.error('[raman — instant] Export Error:', err);
   }
-  setTimeout(() => UI.text('system-status', 'SYSTEM_READY'), 2000);
 }
