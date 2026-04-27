@@ -132,6 +132,11 @@ function updateUI() {
     UI.text('active-filename', active.name);
     UI.text('methods-summary', `Analysis: ${active.name} | Mode: ${active.params.mode.toUpperCase()} | ${active.peaks.length} peaks detected.`);
   }
+
+  // Update Footer Stats
+  const totalFiles = state.files.size;
+  const activeCount = state.comparisonIds.size || (state.activeFileId ? 1 : 0);
+  UI.text('footer-stats', `FILES: ${totalFiles} ; ACTIVE FILES: ${activeCount}`);
 }
 
 function renderFileList() {
