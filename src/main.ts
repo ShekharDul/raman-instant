@@ -7,7 +7,8 @@ import type { Peak, VarianceResult } from './engine/processor.ts';
 import { parseSpectralFile } from './parsers/textParser.ts';
 import type { ParsedSpectrum } from './parsers/textParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
-import ExcelJS from 'exceljs';
+// @ts-ignore
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
 
 // ── Types ──
 interface ProcessedFile {
@@ -473,23 +474,35 @@ async function exportExcel() {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    // Force octet-stream to bypass browser "helpfulness" and force a raw file download
-    const blob = new Blob([buffer], { type: 'application/octet-stream' });
-    const url = window.URL.createObjectURL(blob);
     
+    // Integrity check: Ensure buffer is valid
+    if (!buffer || buffer.byteLength === 0) {
+      console.error('[raman — instant] Generated Excel buffer is empty.');
+      return;
+    }
+
+    console.log(`[raman — instant] Exporting Excel: ${buffer.byteLength} bytes`);
+
+    // Force binary consistency with Uint8Array
+    const blob = new Blob([new Uint8Array(buffer as ArrayBuffer)], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    
+    const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `raman_data_${Math.floor(Date.now() / 1000)}.xlsx`;
     
-    // Append and trigger
     document.body.appendChild(anchor);
-    anchor.click();
     
-    // Clean up with a delay to ensure the browser has started the download stream
+    // Micro-task delay to ensure the Blob is stable in memory
     setTimeout(() => {
-      document.body.removeChild(anchor);
-      window.URL.revokeObjectURL(url);
-    }, 200);
+      anchor.click();
+      setTimeout(() => {
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+      }, 500);
+    }, 50);
   } catch (err) {
     console.error('Export Error:', err);
   }
