@@ -473,15 +473,23 @@ async function exportExcel() {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([new Uint8Array(buffer as ArrayBuffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    // Force octet-stream to bypass browser "helpfulness" and force a raw file download
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
     const url = window.URL.createObjectURL(blob);
+    
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `raman_analysis_${new Date().getTime()}.xlsx`;
+    anchor.download = `raman_data_${Math.floor(Date.now() / 1000)}.xlsx`;
+    
+    // Append and trigger
     document.body.appendChild(anchor);
     anchor.click();
-    document.body.removeChild(anchor);
-    window.URL.revokeObjectURL(url);
+    
+    // Clean up with a delay to ensure the browser has started the download stream
+    setTimeout(() => {
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(url);
+    }, 200);
   } catch (err) {
     console.error('Export Error:', err);
   }
