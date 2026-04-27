@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: './',
+  base: '/raman-instant/',
   root: './',
   server: {
     port: 5174,
