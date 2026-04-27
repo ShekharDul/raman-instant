@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Primary Meta Tags -->
+  <title>RamanInstant — Documentation & Protocol</title>
+  <meta name="title" content="RamanInstant — Documentation & Protocol" />
+  <meta name="description" content="Technical guide for RamanInstant: Learn about the SNIP algorithm, data requirements, and how to process spectral data." />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --bg-body: #ffffff;
+      --bg-panel: #fafafa;
+      --text-main: #000000;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #1e293b;
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      background: var(--bg-body); 
+      color: var(--text-main); 
+      font-family: var(--font-sans); 
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 80px 40px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 40px;
+      margin-bottom: 60px;
+    }
+
+    .nav-back {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 32px;
+      transition: color 0.2s;
+    }
+
+    .nav-back:hover {
+      color: var(--text-main);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+
+    section {
+      margin-bottom: 60px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: var(--border);
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin-bottom: 20px;
+      font-size: 15px;
+      color: #334155;
+    }
+
+    ul {
+      margin-bottom: 24px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 12px;
+      font-size: 15px;
+      color: #334155;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      background: var(--bg-panel);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      border: 1px solid var(--border);
+    }
+
+    .info-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      padding: 24px;
+      border-radius: 2px;
+      margin-bottom: 32px;
+    }
+
+    blockquote {
+      border-left: 3px solid var(--text-main);
+      padding: 16px 24px;
+      background: var(--bg-panel);
+      font-style: italic;
+      color: var(--text-muted);
+      margin: 32px 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 40px;
+      margin-top: 80px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 40px 24px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/raman-instant/" class="nav-back">← Back to Workstation</a>
+    
+    <header>
+      <h1>RamanInstant Guide</h1>
+      <div class="subtitle">Protocol & Technical Specifications</div>
+    </header>
+
+    <main>
+      <section id="about">
+        <h2>01. About the App</h2>
+        <p>RamanInstant is a fast, simple tool built to help researchers process Raman spectroscopy data. It handles the heavy lifting of baseline correction and data visualization right in your browser, so you can focus on your results.</p>
+      </section>
+
+      <section id="math">
+        <h2>02. Baseline Correction</h2>
+        <p>We use a method called the <strong>SNIP algorithm</strong> (Statistics-sensitive Non-linear Iterative Peak-clipping) to clean up your spectral data.</p>
+        
+        <h3>How it works</h3>
+        <p>Instead of using complicated curves that might accidentally hide your real data, the SNIP method carefully "clips" away the background noise (like fluorescence) while keeping your Raman peaks intact.</p>
+        
+        <div class="info-box">
+          <p><strong>Iterations:</strong> You can use the slider in the sidebar to adjust how much background to remove. More iterations generally mean a smoother, deeper baseline removal.</p>
+        </div>
+      </section>
+
+      <section id="data">
+        <h2>03. Preparing Your Data</h2>
+        <p>To get the best results, make sure your files follow these simple rules:</p>
+        
+        <h3>Supported Formats</h3>
+        <ul>
+          <li><code>.csv</code>, <code>.txt</code>, or <code>.asc</code> files.</li>
+          <li>Standard UTF-8 encoding.</li>
+        </ul>
+
+        <h3>Layout</h3>
+        <p>Your file should have two columns of numbers:</p>
+        <ul>
+          <li><strong>First Column (X):</strong> Raman Shift (cm⁻¹)</li>
+          <li><strong>Second Column (Y):</strong> Intensity</li>
+        </ul>
+        <p>The app is smart enough to skip most text headers, so you can usually just drop your raw files straight in.</p>
+      </section>
+
+      <section id="workflow">
+        <h2>04. How to Use</h2>
+        
+        <h3>Step 1: Upload</h3>
+        <p>Simply click the upload box or drag your files onto the screen. You can upload multiple files at once to compare them.</p>
+
+        <h3>Step 2: Adjust</h3>
+        <ul>
+          <li><strong>Auto Mode:</strong> Use the slider to let the app automatically find the baseline.</li>
+          <li><strong>Manual Mode:</strong> Click directly on the graph to place your own baseline points if you need more control.</li>
+        </ul>
+
+        <h3>Step 3: Compare & View</h3>
+        <p>Use the <strong>Layout</strong> menu to switch between seeing a single plot, stacking them (Waterfall), or viewing them in a grid.</p>
+      </section>
+
+      <section id="export">
+        <h2>05. Saving Your Work</h2>
+        <p>When you’re happy with the results, you can download your data in two ways:</p>
+        <ul>
+          <li><strong>Analytical Excel:</strong> A clean spreadsheet containing your raw data, the calculated baseline, and the final corrected data.</li>
+          <li><strong>Publication Image:</strong> A high-quality PNG of your graphs, ready to be dropped into a presentation or paper.</li>
+        </ul>
+      </section>
+
+      <section id="citation">
+        <h2>06. Citing the Tool</h2>
+        <p>If RamanInstant helped with your research, we’d appreciate a quick mention in your paper:</p>
+        <blockquote>
+          "Data processing and baseline correction were performed using RamanInstant (v2.0)."
+        </blockquote>
+      </section>
+    </main>
+
+    <footer>
+      <div>RMN-INSTANT / DOCUMENTATION / V2.0</div>
+      <div>© 2026 RAMANINSTANT TEAM</div>
+    </footer>
+  </div>
+</body>
+</html>
