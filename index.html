@@ -3,9 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="RamanInstant — Minimalist Research Workstation." />
-  <title>RamanInstant — Research Workstation</title>
+  
+  <!-- Primary Meta Tags -->
+  <title>RamanInstant — Professional Raman Spectroscopy Workstation</title>
+  <meta name="title" content="RamanInstant — Professional Raman Spectroscopy Workstation" />
+  <meta name="description" content="Instant, publication-ready Raman spectroscopy analysis. Fast baseline correction using SNIP, peak detection, and automated publication-quality exporting." />
+  <meta name="keywords" content="Raman spectroscopy, baseline correction, SNIP algorithm, spectral analysis, data visualization, scientific plotting, Raman shift" />
+  <meta name="author" content="RamanInstant Team" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://raman-instant.github.io/" />
+  <meta property="og:title" content="RamanInstant — Professional Raman Spectroscopy Workstation" />
+  <meta property="og:description" content="Fast, minimalist, and powerful spectral analysis workstation for researchers." />
+  <meta property="og:image" content="https://raman-instant.github.io/og-preview.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://raman-instant.github.io/" />
+  <meta property="twitter:title" content="RamanInstant — Professional Raman Spectroscopy Workstation" />
+  <meta property="twitter:description" content="Fast, minimalist, and powerful spectral analysis workstation for researchers." />
+  <meta property="twitter:image" content="https://raman-instant.github.io/og-preview.png" />
+
+  <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "RamanInstant",
+    "operatingSystem": "Web",
+    "applicationCategory": "ScientificSoftware",
+    "description": "A high-performance research workstation for Raman spectroscopy data processing, baseline correction, and publication-ready plotting.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": [
+      "Automated SNIP Baseline Correction",
+      "Interactive Peak Detection",
+      "Publication-ready Exporting",
+      "Fast Browser-based Processing"
+    ]
+  }
+  </script>
+
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
   <style>
     /* ── SWISS MODERNIST RESEARCH AESTHETIC ── */
@@ -189,8 +234,8 @@
     <aside class="sidebar">
       <div class="section">
         <div class="section-title">Ingestion</div>
-        <label for="file-input" id="upload-zone" class="upload-zone" style="display: block;">SELECT SPECTRAL DATA<br/>(CSV / TXT / ASC)</label>
-        <input type="file" id="file-input" multiple hidden />
+        <label for="file-input" id="upload-zone" class="upload-zone" style="display: block;" aria-label="Upload spectral data files">SELECT SPECTRAL DATA<br/>(CSV / TXT / ASC)</label>
+        <input type="file" id="file-input" multiple hidden aria-hidden="true" />
       </div>
       <div class="section">
         <div class="section-title">Baseline Anchors</div>
@@ -209,8 +254,8 @@
         <div class="ctrl-group">
           <div class="ctrl-label"><span>BASELINE MODE</span></div>
           <div style="display: flex; gap: 4px;">
-            <button id="btn-mode-snip" class="btn-small active-compare" style="width: 50%;">AUTO (SNIP)</button>
-            <button id="btn-mode-manual" class="btn-small" style="width: 50%;">MANUAL</button>
+            <button id="btn-mode-snip" class="btn-small active-compare" style="width: 50%;" aria-label="Automatic SNIP baseline mode">AUTO (SNIP)</button>
+            <button id="btn-mode-manual" class="btn-small" style="width: 50%;" aria-label="Manual baseline anchor mode">MANUAL</button>
           </div>
         </div>
         <div id="snip-controls">
@@ -259,10 +304,10 @@
         <div id="plot-main" class="plot-container"></div>
       </div>
       <div class="btn-group-floating">
-        <button id="btn-export-excel" class="btn-premium excel">
+        <button id="btn-export-excel" class="btn-premium excel" aria-label="Download analytical data as Excel">
           <span style="font-size: 14px;">📊</span> Download Analytical Excel
         </button>
-        <button id="btn-export-png" class="btn-premium svg">
+        <button id="btn-export-png" class="btn-premium svg" aria-label="Download publication ready PNG image">
           <span style="font-size: 14px;">🖼️</span> Download Publication PNG
         </button>
       </div>
