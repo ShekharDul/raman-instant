@@ -126,6 +126,7 @@ function updateUI() {
   renderFileList();
   renderPlots();
   renderAnchorList();
+  renderPeakTable();
 
   const active = state.files.get(state.activeFileId || '');
   if (active) {
@@ -313,6 +314,45 @@ function renderAnchorList() {
       active.anchors.splice(idx, 1);
       reprocessActive();
     });
+    body.appendChild(tr);
+  });
+}
+
+function renderPeakTable() {
+  const active = state.files.get(state.activeFileId || '');
+  const body = UI.get('peaks-list-body');
+  const warning = UI.get('proximity-warning');
+  if (!body) return;
+  body.innerHTML = '';
+
+  if (!active || active.peaks.length === 0) {
+    warning?.classList.add('hidden');
+    return;
+  }
+
+  // Smart Proximity Check
+  const sortedPeaks = [...active.peaks].sort((a, b) => a.x - b.x);
+  let hasProximityIssue = false;
+  for (let i = 0; i < sortedPeaks.length - 1; i++) {
+    if (Math.abs(sortedPeaks[i].x - sortedPeaks[i + 1].x) < 30) {
+      hasProximityIssue = true;
+      break;
+    }
+  }
+
+  if (hasProximityIssue) warning?.classList.remove('hidden');
+  else warning?.classList.add('hidden');
+
+  sortedPeaks.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.x.toFixed(1)}</td>
+      <td>${p.y.toFixed(2)}</td>
+      <td>${p.fwhm.toFixed(1)}</td>
+      <td style="text-align: right;">
+        <span class="peak-info-icon" title="Peak centre calculated via 3-point parabolic interpolation. FWHM calculated by scanning data points to the 50% intensity threshold. These methods are highly accurate for resolved peaks. For overlapping peaks, see the proximity warning above." style="cursor: help; opacity: 0.5;">ⓘ</span>
+      </td>
+    `;
     body.appendChild(tr);
   });
 }

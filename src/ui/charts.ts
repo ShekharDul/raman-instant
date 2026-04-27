@@ -161,10 +161,21 @@ export class ChartRenderer {
     document.body.appendChild(tempDiv);
 
     try {
+      const citation = {
+        text: 'Generated with RamanInstant — ramaninstant.com',
+        xref: 'paper', yref: 'paper',
+        x: 0.5, y: -0.12, showarrow: false,
+        font: { size: 12, color: '#64748b' },
+        xanchor: 'center', yanchor: 'top'
+      };
+
       if (!isMatrix && !isVertical && !isStacked) {
         // Simple Single Export
         const f = files[0];
         this.renderSingle(tempDiv, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined);
+        const layout = (tempDiv as any).layout;
+        layout.annotations = [...(layout.annotations || []), citation];
+        await Plotly.relayout(tempDiv, { annotations: layout.annotations });
         await Plotly.downloadImage(tempDiv, { format: 'png', width: 1200, height: 800, scale: 2, filename: `Raman_Fig_${Date.now()}` });
       } else if (isStacked) {
         // Waterfall Export
@@ -173,9 +184,12 @@ export class ChartRenderer {
           return { name: f.name, x: f.raw.x, y: normalized.map((v: number) => v + i * state.stackOffset), color: f.color };
         });
         this.renderOverlay(tempDiv, datasets, state.viewRange || undefined);
+        const layout = (tempDiv as any).layout;
+        layout.annotations = [...(layout.annotations || []), citation];
+        await Plotly.relayout(tempDiv, { annotations: layout.annotations });
         await Plotly.downloadImage(tempDiv, { format: 'png', width: 1200, height: 800, scale: 2, filename: `Raman_Waterfall_${Date.now()}` });
       } else {
-        // Multi-Panel Grid Export (The Robust Way)
+        // Multi-Panel Grid Export
         const cols = isMatrix ? 2 : 1;
         const rows = isMatrix ? 2 : files.length;
         const traces: any[] = [];
@@ -184,7 +198,7 @@ export class ChartRenderer {
         layout.showlegend = false;
         layout.width = 1000 * cols;
         layout.height = 700 * rows;
-        layout.margin = { l: 80, r: 40, t: 80, b: 80 };
+        layout.margin = { l: 80, r: 40, t: 80, b: 120 }; // Extra bottom margin for citation
 
         files.slice(0, cols * rows).forEach((f, i) => {
           const axisIdx = i === 0 ? '' : (i + 1);
@@ -201,7 +215,6 @@ export class ChartRenderer {
           layout[`xaxis${axisIdx}`] = { ...PAPER_LAYOUT.xaxis, title: { text: `Shift (cm⁻¹)`, font: { size: 14 } }, tickfont: { size: 12 } };
           layout[`yaxis${axisIdx}`] = { ...PAPER_LAYOUT.yaxis, title: { text: `Int`, font: { size: 14 } }, tickfont: { size: 12 } };
           
-          // Add Panel Annotations
           if (!layout.annotations) layout.annotations = [];
           layout.annotations.push({
             text: `<b>(${panelLabel}) ${f.name}</b>`, font: { size: 18 },
@@ -209,6 +222,9 @@ export class ChartRenderer {
             x: 0, y: 1.1, showarrow: false, xanchor: 'left'
           });
         });
+
+        // Add citation to grid
+        layout.annotations.push({ ...citation, y: -0.05 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
         await Plotly.downloadImage(tempDiv, { format: 'png', width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });

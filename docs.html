@@ -241,8 +241,25 @@
         </ul>
       </section>
 
+      <section id="analysis-methods">
+        <h2>07. Peak Analysis — Methods and Limitations</h2>
+        
+        <h3>What RamanInstant Does</h3>
+        <p>The app performs sub-pixel peak detection using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. These methods are highly accurate for well-resolved, isolated Raman peaks.</p>
+
+        <h3>What RamanInstant Does Not Yet Do</h3>
+        <p>The app does not yet perform <strong>non-linear curve fitting</strong> using mathematical profiles (Gaussian, Lorentzian, or Voigt) or the deconvolution of overlapping peaks into individual components.</p>
+
+        <div class="info-box" style="border-left: 4px solid #f59e0b;">
+          <p><strong>When this matters:</strong> If your peaks are well-resolved (separated by more than ~30 cm⁻¹), the reports are publication-reliable. If your peaks <strong>overlap</strong> — such as the D and G bands in carbon materials, or amide bands in proteins — the reported centroid will reflect the blended band envelope, not the true individual component positions. Do not use these values for quantitative ID/IG ratio analysis or any claim that requires resolving overlapping components.</p>
+        </div>
+
+        <h3>On the Roadmap</h3>
+        <p>Full non-linear peak fitting using the <strong>Levenberg-Marquardt algorithm</strong> with Gaussian, Lorentzian, and Voigt profile options, including uncertainty estimates on all fitted parameters.</p>
+      </section>
+
       <section id="citation">
-        <h2>06. Citing the Tool</h2>
+        <h2>08. Citing the Tool</h2>
         <p>If RamanInstant helped with your research, please kindly cite it by name in your publication.</p>
       </section>
     </main>

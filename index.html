@@ -636,6 +636,30 @@
         </button>
       </div>
     </main>
+    
+    <aside class="data-panel">
+      <div class="panel-header">
+        <div class="panel-title">Peak Analysis</div>
+      </div>
+      
+      <div id="proximity-warning" class="hidden" style="margin: 0 24px 16px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 2px; color: #92400e; font-size: 10px; line-height: 1.4;">
+        ⚠️ Adjacent peaks detected within 30 cm⁻¹. Reported centroids and FWHM values may reflect blended contributions from overlapping bands. For quantitative analysis of these peaks, Lorentzian/Gaussian deconvolution is recommended. This feature is on our roadmap.
+      </div>
+
+      <div class="peak-table-wrap">
+        <table class="peak-table">
+          <thead>
+            <tr>
+              <th>Shift (cm⁻¹)</th>
+              <th>Int (Abs)</th>
+              <th>FWHM</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="peaks-list-body"></tbody>
+        </table>
+      </div>
+    </aside>
 
     <footer class="footer">
       <div id="footer-stats">FILES: 0 ; ACTIVE FILES: 0</div>
