@@ -231,15 +231,20 @@ function renderPlots() {
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode.startsWith('grid')) {
-    filesToRender.slice(0, 4).forEach((f) => {
+    const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
+    filesToRender.slice(0, limit).forEach((f) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'plot-item';
-      wrapper.innerHTML = `<div class="plot-item-title">${f.name}</div><div class="plot-container"></div>`;
+      wrapper.innerHTML = `<div class="plot-item-title">${f.name}</div><div class="plot-container" style="flex:1; min-height:0;"></div>`;
       container.appendChild(wrapper);
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
+      
+      // Double RAF to ensure layout is stable
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true);
-        attachManualBaselineListener(plotEl);
+        requestAnimationFrame(() => {
+          ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true);
+          attachManualBaselineListener(plotEl);
+        });
       });
     });
   } else {

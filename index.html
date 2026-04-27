@@ -118,9 +118,10 @@
       flex: 1;
       width: 100%; 
       min-height: 0;
+      height: 100%; /* Ensure full height usage */
     }
     .grid-single { grid-template-columns: 1fr; }
-    .grid-2x1 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .grid-2x1 { grid-template-columns: 1fr; grid-template-rows: repeat(2, 1fr); }
     .grid-2x2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
     .plot-item { 

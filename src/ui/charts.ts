@@ -75,6 +75,7 @@ const CONFIG: any = { responsive: true, displaylogo: false, modeBarButtonsToRemo
 const GRID_LAYOUT: any = {
   ...PAPER_LAYOUT,
   showlegend: false,
+  autosize: true,
   margin: { l: 70, r: 20, t: 30, b: 70 },
   xaxis: { 
     ...PAPER_LAYOUT.xaxis, 
