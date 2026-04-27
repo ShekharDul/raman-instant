@@ -7,8 +7,7 @@ import type { Peak, VarianceResult } from './engine/processor.ts';
 import { parseSpectralFile } from './parsers/textParser.ts';
 import type { ParsedSpectrum } from './parsers/textParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
-// @ts-ignore
-import ExcelJS from 'exceljs/dist/exceljs.min.js';
+import * as XLSX from 'xlsx';
 
 // ── Types ──
 interface ProcessedFile {
@@ -428,83 +427,60 @@ function reprocessAll() {
   updateUI();
 }
 
-async function exportExcel() {
+function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
 
   try {
-    const workbook = new ExcelJS.Workbook();
+    const wb = XLSX.utils.book_new();
     const params = { snip: parseInt(UI.val('slider-snip')), sg: 9 };
 
-    // Methodology Sheet
-    const summarySheet = workbook.addWorksheet('Analysis Info');
-    summarySheet.columns = [{ header: 'Parameter', key: 'p', width: 25 }, { header: 'Value', key: 'v', width: 45 }];
-    summarySheet.addRow({ p: 'Workstation', v: 'raman — instant v2.0' });
-    summarySheet.addRow({ p: 'Export Date', v: new Date().toISOString() });
-    summarySheet.addRow({ p: 'Baseline (SNIP)', v: params.snip + ' iterations' });
-    summarySheet.addRow({ p: 'Smoothing (SG)', v: 'Window size ' + params.sg });
+    // 1. Methodology Sheet
+    const summaryData = [
+      ['Parameter', 'Value'],
+      ['Workstation', 'raman — instant v2.0'],
+      ['Export Date', new Date().toISOString()],
+      ['Baseline (SNIP)', params.snip + ' iterations'],
+      ['Smoothing (SG)', 'Window size ' + params.sg]
+    ];
     if (state.viewRange) {
-      summarySheet.addRow({ p: 'Spectral Window Min', v: state.viewRange[0] + ' cm-1' });
-      summarySheet.addRow({ p: 'Spectral Window Max', v: state.viewRange[1] + ' cm-1' });
+      summaryData.push(['Spectral Window Min', state.viewRange[0] + ' cm-1']);
+      summaryData.push(['Spectral Window Max', state.viewRange[1] + ' cm-1']);
     }
-    summarySheet.getRow(1).font = { bold: true };
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, summarySheet, 'Analysis Info');
 
-    // Spectral Sheets
+    // 2. Spectral Data Sheets
     const sheetNames = new Set();
     for (const id of fileIds) {
       const file = state.files.get(id)!;
-      let baseName = file.name.substring(0, 28).replace(/[\\\/\?\*\[\]]/g, '_');
+      
+      // Clean sheet name (SheetJS limit: 31 chars, no special chars)
+      let baseName = file.name.substring(0, 25).replace(/[\\\/\?\*\[\]]/g, '_');
       let sheetName = baseName;
       let counter = 1;
       while (sheetNames.has(sheetName)) { sheetName = `${baseName}_${counter++}`; }
       sheetNames.add(sheetName);
 
-      const sheet = workbook.addWorksheet(sheetName);
-      sheet.columns = [
-        { header: 'Raman Shift (cm-1)', key: 'x', width: 18 },
-        { header: 'Raw Intensity', key: 'raw', width: 18 },
-        { header: 'Processed Intensity', key: 'proc', width: 20 }
-      ];
-
+      const spectralData: any[][] = [['Raman Shift (cm-1)', 'Raw Intensity', 'Processed Intensity']];
+      
       for (let i = 0; i < file.raw.x.length; i++) {
+        // Filter by view range if active
         if (state.viewRange && (file.raw.x[i] < state.viewRange[0] || file.raw.x[i] > state.viewRange[1])) continue;
-        sheet.addRow({ x: file.raw.x[i], raw: file.raw.y[i], proc: file.processedY[i] });
+        spectralData.push([file.raw.x[i], file.raw.y[i], file.processedY[i]]);
       }
-      sheet.getRow(1).font = { bold: true };
+
+      const spectralSheet = XLSX.utils.aoa_to_sheet(spectralData);
+      XLSX.utils.book_append_sheet(wb, spectralSheet, sheetName);
     }
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    
-    // Integrity check: Ensure buffer is valid
-    if (!buffer || buffer.byteLength === 0) {
-      console.error('[raman — instant] Generated Excel buffer is empty.');
-      return;
-    }
+    // 3. Trigger Atomic Atomic Save
+    const filename = `raman_data_${Math.floor(Date.now() / 1000)}.xlsx`;
+    XLSX.writeFile(wb, filename);
 
-    console.log(`[raman — instant] Exporting Excel: ${buffer.byteLength} bytes`);
-
-    // Force binary consistency with Uint8Array
-    const blob = new Blob([new Uint8Array(buffer as ArrayBuffer)], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-    
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `raman_data_${Math.floor(Date.now() / 1000)}.xlsx`;
-    
-    document.body.appendChild(anchor);
-    
-    // Micro-task delay to ensure the Blob is stable in memory
-    setTimeout(() => {
-      anchor.click();
-      setTimeout(() => {
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(url);
-      }, 500);
-    }, 50);
+    console.log(`[raman — instant] Excel Export Successful: ${filename}`);
   } catch (err) {
-    console.error('Export Error:', err);
+    console.error('[raman — instant] SheetJS Export Error:', err);
   }
 }
 
