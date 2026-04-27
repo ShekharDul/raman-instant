@@ -427,7 +427,7 @@ function reprocessAll() {
   updateUI();
 }
 
-function exportExcel() {
+async function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
 
@@ -479,11 +479,33 @@ function exportExcel() {
       XLSX.utils.book_append_sheet(wb, spectralSheet, sheetName);
     }
 
-    // 3. Trigger Atomic Atomic Save
-    const filename = `raman_data_${Math.floor(Date.now() / 1000)}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    // 3. Advanced Binary Generation
+    const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const defaultFilename = `raman_analysis_${Math.floor(Date.now() / 1000)}.xlsx`;
 
-    console.log(`[raman — instant] Excel Export Successful: ${filename}`);
+    // 4. Trigger Windows "Save As" Dialog (if supported)
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: defaultFilename,
+          types: [{
+            description: 'Excel Spreadsheet',
+            accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        console.log('[raman — instant] File saved successfully via System Picker.');
+        return;
+      } catch (e) {
+        console.warn('[raman — instant] System Picker cancelled, falling back to standard download.');
+      }
+    }
+
+    // 5. Standard Fallback (for older browsers)
+    XLSX.writeFile(wb, defaultFilename);
   } catch (err) {
     console.error('[raman — instant] SheetJS Export Error:', err);
   }
