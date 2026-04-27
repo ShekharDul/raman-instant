@@ -210,15 +210,13 @@ function renderPlots() {
     stackGroup?.classList.add('hidden');
   }
 
-  // Defensive filtering: Ensure we only try to render existing files
-  let filesToRender = Array.from(state.comparisonIds)
+  // Unified Filtering: Always show active file + all comparison selections
+  const fileIdsToRender = new Set(state.comparisonIds);
+  if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
+
+  let filesToRender = Array.from(fileIdsToRender)
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
-
-  if (filesToRender.length === 0 && state.activeFileId) {
-    const active = state.files.get(state.activeFileId);
-    if (active) filesToRender = [active];
-  }
 
   if (filesToRender.length === 0) {
     console.log("[RamanInstant] Rendering placeholder...");
