@@ -1,0 +1,288 @@
+/* ═══════════════════════════════════════════════════════════════
+   RamanInstant v2.0 — Clean Research Tool Aesthetic
+   Precision-first design for scientific workstations.
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Obsidian Instrument Palette */
+  --bg-app: #050508;
+  --bg-panel: #0d0d12;
+  --bg-surface: #12121a;
+  --bg-active: #1a1a24;
+  
+  --border: #1e1e28;
+  --border-strong: #2a2a38;
+  
+  --text-primary: #f0f0f5;
+  --text-secondary: #9494a5;
+  --text-dim: #5a5a6a;
+  
+  --laser: #2dd4bf;      /* Teal - Processed Signal */
+  --reference: #f59e0b;  /* Amber - Reference Signal */
+  --residual: #ef4444;   /* Red - Difference Signal */
+  --raw: #3f3f46;        /* Gray - Raw Data */
+  
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --radius: 2px; /* Crisp, industrial corners */
+  --transition: 120ms ease;
+}
+
+/* ── Reset ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { 
+  height: 100%; 
+  background: var(--bg-app); 
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+/* ── App Shell (Grid Layout) ── */
+#app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  grid-template-rows: 40px 1fr 24px;
+  height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  grid-column: 1 / -1;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand h1 {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.brand .tag {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--laser);
+  border: 1px solid var(--laser);
+  padding: 1px 4px;
+  opacity: 0.8;
+}
+
+/* ── Sidebar (Controls & Files) ── */
+.sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── Processing Sliders ── */
+.ctrl-group { margin-bottom: 16px; }
+.ctrl-label { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 6px; color: var(--text-secondary); }
+.ctrl-value { font-family: var(--font-mono); color: var(--laser); font-weight: 600; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 2px;
+  background: var(--border-strong);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--laser);
+  cursor: pointer;
+  border-radius: 0; /* Industrial square thumb */
+}
+
+/* ── File List (Clean List) ── */
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.file-item:hover { background: var(--bg-surface); }
+.file-item.active { background: var(--bg-active); border-left: 2px solid var(--laser); }
+.file-item.reference { border-right: 2px solid var(--reference); }
+
+.file-name { font-size: 11px; font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-meta { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); }
+
+.file-actions { display: flex; gap: 4px; margin-top: 8px; }
+.btn-small {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.btn-small:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
+.btn-small.active-compare { background: var(--laser); color: #000; border-color: var(--laser); }
+.btn-small.active-ref { background: var(--reference); color: #000; border-color: var(--reference); }
+
+/* ── Main Workspace (The Visualization) ── */
+.workspace {
+  background: var(--bg-app);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.panel-header {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#plot-main { flex: 2; min-height: 300px; }
+#plot-residual { flex: 1; min-height: 150px; }
+
+/* ── Data Panel (The Numbers) ── */
+.data-panel {
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.peak-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.peak-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.peak-table th {
+  text-align: left;
+  font-size: 8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-strong);
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+}
+
+.peak-table td {
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.peak-table tr:hover td { color: var(--text-primary); background: var(--bg-surface); }
+
+/* ── Export Controls (Bottom of Data Panel) ── */
+.export-section {
+  padding: 16px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-strong);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  background: var(--laser);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.btn-primary:hover { background: #34e1cb; }
+
+/* ── Footer ── */
+.footer {
+  grid-column: 1 / -1;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* ── Utilities ── */
+.hidden { display: none !important; }
+.status-active { color: var(--success); }
+.status-warning { color: var(--warning); }
