@@ -99,7 +99,7 @@ function processAndStore(id: string, name: string, raw: ParsedSpectrum) {
   const anchors = existing?.anchors || [];
 
   const { cleanedY, replacedCount } = SpectralProcessor.rejectCosmicRays(raw.y);
-  
+
   let baselineY: number[];
   if (mode === 'manual') {
     baselineY = SpectralProcessor.baselineManual(raw.x, cleanedY, anchors);
@@ -125,7 +125,7 @@ function updateUI() {
   renderFileList();
   renderPlots();
   renderAnchorList();
-  
+
   const active = state.files.get(state.activeFileId || '');
   if (active) {
     UI.text('active-filename', active.name);
@@ -174,23 +174,23 @@ function renderFileList() {
   });
 }
 
-function toggleComp(id: string) { 
-  if (state.comparisonIds.has(id)) state.comparisonIds.delete(id); 
-  else state.comparisonIds.add(id); 
-  updateUI(); 
+function toggleComp(id: string) {
+  if (state.comparisonIds.has(id)) state.comparisonIds.delete(id);
+  else state.comparisonIds.add(id);
+  updateUI();
 }
 
-function deleteFile(id: string) { 
-  state.files.delete(id); 
-  if (state.activeFileId === id) state.activeFileId = state.files.keys().next().value || null; 
-  updateUI(); 
+function deleteFile(id: string) {
+  state.files.delete(id);
+  if (state.activeFileId === id) state.activeFileId = state.files.keys().next().value || null;
+  updateUI();
 }
 
 function renderPlots() {
   const container = UI.get('workspace-container');
   if (!container) return;
   container.innerHTML = '';
-  
+
   let gridClass = 'grid-single';
   if (state.layoutMode === 'grid2x1') gridClass = 'grid-2x1';
   if (state.layoutMode === 'grid2x2') gridClass = 'grid-2x2';
@@ -213,7 +213,16 @@ function renderPlots() {
     if (active) filesToRender = [active];
   }
 
-  if (filesToRender.length === 0) return;
+  if (filesToRender.length === 0) {
+    container.innerHTML = `
+      <div class="viewer-placeholder">
+        <h2>Spectral Viewer</h2>
+        <p>Your spectral files will be visible here.</p>
+        <span>Select or upload data from the sidebar to begin analysis.</span>
+      </div>
+    `;
+    return;
+  }
 
   if (state.layoutMode === 'stacked' && filesToRender.length > 1) {
     const div = document.createElement('div');
@@ -222,8 +231,8 @@ function renderPlots() {
     const datasets = filesToRender.map((f, i) => {
       const { normalized } = SpectralProcessor.normalizeMax(f.processedY);
       const offset = i * state.stackOffset;
-      return { 
-        name: f.name, x: f.raw.x, y: normalized.map(v => v + offset), color: f.color 
+      return {
+        name: f.name, x: f.raw.x, y: normalized.map(v => v + offset), color: f.color
       };
     });
     requestAnimationFrame(() => {
@@ -238,7 +247,7 @@ function renderPlots() {
       wrapper.innerHTML = `<div class="plot-item-title">${f.name}</div><div class="plot-container" style="flex:1; min-height:0;"></div>`;
       container.appendChild(wrapper);
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
-      
+
       // Double RAF to ensure layout is stable
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -286,7 +295,7 @@ function renderAnchorList() {
   body.innerHTML = '';
   if (!active || state.baselineMode !== 'manual') return;
 
-  active.anchors.sort((a,b) => a.x - b.x).forEach((a, idx) => {
+  active.anchors.sort((a, b) => a.x - b.x).forEach((a, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding:4px;">${a.x.toFixed(1)}</td>
@@ -337,7 +346,7 @@ function initLayoutControls() {
 }
 
 function initSliders() {
-  UI.get('slider-snip')?.addEventListener('input', (e) => { 
+  UI.get('slider-snip')?.addEventListener('input', (e) => {
     UI.text('val-snip', (e.target as HTMLInputElement).value);
     reprocessAll();
   });
@@ -367,11 +376,11 @@ async function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
   UI.text('system-status', 'PREPARING_EXCEL...');
-  
+
   try {
     const workbook = new ExcelJS.Workbook();
     const params = { snip: parseInt(UI.val('slider-snip')), sg: 9 };
-    
+
     // Methodology Sheet
     const summarySheet = workbook.addWorksheet('Analysis Info');
     summarySheet.columns = [{ header: 'Parameter', key: 'p', width: 25 }, { header: 'Value', key: 'v', width: 45 }];
@@ -430,7 +439,7 @@ async function exportExcel() {
 
 async function exportPNG() {
   UI.text('system-status', 'PREPARING_ROBUST_EXPORT...');
-  
+
   let filesToRender = Array.from(state.comparisonIds)
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
