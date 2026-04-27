@@ -266,11 +266,24 @@ function renderPlots() {
     const div = document.createElement('div');
     div.className = 'plot-container';
     container.appendChild(div);
-    const f = filesToRender[0];
-    requestAnimationFrame(() => {
-      ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined);
-      attachManualBaselineListener(div);
-    });
+    
+    if (filesToRender.length > 1) {
+      // Overlay Mode (Active + Comparison)
+      const datasets = filesToRender.map(f => ({
+        name: f.name, x: f.raw.x, y: f.processedY, color: f.color
+      }));
+      requestAnimationFrame(() => {
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined);
+        attachManualBaselineListener(div);
+      });
+    } else {
+      // Pure Single Mode
+      const f = filesToRender[0];
+      requestAnimationFrame(() => {
+        ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined);
+        attachManualBaselineListener(div);
+      });
+    }
   }
 }
 
@@ -347,9 +360,7 @@ function renderPeakTable() {
       <td>${p.x.toFixed(1)}</td>
       <td>${p.y.toFixed(2)}</td>
       <td>${p.fwhm.toFixed(1)}</td>
-      <td style="text-align: right;">
-        <span class="peak-info-icon" title="Peak centre calculated via 3-point parabolic interpolation. FWHM calculated by scanning data points to the 50% intensity threshold. These methods are highly accurate for resolved peaks. For overlapping peaks, see the proximity warning above." style="cursor: help; opacity: 0.5;">ⓘ</span>
-      </td>
+      <td></td>
     `;
     body.appendChild(tr);
   });
