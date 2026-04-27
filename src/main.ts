@@ -61,7 +61,6 @@ initUpload();
 initSliders();
 initBaselineControls();
 initLayoutControls();
-UI.text('system-status', 'SYSTEM_READY');
 setTimeout(() => updateUI(), 150);
 
 function initUpload() {
