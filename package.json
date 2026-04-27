@@ -13,11 +13,7 @@
     "vite": "^8.0.10"
   },
   "dependencies": {
-    "archiver": "^7.0.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "exceljs": "^4.4.0",
-    "express": "^5.2.1",
-    "plotly.js-dist-min": "^3.5.0"
+    "plotly.js-dist-min": "^3.5.0",
+    "exceljs": "^4.4.0"
   }
 }
