@@ -34,6 +34,7 @@ interface AppState {
   comparisonIds: Set<string>;
   baselineMode: 'auto' | 'manual';
   layoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2' | 'replicate';
+  previousLayoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2';
   stackOffset: number;
   viewRange: [number, number] | null;
   hideYAxis: boolean;
@@ -47,6 +48,7 @@ const state: AppState = {
   comparisonIds: new Set(),
   baselineMode: 'auto',
   layoutMode: 'single',
+  previousLayoutMode: 'single',
   stackOffset: 0,
   viewRange: null,
   hideYAxis: false,
@@ -162,6 +164,19 @@ function updateUI() {
     UI.text('methods-summary', `Analysis: ${active.name} | Mode: ${active.params.mode.toUpperCase()} | ${active.peaks.length} peaks detected.`);
   } else {
     UI.get('cal-status-container')?.classList.add('hidden');
+  }
+
+  // Collective Analysis Buttons
+  const btnStats = UI.get('btn-group-replicates');
+  const btnUndo = UI.get('btn-undo-replicates');
+  if (state.layoutMode === 'replicate') {
+    btnStats?.style.setProperty('background', 'var(--laser)', 'important');
+    btnStats?.style.setProperty('color', '#000', 'important');
+    btnUndo?.classList.remove('hidden');
+  } else {
+    btnStats?.style.setProperty('background', 'rgba(45, 212, 191, 0.05)', 'important');
+    btnStats?.style.setProperty('color', 'var(--laser)', 'important');
+    btnUndo?.classList.add('hidden');
   }
 
   // Update Footer Stats
@@ -454,6 +469,9 @@ function initBaselineControls() {
 function initLayoutControls() {
   UI.get('select-layout')?.addEventListener('change', (e) => {
     state.layoutMode = (e.target as HTMLSelectElement).value as any;
+    if (state.layoutMode !== 'replicate') {
+      state.previousLayoutMode = state.layoutMode as any;
+    }
     updateUI();
   });
   UI.get('btn-group-replicates')?.addEventListener('click', () => {
@@ -472,12 +490,21 @@ function initLayoutControls() {
     });
 
     try {
+      if (state.layoutMode !== 'replicate') {
+        state.previousLayoutMode = state.layoutMode as any;
+      }
       state.replicateGroup = ReplicateEngine.compute(datasets);
       state.layoutMode = 'replicate';
       updateUI();
     } catch (err: any) {
       alert(err.message);
     }
+  });
+
+  UI.get('btn-undo-replicates')?.addEventListener('click', () => {
+    state.layoutMode = state.previousLayoutMode;
+    state.replicateGroup = null;
+    updateUI();
   });
 }
 

@@ -649,9 +649,18 @@
 
       <div class="section" style="background: rgba(45, 212, 191, 0.03);">
         <div class="section-title">COLLECTIVE ANALYSIS</div>
-        <button id="btn-group-replicates" class="btn-small" style="width: 100%; border: 1px solid var(--laser); color: var(--laser); padding: 8px; background: rgba(45, 212, 191, 0.05);" title="Averages all selected (COMP) files into a single mean ± SD trace">
-          STATISTICAL AVERAGE (MEAN ± SD)
-        </button>
+        <div style="display: flex; gap: 4px;">
+          <button id="btn-group-replicates" class="btn-small" style="flex: 3; border: 1px solid var(--laser); color: var(--laser); padding: 8px; background: rgba(45, 212, 191, 0.05);" title="Averages all selected (COMP) files into a single mean ± SD trace">
+            STATISTICAL AVERAGE (MEAN ± SD)
+          </button>
+          <button id="btn-undo-replicates" class="btn-small hidden" 
+                  style="flex: 1; border: 1px solid var(--text-dim); color: var(--text-dim); padding: 8px; font-weight: 900;" 
+                  onmouseover="this.style.borderColor='var(--text-secondary)'; this.style.color='var(--text-secondary)';"
+                  onmouseout="this.style.borderColor='var(--text-dim)'; this.style.color='var(--text-dim)';"
+                  title="Exit statistical view and return to previous layout">
+            EXIT STATS
+          </button>
+        </div>
       </div>
 
       <div class="file-list" id="file-list"></div>
