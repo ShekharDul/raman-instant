@@ -70,7 +70,12 @@ const PAPER_LAYOUT: any = {
   hovermode: 'x unified' as const
 };
 
-const CONFIG: any = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'] as any[] };
+const CONFIG: any = { 
+  responsive: true, 
+  displaylogo: false, 
+  modeBarButtonsToRemove: ['lasso2d', 'autoScale2d'] as any[],
+  modeBarButtonsToAdd: ['select2d']
+};
 
 const GRID_LAYOUT: any = {
   ...PAPER_LAYOUT,
@@ -91,7 +96,80 @@ const GRID_LAYOUT: any = {
   }
 };
 
+import { FitResult } from '../engine/fitting.ts';
+
 export class ChartRenderer {
+  static renderFit(container: HTMLElement | string, x: number[], y: number[], result: FitResult) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const traces: any[] = [
+      {
+        x, y,
+        mode: 'markers',
+        name: 'Data',
+        marker: { color: COLORS.raw, size: 4, opacity: 0.6 },
+        yaxis: 'y1'
+      },
+      {
+        x: result.fitX, y: result.fitY,
+        mode: 'lines',
+        name: 'Total Fit',
+        line: { color: COLORS.main, width: 3 },
+        yaxis: 'y1'
+      },
+      {
+        x: result.fitX, y: result.residuals,
+        mode: 'lines',
+        name: 'Residuals',
+        line: { color: COLORS.residual, width: 1.5 },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(190, 18, 60, 0.1)',
+        yaxis: 'y2'
+      }
+    ];
+
+    // Individual Peak Components
+    result.peaks.forEach((peak, i) => {
+      const peakY = x.map(tx => {
+        const gamma = peak.fwhm.value / 2;
+        const sigma = peak.fwhm.value / 2.35482;
+        return peak.type === 'lorentzian' 
+          ? peak.amplitude.value / (1 + Math.pow((tx - peak.center.value) / gamma, 2))
+          : peak.amplitude.value * Math.exp(-Math.pow(tx - peak.center.value, 2) / (2 * Math.pow(sigma, 2)));
+      });
+
+      traces.push({
+        x, y: peakY,
+        mode: 'lines',
+        name: `Peak ${i+1} (${peak.center.value.toFixed(1)})`,
+        line: { dash: 'dot', width: 1.5 },
+        opacity: 0.7,
+        yaxis: 'y1'
+      });
+    });
+
+    const layout = {
+      ...PAPER_LAYOUT,
+      grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+      yaxis: { ...PAPER_LAYOUT.yaxis, domain: [0.35, 1], title: 'Intensity' },
+      yaxis2: { ...PAPER_LAYOUT.yaxis, domain: [0, 0.25], title: 'Res', showgrid: true, zeroline: true },
+      xaxis: { ...PAPER_LAYOUT.xaxis, anchor: 'y2' },
+      margin: { l: 90, r: 50, t: 30, b: 80 },
+      annotations: [
+        {
+          xref: 'paper', yref: 'paper',
+          x: 0, y: 1.05,
+          text: `<b>R²: ${result.r2.toFixed(4)}</b> | <b>χ²ᵣ: ${result.reducedChi2.toFixed(2)}</b>`,
+          showarrow: false,
+          font: { size: 14, color: COLORS.main }
+        }
+      ]
+    };
+
+    Plotly.newPlot(container, traces, layout, CONFIG);
+  }
+
   static renderSingle(container: HTMLElement | string, x: number[], rawY: number[], processedY: number[], _baselineY: number[], peaks: { x: number; y: number }[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;

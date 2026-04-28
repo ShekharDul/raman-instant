@@ -13,6 +13,8 @@
     "vite": "^8.0.10"
   },
   "dependencies": {
+    "ml-levenberg-marquardt": "^5.0.1",
+    "ml-matrix": "^6.12.2",
     "plotly.js-dist-min": "^3.5.0",
     "xlsx": "^0.18.5"
   }

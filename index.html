@@ -728,6 +728,22 @@
         </div>
       </div>
 
+      <div class="section" style="background: rgba(59, 130, 246, 0.03);">
+        <div class="section-title">PEAK FITTING (LM)</div>
+        <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          Select a region by dragging on the plot to start simultaneous multi-peak fitting.
+        </p>
+        <div class="ctrl-group" style="margin-bottom: 8px;">
+          <div class="ctrl-label"><span>PROFILE</span></div>
+          <select id="select-fit-type" style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
+            <option value="lorentzian">LORENTZIAN (DEFAULT)</option>
+            <option value="gaussian">GAUSSIAN</option>
+          </select>
+        </div>
+        <button id="btn-exit-fit" class="btn-small hidden" style="width: 100%; border: 1px solid #3b82f6; color: #3b82f6; font-weight: 700;">EXIT FITTING MODE</button>
+      </div>
+
+
       <div class="file-list" id="file-list"></div>
     </aside>
 
