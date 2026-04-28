@@ -206,6 +206,34 @@ export class ChartRenderer {
     return `${r},${g},${b}`;
   }
 
+  private static async triggerDownload(dataUrl: string, filename: string) {
+    try {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      console.error('[RamanInstant] Manual download trigger failed:', err);
+      // Fallback: if fetch fails, try clicking the dataUrl directly
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  }
+
   static renderResidual(container: HTMLElement | string, x: number[], residualY: number[], range?: [number, number]) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
@@ -253,7 +281,9 @@ export class ChartRenderer {
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        await Plotly.downloadImage(tempDiv, { format, width: 1200, height: 800, scale: 2, filename: `Raman_Fig_${Date.now()}` });
+        const filename = `Raman_Fig_${Date.now()}.${format}`;
+        const dataUrl = await Plotly.toImage(tempDiv, { format, width: 1200, height: 800, scale: 2 });
+        await this.triggerDownload(dataUrl, filename);
       } else if (isStacked) {
         // Waterfall Export
         const datasets = files.map((f, i) => {
@@ -264,7 +294,9 @@ export class ChartRenderer {
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        await Plotly.downloadImage(tempDiv, { format, width: 1200, height: 800, scale: 2, filename: `Raman_Waterfall_${Date.now()}` });
+        const filename = `Raman_Waterfall_${Date.now()}.${format}`;
+        const dataUrl = await Plotly.toImage(tempDiv, { format, width: 1200, height: 800, scale: 2 });
+        await this.triggerDownload(dataUrl, filename);
       } else {
         // Multi-Panel Grid Export
         const cols = isMatrix ? 2 : 1;
@@ -310,7 +342,9 @@ export class ChartRenderer {
         layout.annotations.push({ ...citation, y: -0.08 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
-        await Plotly.downloadImage(tempDiv, { format, width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });
+        const filename = `Raman_Matrix_${Date.now()}.${format}`;
+        const dataUrl = await Plotly.toImage(tempDiv, { format, width: layout.width, height: layout.height, scale: 2 });
+        await this.triggerDownload(dataUrl, filename);
       }
     } finally {
       document.body.removeChild(tempDiv);
