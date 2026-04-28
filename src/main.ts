@@ -462,7 +462,7 @@ function initLayoutControls() {
     
     const uniqueIds = Array.from(new Set(selectedIds));
     if (uniqueIds.length < 2) {
-      alert("Please select at least 2 files (using COMP buttons) to group as replicates.");
+      alert("Please select at least 2 files (using COMP buttons) to calculate a statistical average.");
       return;
     }
 
