@@ -66,13 +66,15 @@ const UI = {
 };
 
 // ── Initialization ──
-initUpload();
-initSliders();
-initBaselineControls();
-initLayoutControls();
-initCalibration();
-initAboutModal();
-setTimeout(() => updateUI(), 150);
+document.addEventListener('DOMContentLoaded', () => {
+  initAboutModal();
+  initUpload();
+  initSliders();
+  initBaselineControls();
+  initLayoutControls();
+  initCalibration();
+  setTimeout(() => updateUI(), 150);
+});
 
 function initCalibration() {
   UI.get('btn-si-cal')?.addEventListener('click', () => {
@@ -468,14 +470,25 @@ function initBaselineControls() {
 }
 
 function initAboutModal() {
+  console.log('[RamanInstant] Initializing About Modal...');
   const modal = UI.get('modal-about');
-  UI.get('btn-about')?.addEventListener('click', () => {
-    modal?.classList.add('active');
+  const btn = UI.get('btn-about');
+  
+  if (!modal || !btn) {
+    console.error('[RamanInstant] Modal or About button not found!', { modal, btn });
+    return;
+  }
+
+  btn.addEventListener('click', () => {
+    console.log('[RamanInstant] Opening About Modal');
+    modal.classList.add('active');
   });
+
   UI.get('btn-close-about')?.addEventListener('click', () => {
-    modal?.classList.remove('active');
+    modal.classList.remove('active');
   });
-  modal?.addEventListener('click', (e) => {
+
+  modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
   });
 }
