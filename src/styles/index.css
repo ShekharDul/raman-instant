@@ -282,6 +282,67 @@ input[type="range"]::-webkit-slider-thumb {
   text-transform: uppercase;
 }
 
+/* ── About Modal ── */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 600px;
+  height: 100%;
+  background: #fff;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+  padding: 60px 40px;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #1e293b;
+}
+
+.modal-overlay.active .modal-content {
+  transform: translateX(0);
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.modal-close:hover { color: #000; }
+
+.docs-section { margin-bottom: 40px; line-height: 1.6; }
+.docs-section h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.docs-section h3 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; }
+.docs-section p { margin-bottom: 16px; font-size: 14px; }
+.docs-section ul { margin-bottom: 16px; padding-left: 20px; }
+.docs-section li { margin-bottom: 8px; font-size: 14px; }
+.docs-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 4px; margin: 20px 0; font-size: 13px; }
+
 /* ── Utilities ── */
 .hidden { display: none !important; }
 .status-active { color: var(--success); }

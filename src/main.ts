@@ -71,6 +71,7 @@ initSliders();
 initBaselineControls();
 initLayoutControls();
 initCalibration();
+initAboutModal();
 setTimeout(() => updateUI(), 150);
 
 function initCalibration() {
@@ -463,6 +464,19 @@ function initBaselineControls() {
       active.anchors = [];
       reprocessActive();
     }
+  });
+}
+
+function initAboutModal() {
+  const modal = UI.get('modal-about');
+  UI.get('btn-about')?.addEventListener('click', () => {
+    modal?.classList.add('active');
+  });
+  UI.get('btn-close-about')?.addEventListener('click', () => {
+    modal?.classList.remove('active');
+  });
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
   });
 }
 

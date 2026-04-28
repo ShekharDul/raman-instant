@@ -549,7 +549,7 @@
         <h1 style="font-size: 18px; font-weight: 500; letter-spacing: -0.01em; color: #475569;">raman <span style="opacity: 0.3; font-weight: 300; margin: 0 4px;">—</span> instant</h1>
       </div>
       <div class="status">
-        <a href="/raman-instant/docs.html" style="color: var(--text-muted); text-decoration: none; margin-right: 20px; font-weight: 600; font-size: 9px; letter-spacing: 0.1em;">ABOUT</a>
+        <button id="btn-about" style="background: none; border: none; cursor: pointer; color: var(--text-muted); margin-right: 20px; font-weight: 600; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;">ABOUT</button>
         <span class="status-dot"></span>
       </div>
     </header>
@@ -714,6 +714,53 @@
       <div id="footer-stats">FILES: 0 ; ACTIVE FILES: 0</div>
       <div></div>
     </footer>
+  </div>
+
+  <div id="modal-about" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" id="btn-close-about">✕</button>
+      
+      <div class="docs-section">
+        <h1 style="font-size: 24px; margin-bottom: 8px;">RamanInstant Guide</h1>
+        <p style="color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 32px;">Protocol & Technical Specifications</p>
+      </div>
+
+      <div class="docs-section">
+        <h2>01. Baseline Correction</h2>
+        <p>We use the <strong>SNIP algorithm</strong> (Statistics-sensitive Non-linear Iterative Peak-clipping) to estimate the background signal (fluorescence, etc.) without distorting Raman peaks.</p>
+        <div class="docs-info-box">
+          <strong>Iterations:</strong> More iterations remove more background. Use the slider in the sidebar to fine-tune the removal depth for your specific sample.
+        </div>
+      </div>
+
+      <div class="docs-section">
+        <h2>02. Data Requirements</h2>
+        <p>For high-fidelity analysis, please ensure your files meet these standards:</p>
+        <ul>
+          <li><strong>Format:</strong> .csv, .txt, or .asc (UTF-8).</li>
+          <li><strong>Columns:</strong> Column 1 = Raman Shift (cm⁻¹), Column 2 = Intensity.</li>
+          <li><strong>Cleanliness:</strong> The parser handles most headers, but raw 2-column data is preferred.</li>
+        </ul>
+      </div>
+
+      <div class="docs-section">
+        <h2>03. Peak Analysis</h2>
+        <p>Center positions are calculated using <strong>parabolic interpolation</strong> of the highest 3 points for sub-pixel precision. FWHM is calculated directly from the half-maximum threshold.</p>
+        <div class="docs-info-box" style="border-left: 4px solid var(--reference);">
+          <strong>Note on Overlaps:</strong> If peaks are blended (e.g., D and G bands in carbon), the software reports the envelope centroid. Use specialized fitting for deconvolution.
+        </div>
+      </div>
+
+      <div class="docs-section">
+        <h2>04. Collective Analysis</h2>
+        <p>Select multiple files using the <strong>COMP</strong> button, then use the <strong>Statistical Average</strong> tool to generate a mean trace with shaded standard deviation bands.</p>
+      </div>
+
+      <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">
+        <span>V2.1.0 / RESEARCH EDITION</span>
+        <span>© 2026 RAMANINSTANT</span>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.ts"></script>
