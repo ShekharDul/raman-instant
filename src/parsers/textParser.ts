@@ -1,5 +1,5 @@
 /**
- * RamanInstant v2.0 — Text/CSV Parser
+ * Instant Raman v2.0 — Text/CSV Parser
  * Handles TXT, CSV, ASC, DAT formats with auto-detection.
  */
 

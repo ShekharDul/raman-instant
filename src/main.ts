@@ -1,5 +1,5 @@
 /**
- * RamanInstant v2.1 — Research Workstation Engine
+ * Instant Raman v2.1 — Research Workstation Engine
  * Optimized for robustness, performance, and commercial reliability.
  */
 const APP_VERSION = 'v2.1.0';
@@ -269,7 +269,7 @@ function renderPlots() {
     .filter(f => !!f) as ProcessedFile[];
 
   if (filesToRender.length === 0) {
-    console.log("[RamanInstant] Rendering placeholder...");
+    console.log("[Instant Raman] Rendering placeholder...");
     container.innerHTML = `
       <div class="viewer-placeholder">
         <h2>Spectral Viewer</h2>
@@ -466,17 +466,17 @@ function initBaselineControls() {
 }
 
 function initAboutModal() {
-  console.log('[RamanInstant] Initializing About Modal...');
+  console.log('[Instant Raman] Initializing About Modal...');
   const modal = UI.get('modal-about');
   const btn = UI.get('btn-about');
   
   if (!modal || !btn) {
-    console.error('[RamanInstant] Modal or About button not found!', { modal, btn });
+    console.error('[Instant Raman] Modal or About button not found!', { modal, btn });
     return;
   }
 
   btn.addEventListener('click', () => {
-    console.log('[RamanInstant] Opening About Modal');
+    console.log('[Instant Raman] Opening About Modal');
     modal.classList.add('active');
   });
 
@@ -579,7 +579,7 @@ async function exportExcel() {
     // 1. Methodology Sheet
     const summaryData = [
       ['Parameter', 'Value'],
-      ['Workstation', `RamanInstant ${APP_VERSION}`],
+      ['Workstation', `Instant Raman ${APP_VERSION}`],
       ['Export Date', new Date().toISOString()],
       ['Global Baseline (SNIP)', params.snip + ' iterations'],
       ['Global Smoothing (SG)', 'Window size ' + params.sg],

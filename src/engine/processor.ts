@@ -1,5 +1,5 @@
 /**
- * RamanInstant v2.0 — Spectral Processing Engine
+ * Instant Raman v2.0 — Spectral Processing Engine
  * Pure math. No identification. No interpretation.
  */
 

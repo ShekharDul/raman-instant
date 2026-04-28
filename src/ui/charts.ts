@@ -1,5 +1,5 @@
 /**
- * RamanInstant v2.0 — Chart Renderer
+ * Instant Raman v2.0 — Chart Renderer
  * Paper-White theme for professional research figures.
  */
 declare const Plotly: any;
@@ -222,7 +222,7 @@ export class ChartRenderer {
         window.URL.revokeObjectURL(url);
       }, 100);
     } catch (err) {
-      console.error('[RamanInstant] Manual download trigger failed:', err);
+      console.error('[Instant Raman] Manual download trigger failed:', err);
       // Fallback: if fetch fails, try clicking the dataUrl directly
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -267,7 +267,7 @@ export class ChartRenderer {
 
     try {
       const citation = {
-        text: 'RAMANINSTANT — OPEN RESEARCH',
+        text: 'INSTANT RAMAN — OPEN RESEARCH',
         xref: 'paper', yref: 'paper',
         x: 1, y: -0.1, showarrow: false,
         font: { size: 9, color: '#94a3b8', family: 'Arial' },
