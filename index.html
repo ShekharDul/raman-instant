@@ -503,17 +503,19 @@
     }
 
     .btn-premium {
-      padding: 14px 28px;
-      border: none;
+      width: 100%;
+      padding: 12px 20px;
+      border: 1px solid var(--border);
       font-weight: 700;
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.15em;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      gap: 12px;
     }
 
     .btn-premium.excel {
@@ -779,13 +781,13 @@
       </div>
 
       <div class="export-section">
-        <button id="btn-export-excel" class="btn-premium excel" style="width: 100%; border: 1px solid var(--border);">
-          📊 Download Analytical Excel
+        <button id="btn-export-excel" class="btn-premium excel">
+          📊 Download Excel
         </button>
-        <button id="btn-export-png" class="btn-premium svg" style="width: 100%; border: 1px solid var(--border); margin-bottom: 8px;">
+        <button id="btn-export-png" class="btn-premium svg">
           🖼️ Download PNG
         </button>
-        <button id="btn-export-svg" class="btn-premium svg" style="width: 100%; border: 1px solid var(--border); background: #1e293b;">
+        <button id="btn-export-svg" class="btn-premium svg" style="background: #1e293b;">
           📐 Download SVG
         </button>
       </div>
