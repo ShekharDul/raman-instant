@@ -66,15 +66,13 @@ const UI = {
 };
 
 // ── Initialization ──
-document.addEventListener('DOMContentLoaded', () => {
-  initAboutModal();
-  initUpload();
-  initSliders();
-  initBaselineControls();
-  initLayoutControls();
-  initCalibration();
-  setTimeout(() => updateUI(), 150);
-});
+initAboutModal();
+initUpload();
+initSliders();
+initBaselineControls();
+initLayoutControls();
+initCalibration();
+setTimeout(() => updateUI(), 150);
 
 function initCalibration() {
   UI.get('btn-si-cal')?.addEventListener('click', () => {
