@@ -92,7 +92,7 @@ const GRID_LAYOUT: any = {
 };
 
 export class ChartRenderer {
-  static renderSingle(container: HTMLElement | string, x: number[], rawY: number[], processedY: number[], _baselineY: number[], peaks: { x: number; y: number }[], color?: string, range?: [number, number], isGrid = false) {
+  static renderSingle(container: HTMLElement | string, x: number[], rawY: number[], processedY: number[], _baselineY: number[], peaks: { x: number; y: number }[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -112,10 +112,16 @@ export class ChartRenderer {
     layout.annotations = annotations;
     if (range) layout.xaxis.range = range;
 
+    if (hideY) {
+      layout.yaxis.showticklabels = false;
+      layout.yaxis.title.text = '';
+      layout.yaxis.ticks = '';
+    }
+
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; x: number[]; y: number[]; color?: string }[], range?: [number, number]) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; x: number[]; y: number[]; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -124,9 +130,73 @@ export class ChartRenderer {
       line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
       hoverinfo: 'x+y+name'
     }));
+
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    if (range) layout.xaxis.range = range;
+
+    if (isWaterfall) {
+      layout.yaxis.title.text = '<b>Offset Intensity (a.u.)</b>';
+      if (hideY) {
+        layout.yaxis.showticklabels = false;
+        layout.yaxis.title.text = '';
+        layout.yaxis.ticks = '';
+      }
+      
+      // Add per-trace labels on the right
+      layout.annotations = datasets.map((d) => {
+        const lastX = d.x[d.x.length - 1];
+        const lastY = d.y[d.y.length - 1];
+        return {
+          x: 1, y: lastY, xref: 'paper', yref: 'y',
+          text: `<b>${d.name}</b>`,
+          showarrow: false,
+          xanchor: 'left',
+          font: { size: 12, color: d.color || COLORS.main },
+          bgcolor: 'rgba(255,255,255,0.7)',
+          borderpad: 2
+        };
+      });
+      // Adjust margin for labels
+      layout.margin.r = 140;
+    }
+
+    Plotly.react(container, traces, layout, CONFIG);
+  }
+
+  static renderReplicate(container: HTMLElement | string, x: number[], meanY: number[], sdY: number[], name: string, color: string, range?: [number, number]) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const upperSD = meanY.map((v, i) => v + sdY[i]);
+    const lowerSD = meanY.map((v, i) => v - sdY[i]);
+
+    const traces: any[] = [
+      {
+        x: x, y: upperSD, mode: 'lines', line: { width: 0 }, 
+        showlegend: false, hoverinfo: 'skip'
+      },
+      {
+        x: x, y: lowerSD, mode: 'lines', line: { width: 0 }, 
+        fill: 'tonexty', fillcolor: `rgba(${this.hexToRgb(color)}, 0.15)`,
+        name: `±1 SD (${name})`, hoverinfo: 'skip'
+      },
+      {
+        x: x, y: meanY, mode: 'lines', name: `Mean (${name})`, 
+        line: { color: color, width: 3 },
+        hoverinfo: 'x+y+name'
+      }
+    ];
+
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     if (range) layout.xaxis.range = range;
     Plotly.react(container, traces, layout, CONFIG);
+  }
+
+  private static hexToRgb(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r},${g},${b}`;
   }
 
   static renderResidual(container: HTMLElement | string, x: number[], residualY: number[], range?: [number, number]) {
@@ -146,7 +216,7 @@ export class ChartRenderer {
     }], layout, { ...CONFIG, displayModeBar: false });
   }
 
-  static async exportPublicationFigure(state: any, files: any[]) {
+  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png') {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -172,22 +242,22 @@ export class ChartRenderer {
       if (!isMatrix && !isVertical && !isStacked) {
         // Simple Single Export
         const f = files[0];
-        this.renderSingle(tempDiv, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined);
+        this.renderSingle(tempDiv, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        await Plotly.downloadImage(tempDiv, { format: 'png', width: 1200, height: 800, scale: 2, filename: `Raman_Fig_${Date.now()}` });
+        await Plotly.downloadImage(tempDiv, { format, width: 1200, height: 800, scale: 2, filename: `Raman_Fig_${Date.now()}` });
       } else if (isStacked) {
         // Waterfall Export
         const datasets = files.map((f, i) => {
           const { normalized } = (window as any).SpectralProcessor.normalizeMax(f.processedY);
           return { name: f.name, x: f.raw.x, y: normalized.map((v: number) => v + i * state.stackOffset), color: f.color };
         });
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined);
+        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        await Plotly.downloadImage(tempDiv, { format: 'png', width: 1200, height: 800, scale: 2, filename: `Raman_Waterfall_${Date.now()}` });
+        await Plotly.downloadImage(tempDiv, { format, width: 1200, height: 800, scale: 2, filename: `Raman_Waterfall_${Date.now()}` });
       } else {
         // Multi-Panel Grid Export
         const cols = isMatrix ? 2 : 1;
@@ -198,7 +268,7 @@ export class ChartRenderer {
         layout.showlegend = false;
         layout.width = 1000 * cols;
         layout.height = 700 * rows;
-        layout.margin = { l: 80, r: 40, t: 80, b: 120 }; // Extra bottom margin for citation
+        layout.margin = { l: 80, r: 40, t: 80, b: 120 };
 
         files.slice(0, cols * rows).forEach((f, i) => {
           const axisIdx = i === 0 ? '' : (i + 1);
@@ -215,6 +285,12 @@ export class ChartRenderer {
           layout[`xaxis${axisIdx}`] = { ...PAPER_LAYOUT.xaxis, title: { text: `Shift (cm⁻¹)`, font: { size: 14 } }, tickfont: { size: 12 } };
           layout[`yaxis${axisIdx}`] = { ...PAPER_LAYOUT.yaxis, title: { text: `Int`, font: { size: 14 } }, tickfont: { size: 12 } };
           
+          if (state.hideYAxis) {
+            layout[`yaxis${axisIdx}`].showticklabels = false;
+            layout[`yaxis${axisIdx}`].title.text = '';
+            layout[`yaxis${axisIdx}`].ticks = '';
+          }
+
           if (!layout.annotations) layout.annotations = [];
           layout.annotations.push({
             text: `<b>(${panelLabel}) ${f.name}</b>`, font: { size: 18 },
@@ -227,7 +303,7 @@ export class ChartRenderer {
         layout.annotations.push({ ...citation, y: -0.05 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
-        await Plotly.downloadImage(tempDiv, { format: 'png', width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });
+        await Plotly.downloadImage(tempDiv, { format, width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });
       }
     } finally {
       document.body.removeChild(tempDiv);

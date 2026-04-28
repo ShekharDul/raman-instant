@@ -8,6 +8,8 @@ import type { Peak, VarianceResult } from './engine/processor.ts';
 import { parseSpectralFile } from './parsers/textParser.ts';
 import type { ParsedSpectrum } from './parsers/textParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
+import { ReplicateEngine } from './engine/replicates.ts';
+import type { ReplicateStats } from './engine/replicates.ts';
 import * as XLSX from 'xlsx';
 
 // ── Types ──
@@ -31,9 +33,11 @@ interface AppState {
   activeFileId: string | null;
   comparisonIds: Set<string>;
   baselineMode: 'auto' | 'manual';
-  layoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2';
+  layoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2' | 'replicate';
   stackOffset: number;
   viewRange: [number, number] | null;
+  hideYAxis: boolean;
+  replicateGroup: ReplicateStats | null;
 }
 
 // ── State ──
@@ -44,7 +48,9 @@ const state: AppState = {
   baselineMode: 'auto',
   layoutMode: 'single',
   stackOffset: 0,
-  viewRange: null
+  viewRange: null,
+  hideYAxis: false,
+  replicateGroup: null
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -270,8 +276,15 @@ function renderPlots() {
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis);
       attachManualBaselineListener(div);
+    });
+  } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
+    const div = document.createElement('div');
+    div.className = 'plot-container';
+    container.appendChild(div);
+    requestAnimationFrame(() => {
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.x, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -282,10 +295,9 @@ function renderPlots() {
       container.appendChild(wrapper);
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
-      // Double RAF to ensure layout is stable
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true);
+          ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
           attachManualBaselineListener(plotEl);
         });
       });
@@ -296,19 +308,17 @@ function renderPlots() {
     container.appendChild(div);
     
     if (filesToRender.length > 1) {
-      // Overlay Mode (Active + Comparison)
       const datasets = filesToRender.map(f => ({
         name: f.name, x: f.raw.x, y: f.processedY, color: f.color
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis);
         attachManualBaselineListener(div);
       });
     } else {
-      // Pure Single Mode
       const f = filesToRender[0];
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined);
+        ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
         attachManualBaselineListener(div);
       });
     }
@@ -361,9 +371,28 @@ function renderPeakTable() {
   const active = state.files.get(state.activeFileId || '');
   const body = UI.get('peaks-list-body');
   const warning = UI.get('proximity-warning');
+  const title = UI.get('peak-panel-title');
   if (!body) return;
   body.innerHTML = '';
 
+  if (state.layoutMode === 'replicate' && state.replicateGroup) {
+    if (title) title.textContent = "Statistical Peak Analysis (Mean ± SD)";
+    warning?.classList.add('hidden');
+    
+    state.replicateGroup.peakStats.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}</td>
+        <td>${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}</td>
+        <td>${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}</td>
+        <td></td>
+      `;
+      body.appendChild(tr);
+    });
+    return;
+  }
+
+  if (title) title.textContent = "Peak Analysis";
   if (!active || active.peaks.length === 0) {
     warning?.classList.add('hidden');
     return;
@@ -427,6 +456,29 @@ function initLayoutControls() {
     state.layoutMode = (e.target as HTMLSelectElement).value as any;
     updateUI();
   });
+  UI.get('btn-group-replicates')?.addEventListener('click', () => {
+    const selectedIds = Array.from(state.comparisonIds);
+    if (state.activeFileId) selectedIds.push(state.activeFileId);
+    
+    const uniqueIds = Array.from(new Set(selectedIds));
+    if (uniqueIds.length < 2) {
+      alert("Please select at least 2 files (using COMP buttons) to group as replicates.");
+      return;
+    }
+
+    const datasets = uniqueIds.map(id => {
+      const f = state.files.get(id)!;
+      return { x: f.raw.x, y: f.processedY, peaks: f.peaks };
+    });
+
+    try {
+      state.replicateGroup = ReplicateEngine.compute(datasets);
+      state.layoutMode = 'replicate';
+      updateUI();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  });
 }
 
 function initSliders() {
@@ -439,8 +491,13 @@ function initSliders() {
     UI.text('val-stack', state.stackOffset.toFixed(1));
     updateUI();
   });
+  UI.get('check-hide-y')?.addEventListener('change', (e) => {
+    state.hideYAxis = (e.target as HTMLInputElement).checked;
+    updateUI();
+  });
   UI.get('btn-export-excel')?.addEventListener('click', exportExcel);
-  UI.get('btn-export-png')?.addEventListener('click', exportPNG);
+  UI.get('btn-export-png')?.addEventListener('click', () => exportFigure('png'));
+  UI.get('btn-export-svg')?.addEventListener('click', () => exportFigure('svg'));
 }
 
 function reprocessActive() {
@@ -485,6 +542,23 @@ async function exportExcel() {
     }
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, summarySheet, 'Analysis Info');
+
+    // 1.1 Statistical Summary (If Replicate Mode)
+    if (state.replicateGroup) {
+      const statsData = [
+        ['Raman Shift (cm-1)', 'Mean Intensity', 'Std Dev (SD)'],
+        ...state.replicateGroup.x.map((x, i) => [x, state.replicateGroup!.mean[i], state.replicateGroup!.sd[i]])
+      ];
+      const statsWs = XLSX.utils.aoa_to_sheet(statsData);
+      XLSX.utils.book_append_sheet(wb, statsWs, 'Statistical Summary');
+
+      const peakStatsData = [
+        ['Peak Center (Mean)', 'Shift SD', 'Intensity (Mean)', 'Intensity SD', 'FWHM (Mean)', 'FWHM SD'],
+        ...state.replicateGroup.peakStats.map(p => [p.xMean, p.xSD, p.yMean, p.ySD, p.fwhmMean, p.fwhmSD])
+      ];
+      const peakStatsWs = XLSX.utils.aoa_to_sheet(peakStatsData);
+      XLSX.utils.book_append_sheet(wb, peakStatsWs, 'Peak Stats (Mean±SD)');
+    }
 
     // 2. Spectral Data Sheets
     const sheetNames = new Set();
@@ -558,7 +632,7 @@ async function exportExcel() {
 // Expose processor to window for the chart renderer's Waterfall export
 (window as any).SpectralProcessor = SpectralProcessor;
 
-async function exportPNG() {
+async function exportFigure(format: 'png' | 'svg') {
   let filesToRender = Array.from(state.comparisonIds)
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
@@ -571,7 +645,7 @@ async function exportPNG() {
   if (filesToRender.length === 0) return;
 
   try {
-    await ChartRenderer.exportPublicationFigure(state, filesToRender);
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }
