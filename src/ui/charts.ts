@@ -32,7 +32,7 @@ const PAPER_LAYOUT: any = {
     color: '#000000', 
     size: 16 // Massive base font
   },
-  margin: { l: 90, r: 160, t: 50, b: 90 }, // Increased right margin for legend
+  margin: { l: 90, r: 160, t: 50, b: 110 }, // Increased bottom margin for watermark
   showlegend: true,
   legend: { 
     font: { size: 12 }, 
@@ -239,10 +239,10 @@ export class ChartRenderer {
 
     try {
       const citation = {
-        text: 'Generated with RamanInstant — ramaninstant.com',
+        text: 'RAMANINSTANT — OPEN RESEARCH',
         xref: 'paper', yref: 'paper',
-        x: 0.5, y: -0.12, showarrow: false,
-        font: { size: 12, color: '#64748b' },
+        x: 0.5, y: -0.08, showarrow: false,
+        font: { size: 10, color: '#94a3b8', family: 'Arial' },
         xanchor: 'center', yanchor: 'top'
       };
 
@@ -307,7 +307,7 @@ export class ChartRenderer {
         });
 
         // Add citation to grid
-        layout.annotations.push({ ...citation, y: -0.05 }); 
+        layout.annotations.push({ ...citation, y: -0.04 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
         await Plotly.downloadImage(tempDiv, { format, width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });
