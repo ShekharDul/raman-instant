@@ -728,7 +728,7 @@
         </div>
       </div>
 
-      <div class="section" style="background: rgba(59, 130, 246, 0.03);">
+      <div class="section hidden" style="background: rgba(59, 130, 246, 0.03);">
         <div class="section-title">PEAK FITTING (LM)</div>
         <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
           Select a region by dragging on the plot to start simultaneous multi-peak fitting.
@@ -835,6 +835,14 @@
       <div class="docs-section">
         <h2>04. Collective Analysis</h2>
         <p>Select multiple files using the <strong>COMP</strong> button, then use the <strong>Statistical Average</strong> tool to generate a mean trace with shaded standard deviation bands.</p>
+      </div>
+
+      <div class="docs-section" style="margin-top: 40px; opacity: 0.8; border-left: 1px solid var(--border); padding-left: 20px;">
+        <h2 style="display: flex; align-items: center; gap: 8px;">
+          05. Advanced Deconvolution 
+          <span style="font-size: 8px; background: rgba(45, 212, 191, 0.1); color: var(--laser); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.1em; border: 1px solid rgba(45, 212, 191, 0.2);">STAGING</span>
+        </h2>
+        <p>We are currently finalizing the integration of a <strong>Levenberg-Marquardt (LM) non-linear fitting engine</strong>. This will enable simultaneous multi-peak optimization using Lorentzian and Gaussian profiles, providing rigorous standard errors and residual analysis for complex spectral regions.</p>
       </div>
 
       <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">

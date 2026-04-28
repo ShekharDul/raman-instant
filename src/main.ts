@@ -10,8 +10,6 @@ import type { ParsedSpectrum } from './parsers/textParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
-import { FittingEngine } from './engine/fitting.ts';
-import type { FitResult } from './engine/fitting.ts';
 import * as XLSX from 'xlsx';
 
 // ── Types ──
@@ -38,11 +36,9 @@ interface AppState {
   layoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2' | 'replicate';
   previousLayoutMode: 'single' | 'stacked' | 'grid2x1' | 'grid2x2';
   stackOffset: number;
-  viewRange: [number, number] | null;
   hideYAxis: boolean;
+  viewRange: [number, number] | null;
   replicateGroup: ReplicateStats | null;
-  currentFit: FitResult | null;
-  isFitting: boolean;
 }
 
 // ── State ──
@@ -54,11 +50,9 @@ const state: AppState = {
   layoutMode: 'single',
   previousLayoutMode: 'single',
   stackOffset: 0,
-  viewRange: null,
   hideYAxis: false,
-  replicateGroup: null,
-  currentFit: null,
-  isFitting: false
+  viewRange: null,
+  replicateGroup: null
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -78,7 +72,6 @@ initSliders();
 initBaselineControls();
 initLayoutControls();
 initCalibration();
-initFitting();
 setTimeout(() => updateUI(), 150);
 
 function initCalibration() {
@@ -160,49 +153,6 @@ function processAndStore(id: string, name: string, raw: ParsedSpectrum) {
   });
 }
 
-function initFitting() {
-  UI.get('btn-exit-fit')?.addEventListener('click', () => {
-    state.isFitting = false;
-    state.currentFit = null;
-    updateUI();
-  });
-}
-
-function handlePlotSelection(eventData: any) {
-  if (!eventData || !state.activeFileId || state.layoutMode !== 'single') return;
-  
-  const active = state.files.get(state.activeFileId);
-  if (!active) return;
-
-  const xRange = eventData.range.x;
-  const subsetX: number[] = [];
-  const subsetY: number[] = [];
-  
-  for (let i = 0; i < active.raw.x.length; i++) {
-    if (active.raw.x[i] >= xRange[0] && active.raw.x[i] <= xRange[1]) {
-      subsetX.push(active.raw.x[i]);
-      subsetY.push(active.processedY[i]);
-    }
-  }
-
-  if (subsetX.length < 10) return;
-
-  const fitType = (UI.get('select-fit-type') as HTMLSelectElement).value as 'lorentzian' | 'gaussian';
-  
-  // Show "Processing" indicator or just run (LM is fast for small regions)
-  const initialParams = FittingEngine.estimateInitial(subsetX, subsetY, fitType);
-  const result = FittingEngine.fit(subsetX, subsetY, initialParams, fitType);
-
-  if (result.errorMsg) {
-    alert(`FIT ERROR: ${result.errorMsg}. Try a different region.`);
-    return;
-  }
-
-  state.currentFit = result;
-  state.isFitting = true;
-  updateUI();
-}
-
 function updateUI() {
   renderFileList();
   renderPlots();
@@ -228,14 +178,6 @@ function updateUI() {
     btnStats?.style.setProperty('background', 'rgba(45, 212, 191, 0.05)', 'important');
     btnStats?.style.setProperty('color', 'var(--laser)', 'important');
     btnUndo?.classList.add('hidden');
-  }
-
-  // Peak Fitting
-  const btnExitFit = UI.get('btn-exit-fit');
-  if (state.isFitting) {
-    btnExitFit?.classList.remove('hidden');
-  } else {
-    btnExitFit?.classList.add('hidden');
   }
 
   // Update Footer Stats
@@ -306,38 +248,6 @@ function renderPlots() {
   if (!container) return;
   container.innerHTML = '';
 
-  // Peak Fitting View (Exclusive)
-  if (state.isFitting && state.currentFit && state.activeFileId) {
-    const active = state.files.get(state.activeFileId);
-    if (active) {
-      container.className = 'workspace-grid grid-single';
-      const div = document.createElement('div');
-      div.className = 'plot-container';
-      div.id = 'main-chart'; 
-      container.appendChild(div);
-      
-      const fitX = state.currentFit.fitX;
-      const xStart = fitX[0];
-      const xEnd = fitX[fitX.length - 1];
-      
-      const subsetX: number[] = [];
-      const subsetY: number[] = [];
-      for (let i = 0; i < active.raw.x.length; i++) {
-        if (active.raw.x[i] >= xStart && active.raw.x[i] <= xEnd) {
-          subsetX.push(active.raw.x[i]);
-          subsetY.push(active.processedY[i]);
-        }
-      }
-      
-      requestAnimationFrame(() => {
-        ChartRenderer.renderFit(div, subsetX, subsetY, state.currentFit!);
-        (div as any).on('plotly_selected', handlePlotSelection);
-      });
-      return;
-    }
-  }
-
-
   let gridClass = 'grid-single';
   if (state.layoutMode === 'grid2x1') gridClass = 'grid-2x1';
   if (state.layoutMode === 'grid2x2') gridClass = 'grid-2x2';
@@ -402,46 +312,43 @@ function renderPlots() {
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
-          attachPlotListeners(plotEl);
-        });
+        ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
+        attachManualBaselineListener(plotEl);
       });
     });
   } else {
     const div = document.createElement('div');
     div.className = 'plot-container';
-    div.id = 'main-chart';
     container.appendChild(div);
 
-    requestAnimationFrame(() => {
-      if (filesToRender.length > 1) {
-        const datasets = filesToRender.map(f => ({
-          name: f.name, x: f.raw.x, y: f.processedY, color: f.color
-        }));
+    if (filesToRender.length > 1) {
+      const datasets = filesToRender.map(f => ({
+        name: f.name, x: f.raw.x, y: f.processedY, color: f.color
+      }));
+      requestAnimationFrame(() => {
         ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis);
-        attachPlotListeners(div);
-      } else {
-        const f = filesToRender[0];
+        attachManualBaselineListener(div);
+      });
+    } else {
+      const f = filesToRender[0];
+      requestAnimationFrame(() => {
         ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
-        attachPlotListeners(div);
-      }
-    });
+        attachManualBaselineListener(div);
+      });
+    }
   }
 }
 
-function attachPlotListeners(el: HTMLElement) {
+function attachManualBaselineListener(el: HTMLElement) {
   const plotEl = el as any;
-  if (!plotEl || typeof plotEl.on !== 'function') return;
-
-  plotEl.on('plotly_click', (data: any) => {
-    if (state.baselineMode === 'manual') {
-      const { x, y } = data.points[0];
-      addAnchor(x, y);
-    }
-  });
-
-  plotEl.on('plotly_selected', handlePlotSelection);
+  if (plotEl) {
+    plotEl.on('plotly_click', (data: any) => {
+      if (state.baselineMode === 'manual') {
+        const { x, y } = data.points[0];
+        addAnchor(x, y);
+      }
+    });
+  }
 }
 
 function addAnchor(x: number, y: number) {
@@ -701,34 +608,6 @@ async function exportExcel() {
       ];
       const peakStatsWs = XLSX.utils.aoa_to_sheet(peakStatsData);
       XLSX.utils.book_append_sheet(wb, peakStatsWs, 'Peak Stats (Mean±SD)');
-    }
-
-    // 1.2 Peak Fit Results (If active)
-    if (state.currentFit) {
-      const fitData: any[][] = [
-        ['Raman Fitting Report - Levenberg-Marquardt'],
-        ['Generated At', new Date().toISOString()],
-        [],
-        ['Global Statistics'],
-        ['R-Squared', state.currentFit.r2.toFixed(6)],
-        ['Reduced Chi-Squared', state.currentFit.reducedChi2.toFixed(4)],
-        ['Iterations', state.currentFit.iterations],
-        [],
-        ['Peak Index', 'Type', 'Center (cm-1)', 'Uncertainty (cm-1)', 'Amplitude (a.u.)', 'Uncertainty (a.u.)', 'FWHM (cm-1)', 'Uncertainty (cm-1)']
-      ];
-      
-      state.currentFit.peaks.forEach((p, i) => {
-        fitData.push([
-          i + 1,
-          p.type.toUpperCase(),
-          p.center.value, p.center.error || 'N/A',
-          p.amplitude.value, p.amplitude.error || 'N/A',
-          p.fwhm.value, p.fwhm.error || 'N/A'
-        ]);
-      });
-      
-      const fitWs = XLSX.utils.aoa_to_sheet(fitData);
-      XLSX.utils.book_append_sheet(wb, fitWs, 'Peak Fit Results');
     }
 
     // 2. Spectral Data Sheets
