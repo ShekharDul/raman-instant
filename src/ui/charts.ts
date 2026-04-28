@@ -144,7 +144,6 @@ export class ChartRenderer {
       
       // Add per-trace labels on the right
       layout.annotations = datasets.map((d) => {
-        const lastX = d.x[d.x.length - 1];
         const lastY = d.y[d.y.length - 1];
         return {
           x: 1, y: lastY, xref: 'paper', yref: 'y',
