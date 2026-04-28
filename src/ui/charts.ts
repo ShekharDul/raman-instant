@@ -241,7 +241,7 @@ export class ChartRenderer {
       const citation = {
         text: 'RAMANINSTANT — OPEN RESEARCH',
         xref: 'paper', yref: 'paper',
-        x: 1.1, y: -0.1, showarrow: false,
+        x: 1, y: -0.1, showarrow: false,
         font: { size: 9, color: '#94a3b8', family: 'Arial' },
         xanchor: 'right', yanchor: 'top'
       };
@@ -307,7 +307,7 @@ export class ChartRenderer {
         });
 
         // Add citation to grid
-        layout.annotations.push({ ...citation, x: 1.05, y: -0.05 }); 
+        layout.annotations.push({ ...citation, y: -0.08 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
         await Plotly.downloadImage(tempDiv, { format, width: layout.width, height: layout.height, scale: 2, filename: `Raman_Matrix_${Date.now()}` });
