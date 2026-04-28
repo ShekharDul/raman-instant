@@ -1,7 +1,8 @@
 /**
- * RamanInstant v2.0 — Research Workstation Engine
+ * RamanInstant v2.1 — Research Workstation Engine
  * Optimized for robustness, performance, and commercial reliability.
  */
+const APP_VERSION = 'v2.1.0';
 import { SpectralProcessor } from './engine/processor.ts';
 import type { Peak, VarianceResult } from './engine/processor.ts';
 import { parseSpectralFile } from './parsers/textParser.ts';
@@ -46,7 +47,7 @@ const state: AppState = {
   viewRange: null
 };
 
-const COLOR_PALETTE = ['#0f172a', '#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777', '#dc2626', '#0891b2'];
+const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
 
 // ── Robust DOM Access ──
 const UI = {
@@ -61,7 +62,29 @@ initUpload();
 initSliders();
 initBaselineControls();
 initLayoutControls();
+initCalibration();
 setTimeout(() => updateUI(), 150);
+
+function initCalibration() {
+  UI.get('btn-si-cal')?.addEventListener('click', () => {
+    const active = state.files.get(state.activeFileId || '');
+    if (!active) return;
+
+    const result = SpectralProcessor.siliconCalibrationCheck(active.raw.x, active.processedY);
+    const container = UI.get('cal-status-container');
+    const badge = UI.get('cal-badge');
+
+    if (container && badge) {
+      container.classList.remove('hidden');
+      UI.text('cal-measured', result.measuredPeak > 0 ? `${result.measuredPeak} cm⁻¹` : 'N/A');
+      UI.text('cal-offset', result.measuredPeak > 0 ? `${result.offset > 0 ? '+' : ''}${result.offset} cm⁻¹` : '---');
+
+      badge.style.background = result.status === 'OK' ? '#059669' : result.status === 'DRIFTED' ? '#d97706' : '#be123c';
+      badge.style.color = '#fff';
+      badge.textContent = result.status === 'OK' ? 'CALIBRATED' : result.status === 'DRIFTED' ? `DRIFTED (${result.offset})` : 'NO Si PEAK';
+    }
+  });
+}
 
 function initUpload() {
   const input = UI.get('file-input') as HTMLInputElement;
@@ -131,6 +154,8 @@ function updateUI() {
   if (active) {
     UI.text('active-filename', active.name);
     UI.text('methods-summary', `Analysis: ${active.name} | Mode: ${active.params.mode.toUpperCase()} | ${active.peaks.length} peaks detected.`);
+  } else {
+    UI.get('cal-status-container')?.classList.add('hidden');
   }
 
   // Update Footer Stats
@@ -173,7 +198,11 @@ function renderFileList() {
       if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
-    item.addEventListener('click', () => { state.activeFileId = id; updateUI(); });
+    item.addEventListener('click', () => { 
+      state.activeFileId = id; 
+      UI.get('cal-status-container')?.classList.add('hidden');
+      updateUI(); 
+    });
     item.querySelector('.btn-comp')?.addEventListener('click', (e) => { e.stopPropagation(); toggleComp(id); });
     item.querySelector('.btn-del')?.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(id); });
     container.appendChild(item);
@@ -443,10 +472,12 @@ async function exportExcel() {
     // 1. Methodology Sheet
     const summaryData = [
       ['Parameter', 'Value'],
-      ['Workstation', 'raman — instant v2.0'],
+      ['Workstation', `RamanInstant ${APP_VERSION}`],
       ['Export Date', new Date().toISOString()],
-      ['Baseline (SNIP)', params.snip + ' iterations'],
-      ['Smoothing (SG)', 'Window size ' + params.sg]
+      ['Global Baseline (SNIP)', params.snip + ' iterations'],
+      ['Global Smoothing (SG)', 'Window size ' + params.sg],
+      ['Peak Detection Threshold', '5% of Max Intensity'],
+      ['Software', 'raman-instant.com']
     ];
     if (state.viewRange) {
       summaryData.push(['Spectral Window Min', state.viewRange[0] + ' cm-1']);
@@ -460,17 +491,30 @@ async function exportExcel() {
     for (const id of fileIds) {
       const file = state.files.get(id)!;
       
-      // Clean sheet name (SheetJS limit: 31 chars, no special chars)
+      // Clean sheet name
       let baseName = file.name.substring(0, 25).replace(/[\\\/\?\*\[\]]/g, '_');
       let sheetName = baseName;
       let counter = 1;
       while (sheetNames.has(sheetName)) { sheetName = `${baseName}_${counter++}`; }
       sheetNames.add(sheetName);
 
-      const spectralData: any[][] = [['Raman Shift (cm-1)', 'Raw Intensity', 'Processed Intensity']];
+      // Per-file Metadata Header
+      const spectralData: any[][] = [
+        ['File Name', file.name],
+        ['Baseline Mode', file.params.mode.toUpperCase()],
+        ['Cosmic Ray Spikes Removed', file.spikesRemoved],
+        ['SNIP Iterations', file.params.mode === 'auto' ? file.params.snip : 'N/A'],
+        ['Manual Anchors Count', file.params.mode === 'manual' ? file.anchors.length : 0]
+      ];
+
+      if (file.params.mode === 'manual' && file.anchors.length > 0) {
+        spectralData.push(['Manual Anchor Points (X,Y)', file.anchors.map(a => `(${a.x.toFixed(1)}, ${a.y.toFixed(1)})`).join('; ')]);
+      }
+
+      spectralData.push([]); // Spacer
+      spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Processed Intensity']);
       
       for (let i = 0; i < file.raw.x.length; i++) {
-        // Filter by view range if active
         if (state.viewRange && (file.raw.x[i] < state.viewRange[0] || file.raw.x[i] > state.viewRange[1])) continue;
         spectralData.push([file.raw.x[i], file.raw.y[i], file.processedY[i]]);
       }

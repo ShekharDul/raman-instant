@@ -171,4 +171,49 @@ export class SpectralProcessor {
       return (refIdx >= 0 && refIdx < referenceY.length) ? v - referenceY[refIdx] : v;
     });
   }
+  static siliconCalibrationCheck(x: number[], y: number[]): { measuredPeak: number; expectedPeak: number; offset: number; status: 'OK' | 'DRIFTED' | 'NOT_FOUND' } {
+    const SI_EXPECTED = 520.7;
+    const windowStart = 510;
+    const windowEnd = 535;
+
+    // Find indices within the window
+    let startIdx = 0; while (startIdx < x.length && x[startIdx] < windowStart) startIdx++;
+    let endIdx = x.length - 1; while (endIdx >= 0 && x[endIdx] > windowEnd) endIdx--;
+
+    if (startIdx >= endIdx) return { measuredPeak: 0, expectedPeak: SI_EXPECTED, offset: 0, status: 'NOT_FOUND' };
+
+    const windowX = x.slice(startIdx, endIdx + 1);
+    const windowY = y.slice(startIdx, endIdx + 1);
+
+    // Find local max in this window
+    let maxVal = -Infinity, maxIdx = -1;
+    for (let i = 0; i < windowY.length; i++) {
+      if (windowY[i] > maxVal) { maxVal = windowY[i]; maxIdx = i; }
+    }
+
+    if (maxIdx === -1 || maxVal <= 0) return { measuredPeak: 0, expectedPeak: SI_EXPECTED, offset: 0, status: 'NOT_FOUND' };
+
+    // Refine peak with parabolic interpolation if possible
+    let refinedX = windowX[maxIdx];
+    if (maxIdx > 0 && maxIdx < windowY.length - 1) {
+      const alpha = windowY[maxIdx - 1], beta = windowY[maxIdx], gamma = windowY[maxIdx + 1];
+      const denom = alpha - 2 * beta + gamma;
+      if (Math.abs(denom) > 1e-12) {
+        const p = 0.5 * (alpha - gamma) / denom;
+        refinedX = windowX[maxIdx] + p * (windowX[maxIdx] - windowX[maxIdx - 1]);
+      }
+    }
+
+    const offset = refinedX - SI_EXPECTED;
+    const absOffset = Math.abs(offset);
+    let status: 'OK' | 'DRIFTED' | 'NOT_FOUND' = 'OK';
+    if (absOffset > 1.0) status = 'DRIFTED';
+    
+    return {
+      measuredPeak: parseFloat(refinedX.toFixed(2)),
+      expectedPeak: SI_EXPECTED,
+      offset: parseFloat(offset.toFixed(2)),
+      status
+    };
+  }
 }

@@ -13,14 +13,14 @@ const COLORS = {
   grid: '#f1f5f9',    // Ghost White Grid
   paper: '#ffffff',
   trace: [
-    '#0f172a', // Ink
-    '#2563eb', // Royal Blue
-    '#059669', // Emerald
-    '#d97706', // Amber
-    '#7c3aed', // Violet
-    '#db2777', // Pink
-    '#dc2626', // Red
-    '#0891b2'  // Cyan
+    '#332288', // Indigo
+    '#88CCEE', // Cyan
+    '#44AA99', // Teal
+    '#117733', // Green
+    '#999933', // Olive
+    '#DDCC77', // Sand
+    '#CC6677', // Rose
+    '#882255'  // Wine
   ]
 };
 
