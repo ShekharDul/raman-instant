@@ -42,6 +42,8 @@ interface AppState {
   normalizationMode: NormalizationMode;
   normTargetX: number | null;
   showPeakAnnotations: boolean;
+  ratioMode: boolean;
+  ratioSelection: { p1: Peak | null; p2: Peak | null };
 }
 
 // ── State ──
@@ -58,7 +60,9 @@ const state: AppState = {
   replicateGroup: null,
   normalizationMode: 'none',
   normTargetX: null,
-  showPeakAnnotations: false
+  showPeakAnnotations: false,
+  ratioMode: false,
+  ratioSelection: { p1: null, p2: null }
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -79,6 +83,7 @@ initBaselineControls();
 initLayoutControls();
 initNormalization();
 initPeakAnnotations();
+initRatioCalculator();
 initCalibration();
 setTimeout(() => updateUI(), 150);
 
@@ -220,6 +225,19 @@ function updateUI() {
   const totalFiles = state.files.size;
   const activeCount = state.comparisonIds.size || (state.activeFileId ? 1 : 0);
   UI.text('footer-stats', `FILES: ${totalFiles} ; ACTIVE FILES: ${activeCount}`);
+
+  // Update Ratio Results if both p1 and p2 selected
+  if (state.ratioSelection.p1 && state.ratioSelection.p2) {
+    const p1 = state.ratioSelection.p1;
+    const p2 = state.ratioSelection.p2;
+    UI.text('ratio-p1', `${p1.x.toFixed(1)} cm⁻¹`);
+    UI.text('ratio-p2', `${p2.x.toFixed(1)} cm⁻¹`);
+    UI.text('val-int-ratio', (p1.y / p2.y).toFixed(3));
+    UI.text('val-area-ratio', (p1.area / p2.area).toFixed(3));
+  } else {
+    UI.text('ratio-p1', state.ratioSelection.p1 ? `${state.ratioSelection.p1.x.toFixed(1)} cm⁻¹` : '---');
+    UI.text('ratio-p2', '---');
+  }
 }
 
 function renderFileList() {
@@ -406,11 +424,28 @@ function attachManualBaselineListener(el: HTMLElement) {
       if (state.baselineMode === 'manual') {
         const { x, y } = data.points[0];
         addAnchor(x, y);
-      } else if (state.normalizationMode === 'point') {
+      } else if (state.ratioMode) {
         const { x } = data.points[0];
-        state.normTargetX = x;
-        UI.text('norm-target-display', `Ref: ${x.toFixed(1)} cm⁻¹`);
-        reprocessAll();
+        const activeFile = state.files.get(state.activeFileId || '');
+        if (activeFile) {
+          // Find nearest detected peak
+          const nearest = activeFile.peaks.reduce((prev, curr) => 
+            Math.abs(curr.x - x) < Math.abs(prev.x - x) ? curr : prev
+          );
+          
+          if (Math.abs(nearest.x - x) < 15) { // snapped range
+            if (!state.ratioSelection.p1) {
+              state.ratioSelection.p1 = nearest;
+            } else if (!state.ratioSelection.p2) {
+              state.ratioSelection.p2 = nearest;
+              state.ratioMode = false;
+              const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
+              btn.innerText = 'ENABLE RATIO SELECTION';
+              btn.classList.remove('active-compare');
+            }
+            updateUI();
+          }
+        }
       }
     });
   }
@@ -616,6 +651,23 @@ function initPeakAnnotations() {
   });
 }
 
+function initRatioCalculator() {
+  UI.get('btn-ratio-mode')?.addEventListener('click', () => {
+    state.ratioMode = !state.ratioMode;
+    const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
+    if (state.ratioMode) {
+      btn.innerText = 'RATIO MODE: ACTIVE (PICK 2 PEAKS)';
+      btn.classList.add('active-compare');
+      state.ratioSelection = { p1: null, p2: null };
+      UI.get('ratio-results')?.classList.remove('hidden');
+    } else {
+      btn.innerText = 'ENABLE RATIO SELECTION';
+      btn.classList.remove('active-compare');
+    }
+    updateUI();
+  });
+}
+
 function initSliders() {
   UI.get('slider-snip')?.addEventListener('input', (e) => {
     UI.text('val-snip', (e.target as HTMLInputElement).value);
@@ -730,6 +782,25 @@ async function exportExcel() {
           file.corrected.intensityData[i],
           file.processed.intensityData[i]
         ]);
+      }
+
+      // Add Peak Analysis Section
+      spectralData.push([]);
+      spectralData.push(['--- PEAK ANALYSIS ---']);
+      spectralData.push(['Shift (cm-1)', 'Intensity', 'Rel Intensity (%)', 'FWHM (cm-1)', 'Area (counts*cm-1)']);
+      file.peaks.forEach(p => {
+        spectralData.push([p.x, p.y, p.relIntensity, p.fwhm, p.area]);
+      });
+
+      // Add Ratios if selected
+      if (state.ratioSelection.p1 && state.ratioSelection.p2) {
+        const p1 = state.ratioSelection.p1;
+        const p2 = state.ratioSelection.p2;
+        spectralData.push([]);
+        spectralData.push(['--- INTENSITY RATIO ---']);
+        spectralData.push([`I(${p1.x.toFixed(1)}) / I(${p2.x.toFixed(1)})`, (p1.y / p2.y).toFixed(4)]);
+        spectralData.push(['--- AREA RATIO ---']);
+        spectralData.push([`A(${p1.x.toFixed(1)}) / A(${p2.x.toFixed(1)})`, (p1.area / p2.area).toFixed(4)]);
       }
 
       const spectralSheet = XLSX.utils.aoa_to_sheet(spectralData);

@@ -12,6 +12,7 @@ export interface Peak {
   y: number;       // Absolute intensity
   relIntensity: number; // Relative intensity (0-100)
   fwhm: number;    // Full width at half maximum (cm⁻¹)
+  area: number;    // Integrated area (counts * cm⁻¹)
 }
 
 export interface VarianceResult {

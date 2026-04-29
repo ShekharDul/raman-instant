@@ -141,7 +141,22 @@ export class SpectralProcessor {
         while (leftIdx > 0 && y[leftIdx] > halfMax) leftIdx--;
         while (rightIdx < y.length - 1 && y[rightIdx] > halfMax) rightIdx++;
         const fwhm = Math.abs(x[rightIdx] - x[leftIdx]);
-        candidates.push({ x: parseFloat(exactX.toFixed(2)), y: parseFloat(exactY.toFixed(4)), relIntensity: 0, fwhm: parseFloat(fwhm.toFixed(2)) });
+        
+        // Calculate area within the peak bounds
+        let area = 0;
+        for (let j = leftIdx + 1; j <= rightIdx; j++) {
+          const dx = Math.abs(x[j] - x[j - 1]);
+          const avgY = (y[j] + y[j - 1]) / 2;
+          area += avgY * dx;
+        }
+
+        candidates.push({ 
+          x: parseFloat(exactX.toFixed(2)), 
+          y: parseFloat(exactY.toFixed(4)), 
+          relIntensity: 0, 
+          fwhm: parseFloat(fwhm.toFixed(2)),
+          area: parseFloat(area.toFixed(4))
+        });
       }
     }
     const deduped: Peak[] = [];

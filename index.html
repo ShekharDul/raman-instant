@@ -823,7 +823,7 @@
 
       <div class="section" style="background: rgba(45, 212, 191, 0.03);">
         <div class="section-title">COLLECTIVE ANALYSIS</div>
-        <div style="display: flex; gap: 4px;">
+        <div style="display: flex; gap: 4px; margin-bottom: 12px;">
           <button id="btn-group-replicates" class="btn-small" style="flex: 3; border: 1px solid var(--laser); color: var(--laser); padding: 8px; background: rgba(45, 212, 191, 0.05);" title="Averages all selected (COMP) files into a single mean ± SD trace">
             STATISTICAL AVERAGE (MEAN ± SD)
           </button>
@@ -834,6 +834,27 @@
                   title="Exit statistical view and return to previous layout">
             EXIT STATS
           </button>
+        </div>
+        
+        <div class="ctrl-group">
+          <div class="ctrl-label"><span>PEAK RATIO CALCULATOR</span></div>
+          <button id="btn-ratio-mode" class="btn-small" style="width: 100%; margin-bottom: 8px;" title="Select two peaks on the plot to calculate their intensity and area ratios">
+            ENABLE RATIO SELECTION
+          </button>
+          <div id="ratio-results" class="hidden" style="padding: 10px; background: #fff; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
+              <span style="color: var(--text-muted);">P1:</span> <span id="ratio-p1" style="font-weight: 700;">---</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
+              <span style="color: var(--text-muted);">P2:</span> <span id="ratio-p2" style="font-weight: 700;">---</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px;">
+              <span style="color: #000;">INT RATIO:</span> <span id="val-int-ratio" style="font-weight: 900; color: var(--laser);">0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
+              <span style="color: #000;">AREA RATIO:</span> <span id="val-area-ratio" style="font-weight: 900; color: #3b82f6;">0.00</span>
+            </div>
+          </div>
         </div>
       </div>
 
