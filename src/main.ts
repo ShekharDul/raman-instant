@@ -56,6 +56,7 @@ interface AppState {
   cosmicRayRemoval: boolean;
   fitResult: FitResult | null;
   fittingMode: boolean;
+  selectingROI: boolean;
 }
 
 // ── State ──
@@ -80,10 +81,11 @@ const state: AppState = {
   showDirectLabels: false,
   viewHistory: [],
   maxXData: 4000,
-  showUnprocessed: true,
+  showUnprocessed: false,
   cosmicRayRemoval: true,
   fitResult: null,
   fittingMode: false,
+  selectingROI: false
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -425,8 +427,13 @@ function renderPlots() {
   }
 
   if (state.fittingMode && state.fitResult) {
+    UI.get('btn-start-fit-mode')?.classList.add('hidden');
+    UI.get('btn-exit-fit')?.classList.remove('hidden');
     renderFitResults();
     return;
+  } else {
+    UI.get('btn-start-fit-mode')?.classList.remove('hidden');
+    UI.get('btn-exit-fit')?.classList.add('hidden');
   }
 
   const normLabel = state.normalizationMode === 'none' ? '' : 
@@ -529,19 +536,24 @@ function renderPlots() {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
         ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
         attachManualBaselineListener(div);
-        if (state.fittingMode) attachFitListener(div);
+        if (state.fittingMode || state.selectingROI) attachFitListener(div);
       });
     }
   }
 }
 
 function attachFitListener(el: HTMLElement) {
+  const Plotly = (window as any).Plotly;
   const plotEl = el as any;
-  if (!plotEl) return;
+  if (!plotEl || !Plotly) return;
   
+  // Force box selection mode
+  Plotly.relayout(plotEl, { dragmode: 'select' });
+
   plotEl.on('plotly_selected', (data: any) => {
     if (!data) return;
     const range = data.range.x;
+    state.selectingROI = false; // Turn off selection mode once fit starts
     runFitting(range[0], range[1]);
   });
 }
@@ -829,6 +841,12 @@ function initLayoutControls() {
     } catch (err: any) {
       alert(err.message);
     }
+  });
+
+  UI.get('btn-start-fit-mode')?.addEventListener('click', () => {
+    state.selectingROI = true;
+    showToast("Drag on the plot to select your fitting region.");
+    updateUI();
   });
 
   UI.get('btn-undo-replicates')?.addEventListener('click', () => {
@@ -1273,9 +1291,10 @@ function renderFitResults() {
     return { x: state.fitResult!.fitX, y, name: `Peak ${i+1} (${p.center.value.toFixed(1)})` };
   });
 
-  ChartRenderer.renderFit(fitDiv, state.fitResult.fitX, state.fitResult.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult.fitX, state.fitResult.fitY, componentTraces);
-  
-  ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult.fitX, intensityData: state.fitResult.residuals });
+  requestAnimationFrame(() => {
+    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces);
+    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals });
+  });
 }
 
 UI.get('btn-exit-fit')?.addEventListener('click', () => {
