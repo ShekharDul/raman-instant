@@ -100,6 +100,7 @@ const GRID_LAYOUT: any = {
 
 
 import type { SpectralData, Peak } from '../engine/types.ts';
+import { FittingEngine, type PeakFit } from '../engine/fitting.ts';
 
 export class ChartRenderer {
 
@@ -508,6 +509,7 @@ export class ChartRenderer {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
+    const isFitting = state.fittingMode && state.fitResult;
     const isMatrix = state.layoutMode === 'grid2x2';
     const isVertical = state.layoutMode === 'grid2x1';
     const isStacked = state.layoutMode === 'stacked';
@@ -554,7 +556,88 @@ export class ChartRenderer {
         }
       };
 
-      if (!isMatrix && !isVertical && !isStacked) {
+      if (isFitting) {
+        const result = state.fitResult;
+        const traces: any[] = [];
+        
+        // 1. Fit Traces (Row 1)
+        traces.push({
+          x: result.fitX,
+          y: result.fitX.map((_: any, i: number) => result.fitY[i] + result.residuals[i]),
+          mode: 'markers',
+          name: 'Experimental Data',
+          marker: { color: '#94a3b8', size: 4, opacity: 0.6 },
+          xaxis: 'x', yaxis: 'y'
+        });
+        
+        traces.push({
+          x: result.fitX,
+          y: result.fitY,
+          mode: 'lines',
+          name: 'Cumulative Fit',
+          line: { color: '#0f172a', width: 2.5 },
+          xaxis: 'x', yaxis: 'y'
+        });
+        
+        result.peaks.forEach((p: PeakFit, i: number) => {
+          const y = result.fitX.map((xv: number) => {
+            if (p.type === 'voigt') return FittingEngine.voigt(xv, p.amplitude.value, p.center.value, p.fwhm.value, p.shape!.value);
+            if (p.type === 'gaussian') return FittingEngine.gaussian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+            return FittingEngine.lorentzian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+          });
+          traces.push({
+            x: result.fitX,
+            y,
+            mode: 'lines',
+            name: `Peak ${i + 1} (${p.center.value.toFixed(1)})`,
+            line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5 },
+            fill: 'tozeroy',
+            fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
+            xaxis: 'x', yaxis: 'y'
+          });
+        });
+        
+        // 2. Residual Trace (Row 2)
+        traces.push({
+          x: result.fitX,
+          y: result.residuals,
+          mode: 'lines',
+          name: 'Residual',
+          line: { color: '#be123c', width: 1 },
+          fill: 'tozeroy',
+          fillcolor: 'rgba(190,18,60,0.05)',
+          xaxis: 'x', yaxis: 'y2'
+        });
+        
+        const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+        layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
+        layout.width = exportW;
+        layout.height = exportH;
+        layout.margin = { l: 90, r: 160, t: 80, b: 140 };
+        
+        // Fit View (Top)
+        layout.yaxis = { ...PAPER_LAYOUT.yaxis, domain: [0.3, 1], anchor: 'x', title: { text: '<b>Intensity (a.u.)</b>' } };
+        
+        // Residual View (Bottom)
+        layout.yaxis2 = { ...PAPER_LAYOUT.yaxis, domain: [0, 0.2], anchor: 'x', title: { text: '<b>Δ (a.u.)</b>' } };
+        
+        // Shared X-Axis
+        layout.xaxis = { ...PAPER_LAYOUT.xaxis, anchor: 'y2' };
+        
+        const xRange = [Math.min(...result.fitX), Math.max(...result.fitX)];
+        layout.xaxis.range = xRange;
+        
+        const absMax = Math.max(...result.residuals.map(Math.abs));
+        layout.yaxis2.range = [-absMax * 1.2, absMax * 1.2];
+        
+        layout.annotations = [...(layout.annotations || []), citation];
+        
+        await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
+        await applyTransparency();
+        
+        const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
+        await this.triggerDownload(dataUrl, filename);
+      } else if (!isMatrix && !isVertical && !isStacked) {
         const f = files[0];
         const rawNormalized = { 
           wavenumberData: f.raw.wavenumberData, 
