@@ -416,11 +416,13 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     const datasets = filesToRender.map((f, i) => {
-      // Use pre-processed (normalized) data, but ensure it's in 0-1 range for waterfall consistency
-      // if not already normalized.
       let displayData = f.processed;
+      let currentFactor = f.normFactor;
+      
       if (state.normalizationMode === 'none') {
-        displayData = SpectralProcessor.normalizeMax(f.processed).normalized;
+        const res = SpectralProcessor.normalizeMax(f.processed);
+        displayData = res.normalized;
+        currentFactor = res.factor;
       }
       
       const offset = i * state.stackOffset;
@@ -428,8 +430,14 @@ function renderPlots() {
         wavenumberData: displayData.wavenumberData,
         intensityData: displayData.intensityData.map(v => v + offset)
       };
+
+      const rawScaled = {
+        wavenumberData: f.raw.wavenumberData,
+        intensityData: f.raw.intensityData.map(v => (v * currentFactor) + offset)
+      };
+
       return {
-        name: f.name, data: offsetData, color: f.color, raw: f.raw
+        name: f.name, data: offsetData, color: f.color, raw: rawScaled
       };
     });
     requestAnimationFrame(() => {
@@ -479,7 +487,10 @@ function renderPlots() {
 
     if (filesToRender.length > 1) {
       const datasets = filesToRender.map(f => ({
-        name: f.name, data: f.processed, color: f.color, raw: f.raw
+        name: f.name, data: f.processed, color: f.color, raw: {
+          wavenumberData: f.raw.wavenumberData,
+          intensityData: f.raw.intensityData.map(v => v * f.normFactor)
+        }
       }));
       requestAnimationFrame(() => {
         ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed);
