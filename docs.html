@@ -231,26 +231,41 @@
 
       <section id="export">
         <h2>05. Saving Your Work</h2>
-        <p>When you’re happy with the results, you can download your data in two ways:</p>
+        <p>When you’re happy with the results, you can download your data in several ways:</p>
         <ul>
           <li><strong>Analytical Excel:</strong> A clean spreadsheet containing your raw data, the calculated baseline, and the final corrected data.</li>
-          <li><strong>Publication Image:</strong> A high-quality PNG of your graphs, ready to be dropped into a presentation or paper.</li>
+          <li><strong>Publication Image:</strong> High-quality PNG or Vector SVG graphs, ready for papers.</li>
+          <li><strong>Interactive Report:</strong> A self-contained "HTML Capsule" that you can email to collaborators. It includes the interactive plot, all peak data, and your full processing history in one file.</li>
         </ul>
       </section>
 
-      <section id="analysis-methods">
-        <h2>07. Peak Analysis — Methods and Limitations</h2>
-        
-        <p>The app performs sub-pixel peak detection using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. These methods are highly accurate for well-resolved, isolated Raman peaks.</p>
-
-        <p>The app does not yet perform <strong>non-linear curve fitting</strong> using mathematical profiles (Gaussian, Lorentzian, or Voigt) or the deconvolution of overlapping peaks into individual components.</p>
-
-        <div class="info-box" style="border-left: 4px solid #f59e0b;">
-          <p><strong>When this matters:</strong> If your peaks are well-resolved (separated by more than ~30 cm⁻¹), the reports are publication-reliable. If your peaks <strong>overlap</strong> — such as the D and G bands in carbon materials, or amide bands in proteins — the reported centroid will reflect the blended band envelope, not the true individual component positions. Do not use these values for quantitative ID/IG ratio analysis or any claim that requires resolving overlapping components.</p>
+      <section id="cosmic-rays">
+        <h2>06. Cosmic Ray Rejection</h2>
+        <p>Sensitive CCD detectors used in Raman spectrometers are susceptible to high-energy cosmic rays, which appear as sharp, unphysical spikes in your data. Instant Raman implements a non-destructive <strong>Z-score sliding window</strong> algorithm using <strong>Median Absolute Deviation (MAD)</strong>.</p>
+        <div class="info-box">
+          <p><strong>The Healing Process:</strong> When a spike is detected, the engine "heals" the data using a local median filter, ensuring your integration and peak areas remain mathematically accurate for quantitative work.</p>
         </div>
+      </section>
 
-        <h3>On the Roadmap (Staging)</h3>
-        <p>We are currently finalizing the integration of a <strong>Levenberg-Marquardt (LM) non-linear fitting engine</strong>. This will enable simultaneous multi-peak optimization using Lorentzian and Gaussian profiles with rigorous standard errors and residual analysis.</p>
+      <section id="deconvolution">
+        <h2>07. Advanced Spectral Deconvolution</h2>
+        <p>For complex research, Instant Raman features a professional <strong>Levenberg-Marquardt (LM)</strong> non-linear fitting engine. This allows you to resolve overlapping bands that are otherwise impossible to quantify.</p>
+        
+        <h3>Supported Profiles</h3>
+        <ul>
+          <li><strong>Lorentzian:</strong> Standard for crystalline materials (e.g., Silicon, Diamond).</li>
+          <li><strong>Gaussian:</strong> Optimized for disordered materials or glasses.</li>
+          <li><strong>Voigt (4-Param):</strong> The industry gold standard, combining Lorentzian and Gaussian profiles for maximum accuracy.</li>
+        </ul>
+
+        <h3>Professional Visualization</h3>
+        <p>The deconvolution view provides a <strong>stacked vertical layout</strong> with a zero-centered residual plot. This allows you to visually verify the "goodness-of-fit" and detect hidden spectral features through residual analysis.</p>
+      </section>
+
+      <section id="analysis-methods">
+        <h2>08. Peak Metrology</h2>
+        <p>Center positions are calculated using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. For overlapping bands, the LM deconvolution engine should be used for rigorous results.</p>
+      </section>
       </section>
 
       <section id="citation">
