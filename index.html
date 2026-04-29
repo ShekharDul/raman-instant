@@ -786,6 +786,10 @@
             <input type="checkbox" id="check-hide-y" />
             <label for="check-hide-y" style="font-size: 9px; text-transform: uppercase;">Hide Y-Axis (Waterfall)</label>
           </div>
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="check-direct-labels" />
+            <label for="check-direct-labels" style="font-size: 9px; text-transform: uppercase;">Direct Trace Labels</label>
+          </div>
         </div>
         <div class="ctrl-group">
           <div class="ctrl-label"><span>WORKSPACE LAYOUT</span></div>
@@ -909,15 +913,77 @@
       </div>
 
       <div class="export-section">
+        <div style="padding: 0 24px 16px;">
+          <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">PUBLICATION SETTINGS</div>
+          
+          <select id="select-export-size" class="btn-small" style="width: 100%; margin-bottom: 8px; background: #fff; border: 1px solid var(--border);">
+            <option value="full">Full Width (Default)</option>
+            <option value="single">Single Column (86 mm)</option>
+            <option value="double">Double Column (174 mm)</option>
+            <option value="custom">Custom Width...</option>
+          </select>
+          
+          <div id="custom-width-ctrl" class="hidden" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <input type="number" id="input-export-width" value="86" style="width: 60px; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+            <span style="font-size: 10px; color: var(--text-muted);">mm</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <input type="checkbox" id="check-export-transparent">
+            <label for="check-export-transparent" style="font-size: 10px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">TRANSPARENT PNG</label>
+          </div>
+        </div>
+
         <button id="btn-export-excel" class="btn-premium excel">
           📊 Download Excel
         </button>
         <button id="btn-export-png" class="btn-premium svg">
-          🖼️ Download PNG
+          🖼️ Download PNG (300 DPI)
         </button>
         <button id="btn-export-svg" class="btn-premium svg" style="background: #1e293b;">
-          📐 Download SVG
+          📐 Download SVG (Vector)
         </button>
+      </div>
+      <div class="section" style="background: rgba(147, 197, 253, 0.03);">
+        <div class="section-title">AXIS & STYLING</div>
+        <div class="ctrl-group">
+          <div class="ctrl-label"><span>X-AXIS RANGE (CM⁻¹)</span></div>
+          <div style="display: flex; gap: 4px;">
+            <input type="number" id="input-range-min" placeholder="Min" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+            <input type="number" id="input-range-max" placeholder="Max" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+            <button id="btn-apply-range" class="btn-small" style="padding: 4px 8px;">SET</button>
+            <button id="btn-reset-range" class="btn-small" style="padding: 4px 8px;">✕</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-label"><span>FONT SIZE (PT)</span></div>
+          <select id="select-axis-font" class="btn-small" style="width: 100%; background: #fff; border: 1px solid var(--border);">
+            <option value="12">12 pt (Compact)</option>
+            <option value="14">14 pt (Standard)</option>
+            <option value="16" selected>16 pt (Large)</option>
+            <option value="18">18 pt (Massive)</option>
+          </select>
+        </div>
+
+        <div class="ctrl-group">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="check-axis-box" checked>
+            <label for="check-axis-box" style="font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">SHOW TOP/RIGHT BORDERS</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" style="background: rgba(14, 165, 233, 0.03);">
+        <div class="section-title">FIGURE CAPTION GENERATOR</div>
+        <button id="btn-gen-caption" class="btn-small" style="width: 100%; margin-bottom: 12px; background: var(--text-secondary); color: #fff;">
+          GENERATE READY-TO-PASTE CAPTION
+        </button>
+        <div id="caption-container" class="hidden">
+          <textarea id="text-caption" readonly 
+                    style="width: 100%; height: 120px; font-size: 10px; font-family: var(--font-mono); padding: 8px; border: 1px solid var(--border); background: #fff; line-height: 1.4;"></textarea>
+          <button id="btn-copy-caption" class="btn-small" style="width: 100%; margin-top: 4px; font-size: 9px;">COPY TO CLIPBOARD</button>
+        </div>
       </div>
     </aside>
 

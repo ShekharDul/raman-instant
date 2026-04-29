@@ -44,6 +44,12 @@ interface AppState {
   showPeakAnnotations: boolean;
   ratioMode: boolean;
   ratioSelection: { p1: Peak | null; p2: Peak | null };
+  exportSize: 'full' | 'single' | 'double' | 'custom';
+  exportWidth: number; // in mm
+  exportTransparent: boolean;
+  axisFontSize: number;
+  showAxisBox: boolean;
+  showDirectLabels: boolean;
 }
 
 // ── State ──
@@ -62,7 +68,13 @@ const state: AppState = {
   normTargetX: null,
   showPeakAnnotations: false,
   ratioMode: false,
-  ratioSelection: { p1: null, p2: null }
+  ratioSelection: { p1: null, p2: null },
+  exportSize: 'full',
+  exportWidth: 86,
+  exportTransparent: false,
+  axisFontSize: 16,
+  showAxisBox: true,
+  showDirectLabels: false
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -391,7 +403,7 @@ function renderPlots() {
       };
 
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -405,7 +417,7 @@ function renderPlots() {
         name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : [], state.ratioSelection);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : [], state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
         attachManualBaselineListener(div);
       });
     } else {
@@ -415,7 +427,7 @@ function renderPlots() {
         intensityData: f.raw.intensityData.map(v => v * f.normFactor)
       };
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection);
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox);
         attachManualBaselineListener(div);
       });
     }
@@ -690,6 +702,68 @@ function initSliders() {
   UI.get('btn-export-excel')?.addEventListener('click', exportExcel);
   UI.get('btn-export-png')?.addEventListener('click', () => exportFigure('png'));
   UI.get('btn-export-svg')?.addEventListener('click', () => exportFigure('svg'));
+
+  UI.get('select-export-size')?.addEventListener('change', (e) => {
+    state.exportSize = (e.target as HTMLSelectElement).value as any;
+    const custom = UI.get('custom-width-ctrl');
+    if (state.exportSize === 'custom') {
+      custom?.classList.remove('hidden');
+    } else {
+      custom?.classList.add('hidden');
+      if (state.exportSize === 'single') state.exportWidth = 86;
+      if (state.exportSize === 'double') state.exportWidth = 174;
+    }
+  });
+
+  UI.get('input-export-width')?.addEventListener('input', (e) => {
+    state.exportWidth = parseFloat((e.target as HTMLInputElement).value) || 86;
+  });
+
+  UI.get('check-export-transparent')?.addEventListener('change', (e) => {
+    state.exportTransparent = (e.target as HTMLInputElement).checked;
+  });
+
+  // Feature 5 - Caption
+  UI.get('btn-gen-caption')?.addEventListener('click', generateCaption);
+  UI.get('btn-copy-caption')?.addEventListener('click', () => {
+    const text = (UI.get('text-caption') as HTMLTextAreaElement).value;
+    navigator.clipboard.writeText(text);
+    const btn = UI.get('btn-copy-caption') as HTMLButtonElement;
+    btn.innerText = 'COPIED!';
+    setTimeout(() => btn.innerText = 'COPY TO CLIPBOARD', 2000);
+  });
+
+  // Feature 6 - Axis Customization
+  UI.get('btn-apply-range')?.addEventListener('click', () => {
+    const min = parseFloat((UI.get('input-range-min') as HTMLInputElement).value);
+    const max = parseFloat((UI.get('input-range-max') as HTMLInputElement).value);
+    if (!isNaN(min) && !isNaN(max)) {
+      state.viewRange = [min, max];
+      renderPlots();
+    }
+  });
+
+  UI.get('btn-reset-range')?.addEventListener('click', () => {
+    state.viewRange = null;
+    (UI.get('input-range-min') as HTMLInputElement).value = '';
+    (UI.get('input-range-max') as HTMLInputElement).value = '';
+    renderPlots();
+  });
+
+  UI.get('select-axis-font')?.addEventListener('change', (e) => {
+    state.axisFontSize = parseInt((e.target as HTMLSelectElement).value);
+    renderPlots();
+  });
+
+  UI.get('check-axis-box')?.addEventListener('change', (e) => {
+    state.showAxisBox = (e.target as HTMLInputElement).checked;
+    renderPlots();
+  });
+
+  UI.get('check-direct-labels')?.addEventListener('change', (e) => {
+    state.showDirectLabels = (e.target as HTMLInputElement).checked;
+    renderPlots();
+  });
 }
 
 function reprocessActive() {
@@ -859,8 +933,30 @@ async function exportFigure(format: 'png' | 'svg') {
                     state.normalizationMode === 'max' ? 'Max Intensity' :
                     state.normalizationMode === 'area' ? 'Total Area' :
                     `Point (${state.normTargetX?.toFixed(0)})`;
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations, state.ratioSelection);
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }
+}
+
+function generateCaption() {
+  const active = state.files.get(state.activeFileId || '');
+  if (!active) return;
+
+  const params = active.params;
+  const snip = params.snip;
+  const sg = params.sg;
+  const norm = params.norm;
+  const peakCount = active.peaks.length;
+
+  let normDesc = 'no additional normalization';
+  if (norm === 'max') normDesc = 'peak maximum normalization';
+  if (norm === 'area') normDesc = 'total area (AUC) normalization';
+  if (norm === 'point') normDesc = `normalization to the peak at ${state.normTargetX?.toFixed(1)} cm⁻¹`;
+
+  const caption = `Figure. Raman spectrum of ${active.name}. Data was processed using the Instant Raman (v2.0) spectral workstation. Background subtraction was performed using the SNIP algorithm (${snip} iterations), followed by Savitzky-Golay smoothing (window size ${sg}). The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Figure generated via Instant Raman (https://raman-instant.com).`;
+
+  const area = UI.get('text-caption') as HTMLTextAreaElement;
+  if (area) area.value = caption;
+  UI.get('caption-container')?.classList.remove('hidden');
 }
