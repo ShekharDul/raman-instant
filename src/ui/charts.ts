@@ -32,7 +32,7 @@ const PAPER_LAYOUT: any = {
     color: '#000000', 
     size: 16 // Massive base font
   },
-  margin: { l: 90, r: 160, t: 50, b: 110 }, // Increased bottom margin for watermark
+  margin: { l: 90, r: 160, t: 80, b: 110 }, // Increased top margin for peak labels
   showlegend: true,
   legend: { 
     font: { size: 12 }, 
@@ -145,6 +145,7 @@ export class ChartRenderer {
       const peakAnnotations = this.createPeakAnnotations(peaks);
       layout.annotations.push(...peakAnnotations.labels);
       traces.push(...peakAnnotations.lines);
+      layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
     if (range) layout.xaxis.range = range;
 
@@ -174,7 +175,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, waterfallOffset = 0) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -211,6 +212,7 @@ export class ChartRenderer {
       }];
     }
     if (normLabel) {
+      layout.annotations = layout.annotations || [];
       layout.annotations.push({
         text: `<b>NORM: ${normLabel.toUpperCase()}</b>`,
         xref: 'paper', yref: 'paper',
@@ -240,9 +242,10 @@ export class ChartRenderer {
     }
 
     if (peaksToShow.length > 0) {
-      const peakAnnotations = this.createPeakAnnotations(peaksToShow);
+      const peakAnnotations = this.createPeakAnnotations(peaksToShow, waterfallOffset);
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
       traces.push(...peakAnnotations.lines);
+      layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
 
     if (isWaterfall) {
@@ -535,30 +538,32 @@ export class ChartRenderer {
   /**
    * Generates peak annotation lines and labels with collision detection.
    */
-  private static createPeakAnnotations(peaks: Peak[]) {
+  private static createPeakAnnotations(peaks: Peak[], yOffset: number = 0) {
     const lines: any[] = [];
     const labels: any[] = [];
     
     // Sort peaks by wavenumber
     const sortedPeaks = [...peaks].sort((a, b) => a.x - b.x);
     
-    let lastX = -Infinity;
-    let stackLevel = 0;
-    const MIN_X_DIST = 60; // minimum cm-1 to avoid label overlap
+    // Stacking logic: track the last X for each level to minimize vertical space
+    const levelLastX: number[] = [];
+    const MIN_X_DIST = 45; // reduced slightly for tighter packing
+    let maxStack = 0;
+
+    const maxY = sortedPeaks.length > 0 ? Math.max(...sortedPeaks.map(p => p.y)) : 0;
 
     sortedPeaks.forEach((p) => {
-      // Collision detection for labels
-      if (Math.abs(p.x - lastX) < MIN_X_DIST) {
-        stackLevel++;
-      } else {
-        stackLevel = 0;
+      let level = 0;
+      while (level < levelLastX.length && p.x < levelLastX[level] + MIN_X_DIST) {
+        level++;
       }
-      lastX = p.x;
+      levelLastX[level] = p.x;
+      if (level > maxStack) maxStack = level;
 
       // Vertical line (muted dashed)
       lines.push({
         x: [p.x, p.x],
-        y: [0, p.y],
+        y: [p.y + yOffset, p.y + yOffset + (maxY * 0.02)],
         mode: 'lines',
         line: { color: '#94a3b8', width: 0.8, dash: 'dot' },
         showlegend: false,
@@ -568,7 +573,7 @@ export class ChartRenderer {
       // Label (small, readable, offset vertically if stacked)
       labels.push({
         x: p.x,
-        y: 1.02 + (stackLevel * 0.06), // paper relative
+        y: 1.02 + (level * 0.05), // paper relative
         xref: 'x',
         yref: 'paper',
         text: `<b>${p.x.toFixed(1)}</b>`,
@@ -579,7 +584,7 @@ export class ChartRenderer {
       });
     });
 
-    return { lines, labels };
+    return { lines, labels, maxStack };
   }
 
   static renderSparkline(canvas: HTMLCanvasElement, data: SpectralData) {
