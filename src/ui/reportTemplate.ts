@@ -393,4 +393,4 @@ export const REPORT_TEMPLATE = `
         })();
     </script>
 </body>
-</html>
+</html>`;
