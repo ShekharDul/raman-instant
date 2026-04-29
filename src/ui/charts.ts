@@ -62,11 +62,9 @@ const PAPER_LAYOUT: any = {
     linewidth: 2.5, 
     tickfont: { size: 16, family: 'Arial' },
     ticks: 'outside',
-    tickwidth: 2.5,
     ticklen: 12,
     zeroline: false,
-    mirror: true,
-    minallowed: -2
+    mirror: true
   },
   hovermode: 'x unified' as const
 };
@@ -93,8 +91,7 @@ const GRID_LAYOUT: any = {
     ...PAPER_LAYOUT.yaxis, 
     title: { text: '<b>Intensity</b>', font: { size: 15 } },
     tickfont: { size: 14 },
-    ticklen: 8,
-    minallowed: -2
+    ticklen: 8
   }
 };
 
@@ -144,13 +141,22 @@ export class ChartRenderer {
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
     
-    if (range) layout.xaxis.range = range;
-
-    // X-Axis Boundary Enforcement (Sorted Data Optimization)
+    // Data-Driven View Clipping (X and Y)
     const xData = raw.wavenumberData;
-    if (xData.length > 0) {
-      layout.xaxis.minallowed = xData[0];
-      layout.xaxis.maxallowed = xData[xData.length - 1];
+    const yData = processed.intensityData;
+    
+    if (!range && xData.length > 0) {
+      const minX = Math.min(xData[0], xData[xData.length - 1]);
+      const maxX = Math.max(xData[0], xData[xData.length - 1]);
+      layout.xaxis.range = [minX, maxX];
+    } else if (range) {
+      layout.xaxis.range = range;
+    }
+
+    if (yData.length > 0) {
+      const maxY = yData.reduce((a, b) => Math.max(a, b), -Infinity);
+      const minY = yData.reduce((a, b) => Math.min(a, b), Infinity);
+      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     if (ratio && ratio.p1 && ratio.p2) {
@@ -253,12 +259,23 @@ export class ChartRenderer {
     }
 
 
-    // Multi-trace X boundary enforcement
+    // Data-Driven View Clipping (X and Y)
     if (datasets.length > 0) {
-      const mins = datasets.map(d => d.data.wavenumberData[0]);
-      const maxs = datasets.map(d => d.data.wavenumberData[d.data.wavenumberData.length - 1]);
-      layout.xaxis.minallowed = Math.min(...mins);
-      layout.xaxis.maxallowed = Math.max(...maxs);
+      const minsX = datasets.map(d => d.data.wavenumberData[0]);
+      const maxsX = datasets.map(d => d.data.wavenumberData[d.data.wavenumberData.length - 1]);
+      
+      const maxsY = datasets.map(d => d.data.intensityData.reduce((a, b) => Math.max(a, b), -Infinity));
+      const minsY = datasets.map(d => d.data.intensityData.reduce((a, b) => Math.min(a, b), Infinity));
+
+      const minX = Math.min(...minsX, ...maxsX);
+      const maxX = Math.max(...minsX, ...maxsX);
+      const maxY = Math.max(...maxsY);
+      const minY = Math.min(...minsY);
+
+      if (!range) {
+        layout.xaxis.range = [minX, maxX];
+      }
+      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     if (isWaterfall) {
@@ -327,10 +344,15 @@ export class ChartRenderer {
     }
 
 
-    // X-Axis Boundary Enforcement
+    // Data-Driven View Clipping (X and Y)
     if (x.length > 0) {
-      layout.xaxis.minallowed = x[0];
-      layout.xaxis.maxallowed = x[x.length - 1];
+      const minX = Math.min(x[0], x[x.length - 1]);
+      const maxX = Math.max(x[0], x[x.length - 1]);
+      const maxY = meanY.reduce((a, b) => Math.max(a, b), -Infinity);
+      const minY = meanY.reduce((a, b) => Math.min(a, b), Infinity);
+
+      layout.xaxis.range = [minX, maxX];
+      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     Plotly.react(container, traces, layout, CONFIG);
