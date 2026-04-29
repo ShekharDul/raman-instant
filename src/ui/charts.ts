@@ -53,7 +53,8 @@ const PAPER_LAYOUT: any = {
     tickwidth: 2.5,
     ticklen: 12,
     zeroline: false,
-    mirror: true 
+    mirror: true,
+    rangemode: 'nonnegative'
   },
   yaxis: { 
     title: { text: '<b>Intensity (a.u.)</b>', font: { size: 18, color: '#000' } }, 
@@ -64,7 +65,8 @@ const PAPER_LAYOUT: any = {
     ticks: 'outside',
     ticklen: 12,
     zeroline: false,
-    mirror: true
+    mirror: true,
+    rangemode: 'nonnegative'
   },
   hovermode: 'x unified' as const
 };
@@ -148,15 +150,15 @@ export class ChartRenderer {
     if (!range && xData.length > 0) {
       const minX = Math.min(xData[0], xData[xData.length - 1]);
       const maxX = Math.max(xData[0], xData[xData.length - 1]);
-      layout.xaxis.range = [minX, maxX];
+      layout.xaxis.range = [Math.max(0, minX), maxX];
     } else if (range) {
-      layout.xaxis.range = range;
+      layout.xaxis.range = [Math.max(0, range[0]), range[1]];
     }
 
     if (yData.length > 0) {
       const maxY = yData.reduce((a, b) => Math.max(a, b), -Infinity);
       const minY = yData.reduce((a, b) => Math.min(a, b), Infinity);
-      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
+      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     if (ratio && ratio.p1 && ratio.p2) {
@@ -195,7 +197,7 @@ export class ChartRenderer {
       hoverinfo: 'x+y+name'
     }));
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-    if (range) layout.xaxis.range = range;
+    if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
 
     // Apply Axis Styling
     layout.font.size = fontSize;
@@ -273,9 +275,11 @@ export class ChartRenderer {
       const minY = Math.min(...minsY);
 
       if (!range) {
-        layout.xaxis.range = [minX, maxX];
+        layout.xaxis.range = [Math.max(0, minX), maxX];
+      } else {
+        layout.xaxis.range = [Math.max(0, range[0]), range[1]];
       }
-      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
+      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     if (isWaterfall) {
@@ -335,7 +339,7 @@ export class ChartRenderer {
     ];
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-    if (range) layout.xaxis.range = range;
+    if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
 
     if (peaksToShow.length > 0) {
       const peakAnnotations = this.createPeakAnnotations(peaksToShow);
@@ -351,8 +355,8 @@ export class ChartRenderer {
       const maxY = meanY.reduce((a, b) => Math.max(a, b), -Infinity);
       const minY = meanY.reduce((a, b) => Math.min(a, b), Infinity);
 
-      layout.xaxis.range = [minX, maxX];
-      layout.yaxis.range = [Math.max(-2, minY - (maxY * 0.05)), maxY * 1.15];
+      layout.xaxis.range = [Math.max(0, minX), maxX];
+      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
     Plotly.react(container, traces, layout, CONFIG);

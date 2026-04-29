@@ -488,14 +488,28 @@ function attachManualBaselineListener(el: HTMLElement) {
     plotEl.on('plotly_relayout', (data: any) => {
       // Handle Zoom/Pan
       if (data['xaxis.range[0]'] !== undefined) {
+        const newMinX = Math.max(0, data['xaxis.range[0]']);
+        const newMaxX = data['xaxis.range[1]'];
+
+        // Prevent infinite loop by checking if change is needed
+        if (data['xaxis.range[0]'] < 0) {
+          const Plotly = (window as any).Plotly;
+          if (Plotly) Plotly.relayout(plotEl, { 'xaxis.range[0]': 0 });
+        }
+
         // Save current view to history before updating if it's a significant change
-        if (!state.viewRange || Math.abs(state.viewRange[0] - data['xaxis.range[0]']) > 1) {
+        if (!state.viewRange || Math.abs(state.viewRange[0] - newMinX) > 1) {
           state.viewHistory.push(state.viewRange ? [...state.viewRange] : null);
           if (state.viewHistory.length > 20) state.viewHistory.shift();
         }
-        state.viewRange = [data['xaxis.range[0]'], data['xaxis.range[1]']];
+        state.viewRange = [newMinX, newMaxX];
       } 
-      // Handle Double-Click / Reset
+      
+      // Clamp Y-axis if it goes negative during manual zoom/pan
+      if (data['yaxis.range[0]'] !== undefined && data['yaxis.range[0]'] < 0) {
+        const Plotly = (window as any).Plotly;
+        if (Plotly) Plotly.relayout(plotEl, { 'yaxis.range[0]': 0 });
+      }      // Handle Double-Click / Reset
       else if (data['xaxis.autorange'] === true || data['autosize'] === true) {
         if (state.viewRange) {
           state.viewHistory.push([...state.viewRange]);
