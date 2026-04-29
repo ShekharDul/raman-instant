@@ -435,7 +435,7 @@ export class ChartRenderer {
     }
   }
 
-  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[]) {
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -453,7 +453,7 @@ export class ChartRenderer {
         y: fitY,
         mode: 'lines',
         name: 'Cumulative Fit',
-        line: { color: COLORS.residual, width: 3 },
+        line: { color: '#0f172a', width: 2.5 },
         hoverinfo: 'x+y'
       }
     ];
@@ -464,7 +464,7 @@ export class ChartRenderer {
         y: ct.y,
         mode: 'lines',
         name: ct.name,
-        line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5, dash: 'dash' },
+        line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5 },
         fill: 'tozeroy',
         fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
         hoverinfo: 'skip'
@@ -472,9 +472,12 @@ export class ChartRenderer {
     });
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.margin = { l: 80, r: 40, t: 30, b: showXLabels ? 50 : 5 };
     layout.showlegend = true;
-    layout.legend = { ...PAPER_LAYOUT.legend, x: 1, y: 1, xanchor: 'right' };
+    layout.legend = { ...PAPER_LAYOUT.legend, x: 1, y: 1, xanchor: 'right', bgcolor: 'rgba(255,255,255,0.8)' };
     layout.xaxis.range = [Math.min(...rawX), Math.max(...rawX)];
+    layout.xaxis.showticklabels = showXLabels;
+    if (!showXLabels) layout.xaxis.title.text = '';
     
     Plotly.react(container, traces, layout, CONFIG);
   }
@@ -484,14 +487,19 @@ export class ChartRenderer {
     const Plotly = (window as any).Plotly;
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-    layout.margin = { l: 60, r: 24, t: 10, b: 40 };
+    layout.margin = { l: 80, r: 40, t: 5, b: 60 };
     layout.showlegend = false;
-    layout.yaxis.title.text = 'Δ Intensity';
+    layout.yaxis.title.text = 'Δ (a.u.)';
+    
+    // Zero-center calculation
+    const absMax = Math.max(...data.intensityData.map(Math.abs));
+    layout.yaxis.range = [-absMax * 1.2, absMax * 1.2];
+    
     if (range) layout.xaxis.range = range;
 
     Plotly.react(container, [{
       x: data.wavenumberData, y: data.intensityData, mode: 'lines', name: 'Residual', 
-      line: { color: COLORS.residual, width: 1 }, 
+      line: { color: '#be123c', width: 1 }, 
       fill: 'tozeroy', fillcolor: 'rgba(190,18,60,0.05)'
     }], layout, { ...CONFIG, displayModeBar: false });
   }

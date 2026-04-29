@@ -846,7 +846,11 @@ function initLayoutControls() {
   UI.get('btn-start-fit-mode')?.addEventListener('click', () => {
     state.selectingROI = true;
     showToast("Drag on the plot to select your fitting region.");
-    updateUI();
+    
+    // Find all active plot containers and attach the selection mode immediately
+    // This avoids a full re-render that would reset the current zoom view
+    const plots = document.querySelectorAll('.plot-container');
+    plots.forEach(p => attachFitListener(p as HTMLElement));
   });
 
   UI.get('btn-undo-replicates')?.addEventListener('click', () => {
@@ -1270,16 +1274,21 @@ function renderFitResults() {
   const active = state.files.get(state.activeFileId || '');
   if (!active) return;
 
-  // We need a secondary panel for residuals
+  // Professional Stacked Layout (Flex)
   container.innerHTML = '';
-  container.className = 'workspace-grid grid-2x1';
+  container.className = 'workspace-grid';
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '0'; // No gap for shared-axis feel
   
   const fitDiv = document.createElement('div');
   fitDiv.className = 'plot-container';
+  fitDiv.style.flex = '4'; // 80% height
   container.appendChild(fitDiv);
   
   const resDiv = document.createElement('div');
   resDiv.className = 'plot-container';
+  resDiv.style.flex = '1'; // 20% height
   container.appendChild(resDiv);
 
   const componentTraces = state.fitResult.peaks.map((p, i) => {
@@ -1292,8 +1301,24 @@ function renderFitResults() {
   });
 
   requestAnimationFrame(() => {
-    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces);
+    // Render with identical left margins (80px) and shared X-range
+    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false);
     ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals });
+
+    // Sync X-axis zoom between the two
+    const Plotly = (window as any).Plotly;
+    if (Plotly) {
+      (fitDiv as any).on('plotly_relayout', (ed: any) => {
+        if (ed['xaxis.range[0]'] !== undefined) {
+          Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+        }
+      });
+      (resDiv as any).on('plotly_relayout', (ed: any) => {
+        if (ed['xaxis.range[0]'] !== undefined) {
+          Plotly.relayout(fitDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+        }
+      });
+    }
   });
 }
 
