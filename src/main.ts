@@ -50,6 +50,7 @@ interface AppState {
   showDirectLabels: boolean;
   viewHistory: ([number, number] | null)[];
   maxXData: number;
+  showUnprocessed: boolean;
 }
 
 // ── State ──
@@ -73,7 +74,8 @@ const state: AppState = {
   showAxisBox: true,
   showDirectLabels: false,
   viewHistory: [],
-  maxXData: 4000
+  maxXData: 4000,
+  showUnprocessed: true,
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -427,11 +429,11 @@ function renderPlots() {
         intensityData: displayData.intensityData.map(v => v + offset)
       };
       return {
-        name: f.name, data: offsetData, color: f.color
+        name: f.name, data: offsetData, color: f.color, raw: f.raw
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed);
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -466,7 +468,7 @@ function renderPlots() {
 
       requestAnimationFrame(() => {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -477,10 +479,10 @@ function renderPlots() {
 
     if (filesToRender.length > 1) {
       const datasets = filesToRender.map(f => ({
-        name: f.name, data: f.processed, color: f.color
+        name: f.name, data: f.processed, color: f.color, raw: f.raw
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed);
         attachManualBaselineListener(div);
       });
     } else {
@@ -491,7 +493,7 @@ function renderPlots() {
       };
       requestAnimationFrame(() => {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox);
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
         attachManualBaselineListener(div);
       });
     }
@@ -843,6 +845,11 @@ function initSliders() {
 
   UI.get('check-export-transparent')?.addEventListener('change', (e) => {
     state.exportTransparent = (e.target as HTMLInputElement).checked;
+  });
+
+  UI.get('check-show-unprocessed')?.addEventListener('change', (e) => {
+    state.showUnprocessed = (e.target as HTMLInputElement).checked;
+    renderPlots();
   });
 
   // Feature 5 - Caption

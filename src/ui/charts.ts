@@ -103,14 +103,15 @@ import type { SpectralData, Peak } from '../engine/types.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showUnprocessed = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
-    const traces: any[] = [
-      { x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 }, hoverinfo: 'skip' },
-      { x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' }
-    ];
+    const traces: any[] = [];
+    if (showUnprocessed) {
+      traces.push({ x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Unprocessed', line: { color: '#cbd5e1', width: 1, dash: 'dot' }, opacity: 0.5, hoverinfo: 'skip' });
+    }
+    traces.push({ x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' });
 
     const baseLayout = isGrid ? GRID_LAYOUT : PAPER_LAYOUT;
     const layout = JSON.parse(JSON.stringify(baseLayout));
@@ -188,15 +189,33 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string; raw?: SpectralData }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
-    const traces: any[] = datasets.map((d, i) => ({
-      x: d.data.wavenumberData, y: d.data.intensityData, mode: 'lines', name: d.name, 
-      line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
-      hoverinfo: 'x+y+name'
-    }));
+    const traces: any[] = [];
+    
+    datasets.forEach((d, i) => {
+      // Add raw data trace if available and toggled on
+      if (showUnprocessed && d.raw) {
+        traces.push({
+          x: d.raw.wavenumberData, 
+          y: isWaterfall ? d.raw.intensityData.map((v, idx) => v + (i * ((window as any).state?.stackOffset || 0))) : d.raw.intensityData,
+          mode: 'lines', 
+          name: `Unprocessed (${d.name})`,
+          line: { color: '#cbd5e1', width: 1, dash: 'dot' },
+          opacity: 0.3, 
+          hoverinfo: 'skip',
+          showlegend: false
+        });
+      }
+
+      traces.push({
+        x: d.data.wavenumberData, y: d.data.intensityData, mode: 'lines', name: d.name, 
+        line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
+        hoverinfo: 'x+y+name'
+      });
+    });
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
 
