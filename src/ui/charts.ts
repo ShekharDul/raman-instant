@@ -147,12 +147,13 @@ export class ChartRenderer {
     const xData = raw.wavenumberData;
     const yData = processed.intensityData;
     
+    const stateMaxX = (window as any).state?.maxXData || 4000;
     if (!range && xData.length > 0) {
       const minX = Math.min(xData[0], xData[xData.length - 1]);
       const maxX = Math.max(xData[0], xData[xData.length - 1]);
-      layout.xaxis.range = [Math.max(0, minX), maxX];
+      layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, maxX)];
     } else if (range) {
-      layout.xaxis.range = [Math.max(0, range[0]), range[1]];
+      layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
     }
 
     if (yData.length > 0) {
@@ -270,14 +271,15 @@ export class ChartRenderer {
       const minsY = datasets.map(d => d.data.intensityData.reduce((a, b) => Math.min(a, b), Infinity));
 
       const minX = Math.min(...minsX, ...maxsX);
-      const maxX = Math.max(...minsX, ...maxsX);
+      const absMaxX = Math.max(...minsX, ...maxsX);
       const maxY = Math.max(...maxsY);
       const minY = Math.min(...minsY);
 
+      const stateMaxX = (window as any).state?.maxXData || 4000;
       if (!range) {
-        layout.xaxis.range = [Math.max(0, minX), maxX];
+        layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, absMaxX)];
       } else {
-        layout.xaxis.range = [Math.max(0, range[0]), range[1]];
+        layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
       }
       layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
@@ -355,7 +357,8 @@ export class ChartRenderer {
       const maxY = meanY.reduce((a, b) => Math.max(a, b), -Infinity);
       const minY = meanY.reduce((a, b) => Math.min(a, b), Infinity);
 
-      layout.xaxis.range = [Math.max(0, minX), maxX];
+      const stateMaxX = (window as any).state?.maxXData || 4000;
+      layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, maxX)];
       layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
 

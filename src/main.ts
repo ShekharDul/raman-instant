@@ -49,6 +49,7 @@ interface AppState {
   showAxisBox: boolean;
   showDirectLabels: boolean;
   viewHistory: ([number, number] | null)[];
+  maxXData: number;
 }
 
 // ── State ──
@@ -71,7 +72,8 @@ const state: AppState = {
   axisFontSize: 16,
   showAxisBox: true,
   showDirectLabels: false,
-  viewHistory: []
+  viewHistory: [],
+  maxXData: 4000
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -162,6 +164,19 @@ function handleFiles(fileList: FileList) {
   });
 }
 
+function updateMaxXData() {
+  if (state.files.size === 0) {
+    state.maxXData = 4000;
+    return;
+  }
+  let max = 0;
+  state.files.forEach(f => {
+    const fileMax = f.raw.wavenumberData[f.raw.wavenumberData.length - 1];
+    if (fileMax > max) max = fileMax;
+  });
+  state.maxXData = max;
+}
+
 function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   const existing = state.files.get(id);
   const snip = parseInt(UI.val('slider-snip') || '25');
@@ -219,8 +234,9 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length]
   });
-}
 
+  updateMaxXData();
+}
 
 function updateUI() {
   renderFileList();
@@ -333,7 +349,11 @@ function toggleComp(id: string) {
 
 function deleteFile(id: string) {
   state.files.delete(id);
-  if (state.activeFileId === id) state.activeFileId = state.files.keys().next().value || null;
+  state.comparisonIds.delete(id);
+  if (state.activeFileId === id) {
+    state.activeFileId = state.files.size > 0 ? Array.from(state.files.keys())[0] : null;
+  }
+  updateMaxXData();
   updateUI();
 }
 
@@ -485,16 +505,28 @@ function attachManualBaselineListener(el: HTMLElement) {
       // Handle Zoom/Pan
       if (data['xaxis.range[0]'] !== undefined) {
         const newMinX = Math.max(0, data['xaxis.range[0]']);
-        const newMaxX = data['xaxis.range[1]'];
+        const newMaxX = Math.min(state.maxXData, data['xaxis.range[1]']);
 
         // Prevent infinite loop by checking if change is needed
+        let needsFix = false;
+        const fix: any = {};
+        
         if (data['xaxis.range[0]'] < 0) {
+          fix['xaxis.range[0]'] = 0;
+          needsFix = true;
+        }
+        if (data['xaxis.range[1]'] > state.maxXData) {
+          fix['xaxis.range[1]'] = state.maxXData;
+          needsFix = true;
+        }
+
+        if (needsFix) {
           const Plotly = (window as any).Plotly;
-          if (Plotly) Plotly.relayout(plotEl, { 'xaxis.range[0]': 0 });
+          if (Plotly) Plotly.relayout(plotEl, fix);
         }
 
         // Save current view to history before updating if it's a significant change
-        if (!state.viewRange || Math.abs(state.viewRange[0] - newMinX) > 1) {
+        if (!state.viewRange || Math.abs(state.viewRange[0] - newMinX) > 1 || Math.abs(state.viewRange[1] - newMaxX) > 1) {
           state.viewHistory.push(state.viewRange ? [...state.viewRange] : null);
           if (state.viewHistory.length > 20) state.viewHistory.shift();
         }
