@@ -1,0 +1,29 @@
+/**
+ * Instant Raman — Core Data Types
+ */
+
+export interface SpectralData {
+  wavenumberData: number[];
+  intensityData: number[];
+}
+
+export interface Peak {
+  x: number;       // Wavenumber (cm⁻¹)
+  y: number;       // Absolute intensity
+  relIntensity: number; // Relative intensity (0-100)
+  fwhm: number;    // Full width at half maximum (cm⁻¹)
+}
+
+export interface VarianceResult {
+  sigPct: number;
+  bslPct: number;
+}
+
+export interface NormalizedSpectrum extends SpectralData {
+  metadata: {
+    format: string;
+    fileName: string;
+    pointCount: number;
+    laserWavelength?: number;
+  };
+}

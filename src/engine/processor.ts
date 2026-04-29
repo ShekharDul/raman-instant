@@ -3,22 +3,17 @@
  * Pure math. No identification. No interpretation.
  */
 
-export interface Peak {
-  x: number;       // Wavenumber (cm⁻¹)
-  y: number;       // Absolute intensity
-  relIntensity: number; // Relative intensity (0-100)
-  fwhm: number;    // Full width at half maximum (cm⁻¹)
-}
-
-export interface VarianceResult {
-  sigPct: number;
-  bslPct: number;
-}
+import { Peak, VarianceResult, SpectralData } from './types.ts';
 
 export class SpectralProcessor {
 
-  static rejectCosmicRays(y: number[], window = 5, thresholdSigma = 5): { cleanedY: number[], replacedCount: number } {
-    const result = [...y];
+  /**
+   * Rejects cosmic ray spikes using a median filter and sigma threshold.
+   * Returns a normalized SpectralData structure.
+   */
+  static rejectCosmicRays(data: SpectralData, window = 5, thresholdSigma = 5): { cleaned: SpectralData, replacedCount: number } {
+    const y = data.intensityData;
+    const resultY = [...y];
     let replacedCount = 0;
     for (let i = window; i < y.length - window; i++) {
       const neighborhood = y.slice(i - window, i + window + 1);
@@ -27,59 +22,81 @@ export class SpectralProcessor {
       const mean = neighborhood.reduce((a, b) => a + b, 0) / neighborhood.length;
       const std = Math.sqrt(neighborhood.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / neighborhood.length);
       if (Math.abs(y[i] - median) > thresholdSigma * Math.max(std, 0.01)) {
-        result[i] = median;
+        resultY[i] = median;
         replacedCount++;
       }
     }
-    return { cleanedY: result, replacedCount };
+    return { 
+      cleaned: { wavenumberData: data.wavenumberData, intensityData: resultY }, 
+      replacedCount 
+    };
   }
 
-  static baselineSNIP(y: number[], iterations = 25): number[] {
-    const background = [...y];
-    const n = y.length;
+  /**
+   * Simple Non-Iterative Peak (SNIP) algorithm for baseline estimation.
+   */
+  static baselineSNIP(data: SpectralData, iterations = 25): SpectralData {
+    const background = [...data.intensityData];
+    const n = background.length;
     for (let i = 1; i <= iterations; i++) {
       for (let j = i; j < n - i; j++) {
         const avg = (background[j - i] + background[j + i]) / 2;
         if (avg < background[j]) background[j] = avg;
       }
     }
-    return background;
+    return { wavenumberData: data.wavenumberData, intensityData: background };
   }
 
-  static baselineManual(x: number[], y: number[], anchors: { x: number, y: number }[]): number[] {
-    if (anchors.length === 0) return new Array(y.length).fill(0);
+  /**
+   * Manual baseline interpolation using anchor points.
+   */
+  static baselineManual(data: SpectralData, anchors: { x: number, y: number }[]): SpectralData {
+    const x = data.wavenumberData;
+    const y = data.intensityData;
+    if (anchors.length === 0) {
+      return { wavenumberData: x, intensityData: new Array(y.length).fill(0) };
+    }
     const sorted = [...anchors].sort((a, b) => a.x - b.x);
-    const bsl = new Array(y.length);
+    const bslY = new Array(y.length);
     for (let i = 0; i < x.length; i++) {
       const curX = x[i];
       if (curX <= sorted[0].x) {
-        bsl[i] = sorted[0].y;
+        bslY[i] = sorted[0].y;
       } else if (curX >= sorted[sorted.length - 1].x) {
-        bsl[i] = sorted[sorted.length - 1].y;
+        bslY[i] = sorted[sorted.length - 1].y;
       } else {
         let j = 0;
         while (j < sorted.length - 1 && curX > sorted[j + 1].x) j++;
         const p1 = sorted[j], p2 = sorted[j + 1];
         const t = (curX - p1.x) / (p2.x - p1.x);
-        bsl[i] = p1.y + t * (p2.y - p1.y);
+        bslY[i] = p1.y + t * (p2.y - p1.y);
       }
     }
-    return bsl;
+    return { wavenumberData: x, intensityData: bslY };
   }
 
-  static savitzkyGolay(y: number[], windowSize = 9): number[] {
+  /**
+   * Savitzky-Golay smoothing (linear filter).
+   */
+  static savitzkyGolay(data: SpectralData, windowSize = 9): SpectralData {
+    const y = data.intensityData;
     if (windowSize % 2 === 0) windowSize += 1;
-    const result = [...y];
+    const resultY = [...y];
     const half = Math.floor(windowSize / 2);
     for (let i = half; i < y.length - half; i++) {
       let sum = 0;
       for (let j = -half; j <= half; j++) sum += y[i + j];
-      result[i] = sum / windowSize;
+      resultY[i] = sum / windowSize;
     }
-    return result;
+    return { wavenumberData: data.wavenumberData, intensityData: resultY };
   }
 
-  static calculateVariance(rawY: number[], baselineY: number[]): VarianceResult {
+  /**
+   * Calculates signal vs baseline variance percentages.
+   */
+  static calculateVariance(raw: SpectralData, baseline: SpectralData): VarianceResult {
+    const rawY = raw.intensityData;
+    const baselineY = baseline.intensityData;
     const calcVar = (arr: number[]) => {
       const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
       return arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
@@ -89,12 +106,17 @@ export class SpectralProcessor {
     const sigVar = calcVar(signalY);
     const total = bslVar + sigVar;
     return {
-      sigPct: parseFloat(((sigVar / total) * 100).toFixed(1)),
-      bslPct: parseFloat(((bslVar / total) * 100).toFixed(1))
+      sigPct: parseFloat(((sigVar / (total || 1)) * 100).toFixed(1)),
+      bslPct: parseFloat(((bslVar / (total || 1)) * 100).toFixed(1))
     };
   }
 
-  static findPeaks(x: number[], y: number[]): Peak[] {
+  /**
+   * Robust peak detection using local maxima and parabolic refinement.
+   */
+  static findPeaks(data: SpectralData): Peak[] {
+    const x = data.wavenumberData;
+    const y = data.intensityData;
     const getSafeMax = (arr: number[]) => {
       let m = -Infinity;
       for (let i = 0; i < arr.length; i++) if (arr[i] > m) m = arr[i];
@@ -142,7 +164,13 @@ export class SpectralProcessor {
     return deduped.map(p => ({ ...p, relIntensity: parseFloat(((p.y / globalMax) * 100).toFixed(1)) })).sort((a, b) => b.y - a.y).slice(0, 20);
   }
 
-  static computeGlobalShift(x: number[], sampleY: number[], referenceY: number[], maxShiftCm = 20) {
+  /**
+   * Computes cross-correlation shift between two spectra.
+   */
+  static computeGlobalShift(sample: SpectralData, reference: SpectralData, maxShiftCm = 20) {
+    const x = sample.wavenumberData;
+    const sampleY = sample.intensityData;
+    const referenceY = reference.intensityData;
     const avgSpacing = Math.abs(x[x.length - 1] - x[0]) / x.length;
     const maxShiftPx = Math.floor(maxShiftCm / avgSpacing);
     let bestShift = 0; let maxCorr = -Infinity;
@@ -158,23 +186,43 @@ export class SpectralProcessor {
     return { shiftPx: bestShift, shiftCm: parseFloat((bestShift * avgSpacing).toFixed(2)), score: maxCorr };
   }
 
-  static normalizeMax(y: number[]): { normalized: number[], factor: number, peakIdx: number } {
+  /**
+   * Normalizes intensity to 0-1 range based on maximum value.
+   */
+  static normalizeMax(data: SpectralData): { normalized: SpectralData, factor: number, peakIdx: number } {
+    const y = data.intensityData;
     let maxVal = 0, peakIdx = 0;
     for (let i = 0; i < y.length; i++) { if (y[i] > maxVal) { maxVal = y[i]; peakIdx = i; } }
     const factor = maxVal > 0 ? 1 / maxVal : 1;
-    return { normalized: y.map(v => v * factor), factor, peakIdx };
+    return { 
+      normalized: { wavenumberData: data.wavenumberData, intensityData: y.map(v => v * factor) }, 
+      factor, 
+      peakIdx 
+    };
   }
 
-  static calculateResidual(sampleY: number[], referenceY: number[], shiftPx: number): number[] {
-    return sampleY.map((v, i) => {
+  /**
+   * Calculates residual (difference) between two spectra.
+   */
+  static calculateResidual(sample: SpectralData, reference: SpectralData, shiftPx: number): SpectralData {
+    const sampleY = sample.intensityData;
+    const referenceY = reference.intensityData;
+    const resultY = sampleY.map((v, i) => {
       const refIdx = i + shiftPx;
       return (refIdx >= 0 && refIdx < referenceY.length) ? v - referenceY[refIdx] : v;
     });
+    return { wavenumberData: sample.wavenumberData, intensityData: resultY };
   }
-  static siliconCalibrationCheck(x: number[], y: number[]): { measuredPeak: number; expectedPeak: number; offset: number; status: 'OK' | 'DRIFTED' | 'NOT_FOUND' } {
+
+  /**
+   * Checks for Silicon calibration peak at ~520.7 cm-1.
+   */
+  static siliconCalibrationCheck(data: SpectralData): { measuredPeak: number; expectedPeak: number; offset: number; status: 'OK' | 'DRIFTED' | 'NOT_FOUND' } {
     const SI_EXPECTED = 520.7;
     const windowStart = 510;
     const windowEnd = 535;
+    const x = data.wavenumberData;
+    const y = data.intensityData;
 
     // Find indices within the window
     let startIdx = 0; while (startIdx < x.length && x[startIdx] < windowStart) startIdx++;

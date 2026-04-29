@@ -98,15 +98,17 @@ const GRID_LAYOUT: any = {
 
 
 
+import { SpectralData, Peak } from '../engine/types.ts';
+
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, x: number[], rawY: number[], processedY: number[], _baselineY: number[], peaks: { x: number; y: number }[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
     const traces: any[] = [
-      { x, y: rawY, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 }, hoverinfo: 'skip' },
-      { x, y: processedY, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' }
+      { x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 }, hoverinfo: 'skip' },
+      { x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' }
     ];
 
     const annotations: any[] = isGrid ? [] : peaks.slice(0, 5).map(p => ({
@@ -129,12 +131,12 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; x: number[]; y: number[]; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
     const traces: any[] = datasets.map((d, i) => ({
-      x: d.x, y: d.y, mode: 'lines', name: d.name, 
+      x: d.data.wavenumberData, y: d.data.intensityData, mode: 'lines', name: d.name, 
       line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
       hoverinfo: 'x+y+name'
     }));
@@ -152,7 +154,7 @@ export class ChartRenderer {
       
       // Add per-trace labels on the right
       layout.annotations = datasets.map((d) => {
-        const lastY = d.y[d.y.length - 1];
+        const lastY = d.data.intensityData[d.data.intensityData.length - 1];
         return {
           x: 1, y: lastY, xref: 'paper', yref: 'y',
           text: `<b>${d.name}</b>`,
@@ -170,10 +172,12 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderReplicate(container: HTMLElement | string, x: number[], meanY: number[], sdY: number[], name: string, color: string, range?: [number, number]) {
+  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number]) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
+    const x = mean.wavenumberData;
+    const meanY = mean.intensityData;
     const upperSD = meanY.map((v, i) => v + sdY[i]);
     const lowerSD = meanY.map((v, i) => v - sdY[i]);
 
@@ -199,6 +203,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
+
   private static hexToRgb(hex: string): string {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -223,7 +228,6 @@ export class ChartRenderer {
       }, 100);
     } catch (err) {
       console.error('[Instant Raman] Manual download trigger failed:', err);
-      // Fallback: if fetch fails, try clicking the dataUrl directly
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = dataUrl;
@@ -234,7 +238,7 @@ export class ChartRenderer {
     }
   }
 
-  static renderResidual(container: HTMLElement | string, x: number[], residualY: number[], range?: [number, number]) {
+  static renderResidual(container: HTMLElement | string, data: SpectralData, range?: [number, number]) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -245,7 +249,7 @@ export class ChartRenderer {
     if (range) layout.xaxis.range = range;
 
     Plotly.react(container, [{
-      x, y: residualY, mode: 'lines', name: 'Residual', 
+      x: data.wavenumberData, y: data.intensityData, mode: 'lines', name: 'Residual', 
       line: { color: COLORS.residual, width: 1 }, 
       fill: 'tozeroy', fillcolor: 'rgba(190,18,60,0.05)'
     }], layout, { ...CONFIG, displayModeBar: false });
@@ -259,7 +263,6 @@ export class ChartRenderer {
     const isVertical = state.layoutMode === 'grid2x1';
     const isStacked = state.layoutMode === 'stacked';
     
-    // Create a temporary hidden container
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'fixed';
     tempDiv.style.left = '-9999px';
@@ -275,9 +278,8 @@ export class ChartRenderer {
       };
 
       if (!isMatrix && !isVertical && !isStacked) {
-        // Simple Single Export
         const f = files[0];
-        this.renderSingle(tempDiv, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
+        this.renderSingle(tempDiv, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
@@ -285,10 +287,14 @@ export class ChartRenderer {
         const dataUrl = await Plotly.toImage(tempDiv, { format, width: 1200, height: 800, scale: 2 });
         await this.triggerDownload(dataUrl, filename);
       } else if (isStacked) {
-        // Waterfall Export
         const datasets = files.map((f, i) => {
-          const { normalized } = (window as any).SpectralProcessor.normalizeMax(f.processedY);
-          return { name: f.name, x: f.raw.x, y: normalized.map((v: number) => v + i * state.stackOffset), color: f.color };
+          const { normalized } = (window as any).SpectralProcessor.normalizeMax(f.processed);
+          const offset = i * state.stackOffset;
+          const offsetData = {
+            wavenumberData: normalized.wavenumberData,
+            intensityData: normalized.intensityData.map((v: number) => v + offset)
+          };
+          return { name: f.name, data: offsetData, color: f.color };
         });
         this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis);
         const layout = (tempDiv as any).layout;
@@ -298,7 +304,6 @@ export class ChartRenderer {
         const dataUrl = await Plotly.toImage(tempDiv, { format, width: 1200, height: 800, scale: 2 });
         await this.triggerDownload(dataUrl, filename);
       } else {
-        // Multi-Panel Grid Export
         const cols = isMatrix ? 2 : 1;
         const rows = isMatrix ? 2 : files.length;
         const traces: any[] = [];
@@ -312,11 +317,11 @@ export class ChartRenderer {
         files.slice(0, cols * rows).forEach((f, i) => {
           const axisIdx = i === 0 ? '' : (i + 1);
           traces.push({
-            x: f.raw.x, y: f.raw.y, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 },
+            x: f.raw.wavenumberData, y: f.raw.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 },
             xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
           });
           traces.push({
-            x: f.raw.x, y: f.processedY, mode: 'lines', name: 'Processed', line: { color: f.color || COLORS.main, width: 2.5 },
+            x: f.processed.wavenumberData, y: f.processed.intensityData, mode: 'lines', name: 'Processed', line: { color: f.color || COLORS.main, width: 2.5 },
             xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
           });
 
@@ -338,7 +343,6 @@ export class ChartRenderer {
           });
         });
 
-        // Add citation to grid
         layout.annotations.push({ ...citation, y: -0.08 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
@@ -351,7 +355,8 @@ export class ChartRenderer {
     }
   }
 
-  static renderSparkline(canvas: HTMLCanvasElement, y: number[]) {
+  static renderSparkline(canvas: HTMLCanvasElement, data: SpectralData) {
+    const y = data.intensityData;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     const w = canvas.width = canvas.offsetWidth * 2; const h = canvas.height = canvas.offsetHeight * 2;
     const maxY = Math.max(...y); const minY = Math.min(...y); const range = maxY - minY || 1;

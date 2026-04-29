@@ -4,22 +4,21 @@
  */
 const APP_VERSION = 'v2.1.0';
 import { SpectralProcessor } from './engine/processor.ts';
-import type { Peak, VarianceResult } from './engine/processor.ts';
-import { parseSpectralFile } from './parsers/textParser.ts';
-import type { ParsedSpectrum } from './parsers/textParser.ts';
+import { UniversalParser } from './parsers/universalParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
+import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult } from './engine/types.ts';
 import * as XLSX from 'xlsx';
 
 // ── Types ──
 interface ProcessedFile {
   id: string;
   name: string;
-  raw: ParsedSpectrum;
-  cleanedY: number[];
-  baselineY: number[];
-  processedY: number[];
+  raw: NormalizedSpectrum;
+  cleaned: SpectralData;
+  baseline: SpectralData;
+  processed: SpectralData;
   peaks: Peak[];
   variance: VarianceResult;
   spikesRemoved: number;
@@ -79,7 +78,7 @@ function initCalibration() {
     const active = state.files.get(state.activeFileId || '');
     if (!active) return;
 
-    const result = SpectralProcessor.siliconCalibrationCheck(active.raw.x, active.processedY);
+    const result = SpectralProcessor.siliconCalibrationCheck(active.processed);
     const container = UI.get('cal-status-container');
     const badge = UI.get('cal-badge');
 
@@ -107,51 +106,59 @@ function initUpload() {
 function handleFiles(fileList: FileList) {
   const files = Array.from(fileList);
   UI.text('system-status', `INGESTING ${files.length}...`);
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsed = parseSpectralFile(content);
-        const id = `file-${Math.random().toString(36).slice(2, 9)}`;
-        processAndStore(id, file.name, parsed);
-        if (state.files.size === 1) state.activeFileId = id;
-        updateUI();
-      } catch (err) { UI.text('system-status', 'PARSE_ERROR'); }
-    };
-    reader.readAsText(file);
+  files.forEach(async file => {
+    try {
+      const parsed = await UniversalParser.parseFile(file);
+      const id = `file-${Math.random().toString(36).slice(2, 9)}`;
+      processAndStore(id, file.name, parsed);
+      if (state.files.size === 1) state.activeFileId = id;
+      updateUI();
+      UI.text('system-status', `READY`);
+    } catch (err: any) {
+      console.error('[Parser] Error:', err);
+      UI.text('system-status', err.message || 'PARSE_ERROR');
+      alert(err.message || 'Failed to parse file.');
+    }
   });
 }
 
-function processAndStore(id: string, name: string, raw: ParsedSpectrum) {
+function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   const existing = state.files.get(id);
   const snip = parseInt(UI.val('slider-snip') || '25');
   const sg = 9;
   const mode = state.baselineMode;
   const anchors = existing?.anchors || [];
 
-  const { cleanedY, replacedCount } = SpectralProcessor.rejectCosmicRays(raw.y);
+  // Cosmic Ray Rejection
+  const { cleaned, replacedCount } = SpectralProcessor.rejectCosmicRays(raw);
 
-  let baselineY: number[];
+  // Baseline Estimation
+  let baseline: SpectralData;
   if (mode === 'manual') {
-    baselineY = SpectralProcessor.baselineManual(raw.x, cleanedY, anchors);
+    baseline = SpectralProcessor.baselineManual(cleaned, anchors);
   } else {
-    baselineY = SpectralProcessor.baselineSNIP(cleanedY, snip);
+    baseline = SpectralProcessor.baselineSNIP(cleaned, snip);
   }
 
-  const correctedY = cleanedY.map((v, i) => Math.max(0, v - baselineY[i]));
-  const processedY = SpectralProcessor.savitzkyGolay(correctedY, sg);
-  const peaks = SpectralProcessor.findPeaks(raw.x, processedY);
-  const variance = SpectralProcessor.calculateVariance(cleanedY, baselineY);
+  // Final Processing: Correction and Smoothing
+  const corrected: SpectralData = {
+    wavenumberData: raw.wavenumberData,
+    intensityData: cleaned.intensityData.map((v, i) => Math.max(0, v - baseline.intensityData[i]))
+  };
+  
+  const processed = SpectralProcessor.savitzkyGolay(corrected, sg);
+  const peaks = SpectralProcessor.findPeaks(processed);
+  const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
 
   state.files.set(id, {
-    id, name, raw, cleanedY, baselineY, processedY, peaks, variance,
+    id, name, raw, cleaned, baseline, processed, peaks, variance,
     spikesRemoved: replacedCount,
     params: { snip, sg, mode, timestamp: new Date().toISOString() },
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length]
   });
 }
+
 
 function updateUI() {
   renderFileList();
@@ -200,7 +207,7 @@ function renderFileList() {
         <div style="flex:1;">
           <div class="file-name-edit" contenteditable="true" spellcheck="false" 
                style="font-weight:700; font-size:11px; outline:none;">${file.name}</div>
-          <div style="font-size: 8px; opacity: 0.6;">${file.raw.pointCount} pts</div>
+          <div style="font-size: 8px; opacity: 0.6;">${file.raw.metadata.pointCount} pts</div>
         </div>
       </div>
       <div class="file-actions">
@@ -285,10 +292,14 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     const datasets = filesToRender.map((f, i) => {
-      const { normalized } = SpectralProcessor.normalizeMax(f.processedY);
+      const { normalized } = SpectralProcessor.normalizeMax(f.processed);
       const offset = i * state.stackOffset;
+      const offsetData = {
+        wavenumberData: normalized.wavenumberData,
+        intensityData: normalized.intensityData.map(v => v + offset)
+      };
       return {
-        name: f.name, x: f.raw.x, y: normalized.map(v => v + offset), color: f.color
+        name: f.name, data: offsetData, color: f.color
       };
     });
     requestAnimationFrame(() => {
@@ -300,7 +311,7 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     requestAnimationFrame(() => {
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.x, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined);
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -312,7 +323,7 @@ function renderPlots() {
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
+        ChartRenderer.renderSingle(plotEl, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -323,7 +334,7 @@ function renderPlots() {
 
     if (filesToRender.length > 1) {
       const datasets = filesToRender.map(f => ({
-        name: f.name, x: f.raw.x, y: f.processedY, color: f.color
+        name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
         ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis);
@@ -332,7 +343,7 @@ function renderPlots() {
     } else {
       const f = filesToRender[0];
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, f.raw.x, f.raw.y, f.processedY, f.baselineY, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
+        ChartRenderer.renderSingle(div, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
         attachManualBaselineListener(div);
       });
     }
@@ -509,7 +520,7 @@ function initLayoutControls() {
 
     const datasets = uniqueIds.map(id => {
       const f = state.files.get(id)!;
-      return { x: f.raw.x, y: f.processedY, peaks: f.peaks };
+      return { raw: f.raw, processed: f.processed, peaks: f.peaks };
     });
 
     try {
@@ -567,11 +578,6 @@ async function exportExcel() {
   const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
   if (fileIds.length === 0) return;
 
-  // Diagnostic Logs for Claude
-  console.log('XLSX object:', XLSX);
-  console.log('writeFile type:', typeof XLSX.writeFile);
-  console.log('utils type:', typeof XLSX.utils);
-
   try {
     const wb = XLSX.utils.book_new();
     const params = { snip: parseInt(UI.val('slider-snip')), sg: 9 };
@@ -597,7 +603,7 @@ async function exportExcel() {
     if (state.replicateGroup) {
       const statsData = [
         ['Raman Shift (cm-1)', 'Mean Intensity', 'Std Dev (SD)'],
-        ...state.replicateGroup.x.map((x, i) => [x, state.replicateGroup!.mean[i], state.replicateGroup!.sd[i]])
+        ...state.replicateGroup.mean.wavenumberData.map((x, i) => [x, state.replicateGroup!.mean.intensityData[i], state.replicateGroup!.sd[i]])
       ];
       const statsWs = XLSX.utils.aoa_to_sheet(statsData);
       XLSX.utils.book_append_sheet(wb, statsWs, 'Statistical Summary');
@@ -615,14 +621,12 @@ async function exportExcel() {
     for (const id of fileIds) {
       const file = state.files.get(id)!;
       
-      // Clean sheet name
       let baseName = file.name.substring(0, 25).replace(/[\\\/\?\*\[\]]/g, '_');
       let sheetName = baseName;
       let counter = 1;
       while (sheetNames.has(sheetName)) { sheetName = `${baseName}_${counter++}`; }
       sheetNames.add(sheetName);
 
-      // Per-file Metadata Header
       const spectralData: any[][] = [
         ['File Name', file.name],
         ['Baseline Mode', file.params.mode.toUpperCase()],
@@ -638,21 +642,19 @@ async function exportExcel() {
       spectralData.push([]); // Spacer
       spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Processed Intensity']);
       
-      for (let i = 0; i < file.raw.x.length; i++) {
-        if (state.viewRange && (file.raw.x[i] < state.viewRange[0] || file.raw.x[i] > state.viewRange[1])) continue;
-        spectralData.push([file.raw.x[i], file.raw.y[i], file.processedY[i]]);
+      for (let i = 0; i < file.raw.wavenumberData.length; i++) {
+        if (state.viewRange && (file.raw.wavenumberData[i] < state.viewRange[0] || file.raw.wavenumberData[i] > state.viewRange[1])) continue;
+        spectralData.push([file.raw.wavenumberData[i], file.raw.intensityData[i], file.processed.intensityData[i]]);
       }
 
       const spectralSheet = XLSX.utils.aoa_to_sheet(spectralData);
       XLSX.utils.book_append_sheet(wb, spectralSheet, sheetName);
     }
 
-    // 3. Advanced Binary Generation
     const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const defaultFilename = `raman_analysis_${Math.floor(Date.now() / 1000)}.xlsx`;
 
-    // 4. Trigger Windows "Save As" Dialog (if supported)
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
@@ -665,19 +667,16 @@ async function exportExcel() {
         const writable = await handle.createWritable();
         await writable.write(blob);
         await writable.close();
-        console.log('[raman — instant] File saved successfully via System Picker.');
         return;
-      } catch (e) {
-        console.warn('[raman — instant] System Picker cancelled, falling back to standard download.');
-      }
+      } catch (e) {}
     }
 
-    // 5. Standard Fallback (for older browsers)
     XLSX.writeFile(wb, defaultFilename);
   } catch (err) {
     console.error('[raman — instant] SheetJS Export Error:', err);
   }
 }
+
 
 // Expose processor to window for the chart renderer's Waterfall export
 (window as any).SpectralProcessor = SpectralProcessor;
