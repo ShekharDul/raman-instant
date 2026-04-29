@@ -839,27 +839,6 @@
             EXIT STATS
           </button>
         </div>
-        
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>PEAK RATIO CALCULATOR</span></div>
-          <button id="btn-ratio-mode" class="btn-small" style="width: 100%; margin-bottom: 8px;" title="Select two peaks on the plot to calculate their intensity and area ratios">
-            ENABLE RATIO SELECTION
-          </button>
-          <div id="ratio-results" class="hidden" style="padding: 10px; background: #fff; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
-              <span style="color: var(--text-muted);">P1:</span> <span id="ratio-p1" style="font-weight: 700;">---</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
-              <span style="color: var(--text-muted);">P2:</span> <span id="ratio-p2" style="font-weight: 700;">---</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px;">
-              <span style="color: #000;">INT RATIO:</span> <span id="val-int-ratio" style="font-weight: 900; color: var(--laser);">0.00</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
-              <span style="color: #000;">AREA RATIO:</span> <span id="val-area-ratio" style="font-weight: 900; color: #3b82f6;">0.00</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div class="section hidden" style="background: rgba(59, 130, 246, 0.03);">
@@ -889,100 +868,128 @@
     </main>
     
     <aside class="data-panel">
-      <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
-        <div class="panel-title">Peak Analysis</div>
-        <span class="peak-info-icon" title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below." style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>
-      </div>
-      
-      <div id="proximity-warning" class="hidden" style="margin: 0 24px 16px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 2px; color: #92400e; font-size: 10px; line-height: 1.4;">
-        ⚠️ Adjacent peaks detected within 30 cm⁻¹. Reported centroids and FWHM values may reflect blended contributions from overlapping bands. For quantitative analysis of these peaks, Lorentzian/Gaussian deconvolution is recommended. This feature is on our roadmap.
+      <div class="tab-header">
+        <button id="btn-tab-analysis" class="tab-btn active">ANALYSIS</button>
+        <button id="btn-tab-export" class="tab-btn">EXPORT & STYLE</button>
       </div>
 
-      <div class="peak-table-wrap">
-        <table class="peak-table">
-          <thead>
-            <tr>
-              <th>Shift (cm⁻¹)</th>
-              <th>Int (Abs)</th>
-              <th>FWHM</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="peaks-list-body"></tbody>
-        </table>
-      </div>
-
-      <div class="export-section">
-        <div style="padding: 0 24px 16px;">
-          <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">PUBLICATION SETTINGS</div>
-          
-          <select id="select-export-size" class="btn-small" style="width: 100%; margin-bottom: 8px; background: #fff; border: 1px solid var(--border);">
-            <option value="full">Full Width (Default)</option>
-            <option value="single">Single Column (86 mm)</option>
-            <option value="double">Double Column (174 mm)</option>
-            <option value="custom">Custom Width...</option>
-          </select>
-          
-          <div id="custom-width-ctrl" class="hidden" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-            <input type="number" id="input-export-width" value="86" style="width: 60px; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
-            <span style="font-size: 10px; color: var(--text-muted);">mm</span>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-            <input type="checkbox" id="check-export-transparent">
-            <label for="check-export-transparent" style="font-size: 10px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">TRANSPARENT PNG</label>
-          </div>
+      <div id="pane-analysis" class="tab-pane active">
+        <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
+          <div class="panel-title">Peak Analysis</div>
+          <span class="peak-info-icon" title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below." style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>
+        </div>
+        
+        <div id="proximity-warning" class="hidden" style="margin: 0 24px 16px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 2px; color: #92400e; font-size: 10px; line-height: 1.4;">
+          ⚠️ Adjacent peaks detected within 30 cm⁻¹. Reported centroids and FWHM values may reflect blended contributions from overlapping bands. For quantitative analysis of these peaks, Lorentzian/Gaussian deconvolution is recommended. This feature is on our roadmap.
         </div>
 
-        <button id="btn-export-excel" class="btn-premium excel">
-          📊 Download Excel
-        </button>
-        <button id="btn-export-png" class="btn-premium svg">
-          🖼️ Download PNG (300 DPI)
-        </button>
-        <button id="btn-export-svg" class="btn-premium svg" style="background: #1e293b;">
-          📐 Download SVG (Vector)
-        </button>
-      </div>
-      <div class="section" style="background: rgba(147, 197, 253, 0.03);">
-        <div class="section-title">AXIS & STYLING</div>
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>X-AXIS RANGE (CM⁻¹)</span></div>
-          <div style="display: flex; gap: 4px;">
-            <input type="number" id="input-range-min" placeholder="Min" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
-            <input type="number" id="input-range-max" placeholder="Max" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
-            <button id="btn-apply-range" class="btn-small" style="padding: 4px 8px;">SET</button>
-            <button id="btn-reset-range" class="btn-small" style="padding: 4px 8px;">✕</button>
-          </div>
+        <div class="peak-table-wrap">
+          <table class="peak-table">
+            <thead>
+              <tr>
+                <th>Shift (cm⁻¹)</th>
+                <th>Int (Abs)</th>
+                <th>FWHM</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="peaks-list-body"></tbody>
+          </table>
         </div>
 
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>FONT SIZE (PT)</span></div>
-          <select id="select-axis-font" class="btn-small" style="width: 100%; background: #fff; border: 1px solid var(--border);">
-            <option value="12">12 pt (Compact)</option>
-            <option value="14">14 pt (Standard)</option>
-            <option value="16" selected>16 pt (Large)</option>
-            <option value="18">18 pt (Massive)</option>
-          </select>
-        </div>
-
-        <div class="ctrl-group">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="check-axis-box" checked>
-            <label for="check-axis-box" style="font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">SHOW TOP/RIGHT BORDERS</label>
+        <div class="section" style="border-top: 1px solid var(--border-strong); background: rgba(45, 212, 191, 0.02);">
+          <div class="ctrl-label"><span>PEAK RATIO CALCULATOR</span></div>
+          <button id="btn-ratio-mode" class="btn-small" style="width: 100%; margin-bottom: 8px;" title="Select two peaks on the plot to calculate their intensity and area ratios">
+            ENABLE RATIO SELECTION
+          </button>
+          <div id="ratio-results" class="hidden" style="padding: 10px; background: #fff; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
+              <span style="color: var(--text-muted);">P1:</span> <span id="ratio-p1" style="font-weight: 700;">---</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">
+              <span style="color: var(--text-muted);">P2:</span> <span id="ratio-p2" style="font-weight: 700;">---</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px;">
+              <span style="color: #000;">INT RATIO:</span> <span id="val-int-ratio" style="font-weight: 900; color: var(--laser);">0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;">
+              <span style="color: #000;">AREA RATIO:</span> <span id="val-area-ratio" style="font-weight: 900; color: #3b82f6;">0.00</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="section" style="background: rgba(14, 165, 233, 0.03);">
-        <div class="section-title">FIGURE CAPTION GENERATOR</div>
-        <button id="btn-gen-caption" class="btn-small" style="width: 100%; margin-bottom: 12px; background: var(--text-secondary); color: #fff;">
-          GENERATE READY-TO-PASTE CAPTION
-        </button>
-        <div id="caption-container" class="hidden">
-          <textarea id="text-caption" readonly 
-                    style="width: 100%; height: 120px; font-size: 10px; font-family: var(--font-mono); padding: 8px; border: 1px solid var(--border); background: #fff; line-height: 1.4;"></textarea>
-          <button id="btn-copy-caption" class="btn-small" style="width: 100%; margin-top: 4px; font-size: 9px;">COPY TO CLIPBOARD</button>
+      <div id="pane-export" class="tab-pane">
+        <div class="export-section" style="border-top: none;">
+          <div style="padding: 16px 24px 8px;">
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px;">PUBLICATION FIGURE EXPORT</div>
+            
+            <div class="ctrl-group">
+              <div class="ctrl-label"><span>EXPORT PRESET</span></div>
+              <select id="select-export-size" class="btn-small" style="width: 100%; background: #fff; border: 1px solid var(--border);">
+                <option value="full">Full Width (Default)</option>
+                <option value="single">Single Column (86 mm)</option>
+                <option value="double">Double Column (174 mm)</option>
+                <option value="custom">Custom Width...</option>
+              </select>
+            </div>
+            
+            <div id="custom-width-ctrl" class="hidden" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <input type="number" id="input-export-width" value="86" style="width: 60px; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+              <span style="font-size: 10px; color: var(--text-muted);">mm</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <input type="checkbox" id="check-export-transparent">
+              <label for="check-export-transparent" style="font-size: 10px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">TRANSPARENT PNG</label>
+            </div>
+          </div>
+
+          <button id="btn-export-excel" class="btn-premium excel">📊 Download Excel</button>
+          <button id="btn-export-png" class="btn-premium svg">🖼️ Download PNG (300 DPI)</button>
+          <button id="btn-export-svg" class="btn-premium svg" style="background: #1e293b;">📐 Download SVG (Vector)</button>
+        </div>
+
+        <div class="section" style="background: rgba(147, 197, 253, 0.03);">
+          <div class="section-title">AXIS & STYLING</div>
+          <div class="ctrl-group">
+            <div class="ctrl-label"><span>X-AXIS RANGE (CM⁻¹)</span></div>
+            <div style="display: flex; gap: 4px;">
+              <input type="number" id="input-range-min" placeholder="Min" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+              <input type="number" id="input-range-max" placeholder="Max" style="flex:1; padding: 4px; border: 1px solid var(--border); font-size: 11px;">
+              <button id="btn-apply-range" class="btn-small" style="padding: 4px 8px;">SET</button>
+              <button id="btn-reset-range" class="btn-small" style="padding: 4px 8px;">✕</button>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label"><span>FONT SIZE (PT)</span></div>
+            <select id="select-axis-font" class="btn-small" style="width: 100%; background: #fff; border: 1px solid var(--border);">
+              <option value="12">12 pt (Compact)</option>
+              <option value="14">14 pt (Standard)</option>
+              <option value="16" selected>16 pt (Large)</option>
+              <option value="18">18 pt (Massive)</option>
+            </select>
+          </div>
+
+          <div class="ctrl-group" style="margin-bottom: 0;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="check-axis-box" checked>
+              <label for="check-axis-box" style="font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">SHOW TOP/RIGHT BORDERS</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" style="background: rgba(14, 165, 233, 0.03);">
+          <div class="section-title">FIGURE CAPTION GENERATOR</div>
+          <button id="btn-gen-caption" class="btn-small" style="width: 100%; margin-bottom: 12px; background: var(--text-secondary); color: #fff;">
+            GENERATE READY-TO-PASTE CAPTION
+          </button>
+          <div id="caption-container" class="hidden">
+            <textarea id="text-caption" readonly 
+                      style="width: 100%; height: 120px; font-size: 10px; font-family: var(--font-mono); padding: 8px; border: 1px solid var(--border); background: #fff; line-height: 1.4;"></textarea>
+            <button id="btn-copy-caption" class="btn-small" style="width: 100%; margin-top: 4px; font-size: 9px;">COPY TO CLIPBOARD</button>
+          </div>
         </div>
       </div>
     </aside>

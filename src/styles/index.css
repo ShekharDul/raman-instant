@@ -212,6 +212,49 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
 }
 
+/* ── Tabbed Interface ── */
+.tab-header {
+  display: flex;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.02);
+}
+
+.tab-btn.active {
+  color: var(--laser);
+  border-bottom-color: var(--laser);
+  background: var(--bg-active);
+}
+
+.tab-pane {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.tab-pane.active {
+  display: flex;
+}
+
 .peak-table-wrap {
   flex: 1;
   overflow-y: auto;

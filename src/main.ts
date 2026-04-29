@@ -764,6 +764,21 @@ function initSliders() {
     state.showDirectLabels = (e.target as HTMLInputElement).checked;
     renderPlots();
   });
+
+  // Tab Logic
+  UI.get('btn-tab-analysis')?.addEventListener('click', () => {
+    UI.get('btn-tab-analysis')?.classList.add('active');
+    UI.get('btn-tab-export')?.classList.remove('active');
+    UI.get('pane-analysis')?.classList.add('active');
+    UI.get('pane-export')?.classList.remove('active');
+  });
+
+  UI.get('btn-tab-export')?.addEventListener('click', () => {
+    UI.get('btn-tab-export')?.classList.add('active');
+    UI.get('btn-tab-analysis')?.classList.remove('active');
+    UI.get('pane-export')?.classList.add('active');
+    UI.get('pane-analysis')?.classList.remove('active');
+  });
 }
 
 function reprocessActive() {
