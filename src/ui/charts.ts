@@ -146,10 +146,12 @@ export class ChartRenderer {
     
     if (range) layout.xaxis.range = range;
 
-    // X-Axis Boundary Enforcement
+    // X-Axis Boundary Enforcement (Sorted Data Optimization)
     const xData = raw.wavenumberData;
-    layout.xaxis.minallowed = Math.min(...xData);
-    layout.xaxis.maxallowed = Math.max(...xData);
+    if (xData.length > 0) {
+      layout.xaxis.minallowed = xData[0];
+      layout.xaxis.maxallowed = xData[xData.length - 1];
+    }
 
     if (ratio && ratio.p1 && ratio.p2) {
       const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
@@ -252,9 +254,12 @@ export class ChartRenderer {
 
 
     // Multi-trace X boundary enforcement
-    const allX = datasets.flatMap(d => d.data.wavenumberData);
-    layout.xaxis.minallowed = Math.min(...allX);
-    layout.xaxis.maxallowed = Math.max(...allX);
+    if (datasets.length > 0) {
+      const mins = datasets.map(d => d.data.wavenumberData[0]);
+      const maxs = datasets.map(d => d.data.wavenumberData[d.data.wavenumberData.length - 1]);
+      layout.xaxis.minallowed = Math.min(...mins);
+      layout.xaxis.maxallowed = Math.max(...maxs);
+    }
 
     if (isWaterfall) {
       layout.yaxis.title.text = '<b>Offset Intensity (a.u.)</b>';
@@ -323,8 +328,10 @@ export class ChartRenderer {
 
 
     // X-Axis Boundary Enforcement
-    layout.xaxis.minallowed = Math.min(...x);
-    layout.xaxis.maxallowed = Math.max(...x);
+    if (x.length > 0) {
+      layout.xaxis.minallowed = x[0];
+      layout.xaxis.maxallowed = x[x.length - 1];
+    }
 
     Plotly.react(container, traces, layout, CONFIG);
   }
