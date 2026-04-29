@@ -100,6 +100,7 @@ const UI = {
 
 // ── Initialization ──
 initAboutModal();
+initSupportModal();
 initUpload();
 initSliders();
 initBaselineControls();
@@ -785,24 +786,24 @@ function initBaselineControls() {
 }
 
 function initAboutModal() {
-  console.log('[Instant Raman] Initializing About Modal...');
   const modal = UI.get('modal-about');
   const btn = UI.get('btn-about');
-  
-  if (!modal || !btn) {
-    console.error('[Instant Raman] Modal or About button not found!', { modal, btn });
-    return;
-  }
+  if (!modal || !btn) return;
 
-  btn.addEventListener('click', () => {
-    console.log('[Instant Raman] Opening About Modal');
-    modal.classList.add('active');
+  btn.addEventListener('click', () => modal.classList.add('active'));
+  UI.get('btn-close-about')?.addEventListener('click', () => modal.classList.remove('active'));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
   });
+}
 
-  UI.get('btn-close-about')?.addEventListener('click', () => {
-    modal.classList.remove('active');
-  });
+function initSupportModal() {
+  const modal = UI.get('modal-support');
+  const btn = UI.get('btn-support');
+  if (!modal || !btn) return;
 
+  btn.addEventListener('click', () => modal.classList.add('active'));
+  UI.get('btn-close-support')?.addEventListener('click', () => modal.classList.remove('active'));
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
   });
