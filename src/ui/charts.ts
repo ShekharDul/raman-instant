@@ -65,7 +65,8 @@ const PAPER_LAYOUT: any = {
     tickwidth: 2.5,
     ticklen: 12,
     zeroline: false,
-    mirror: true 
+    mirror: true,
+    minallowed: -2
   },
   hovermode: 'x unified' as const
 };
@@ -92,7 +93,8 @@ const GRID_LAYOUT: any = {
     ...PAPER_LAYOUT.yaxis, 
     title: { text: '<b>Intensity</b>', font: { size: 15 } },
     tickfont: { size: 14 },
-    ticklen: 8
+    ticklen: 8,
+    minallowed: -2
   }
 };
 
@@ -141,6 +143,7 @@ export class ChartRenderer {
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
+    
     if (range) layout.xaxis.range = range;
 
     if (ratio && ratio.p1 && ratio.p2) {
@@ -242,6 +245,7 @@ export class ChartRenderer {
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
 
+
     if (isWaterfall) {
       layout.yaxis.title.text = '<b>Offset Intensity (a.u.)</b>';
       if (hideY) {
@@ -306,6 +310,7 @@ export class ChartRenderer {
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
     }
+
 
     Plotly.react(container, traces, layout, CONFIG);
   }
