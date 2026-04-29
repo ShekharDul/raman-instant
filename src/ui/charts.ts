@@ -109,7 +109,7 @@ export class ChartRenderer {
     
     const traces: any[] = [];
     if (showUnprocessed) {
-      traces.push({ x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Unprocessed', line: { color: '#475569', width: 1, dash: 'dot' }, opacity: 0.8, hoverinfo: 'skip' });
+      traces.push({ x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Raw Input', line: { color: '#94a3b8', width: 1 }, opacity: 0.4, hoverinfo: 'skip' });
     }
     traces.push({ x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' });
 
@@ -202,9 +202,9 @@ export class ChartRenderer {
           x: d.raw.wavenumberData, 
           y: isWaterfall ? d.raw.intensityData.map((v) => v + (i * ((window as any).state?.stackOffset || 0))) : d.raw.intensityData,
           mode: 'lines', 
-          name: `Unprocessed (${d.name})`,
-          line: { color: '#475569', width: 1, dash: 'dot' },
-          opacity: 0.6, 
+          name: `Raw (${d.name})`,
+          line: { color: '#94a3b8', width: 1 },
+          opacity: 0.4, 
           hoverinfo: 'skip',
           showlegend: false
         });
