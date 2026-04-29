@@ -395,9 +395,7 @@ function renderPlots() {
       };
     });
     requestAnimationFrame(() => {
-      const activeIdx = filesToRender.findIndex(f => f.id === state.activeFileId);
-      const waterfallOffset = activeIdx >= 0 ? activeIdx * state.stackOffset : 0;
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, waterfallOffset);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false);
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -446,9 +444,7 @@ function renderPlots() {
         name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
-        const activeIdx = filesToRender.findIndex(f => f.id === state.activeFileId);
-        const waterfallOffset = (activeIdx >= 0 && state.layoutMode === 'stacked') ? activeIdx * state.stackOffset : 0;
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, waterfallOffset);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
         attachManualBaselineListener(div);
       });
     } else {

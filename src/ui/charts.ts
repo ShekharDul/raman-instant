@@ -169,7 +169,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, waterfallOffset = 0) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -236,7 +236,7 @@ export class ChartRenderer {
     }
 
     if (peaksToShow.length > 0) {
-      const peakAnnotations = this.createPeakAnnotations(peaksToShow, waterfallOffset);
+      const peakAnnotations = this.createPeakAnnotations(peaksToShow);
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
@@ -548,7 +548,7 @@ export class ChartRenderer {
   /**
    * Generates peak annotation lines and labels with collision detection.
    */
-  private static createPeakAnnotations(peaks: Peak[], yOffset: number = 0) {
+  private static createPeakAnnotations(peaks: Peak[]) {
     const shapes: any[] = [];
     const labels: any[] = [];
     
