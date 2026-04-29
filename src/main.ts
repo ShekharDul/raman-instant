@@ -339,6 +339,9 @@ function renderPlots() {
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
 
+  const activeFile = state.files.get(state.activeFileId || '');
+  const peaksForPlot = (state.showPeakAnnotations && activeFile) ? activeFile.peaks : [];
+
   const hasData = filesToRender.length > 0;
 
   // Toggle Empty States in Sidebar
@@ -385,7 +388,7 @@ function renderPlots() {
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : []);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot);
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -393,7 +396,13 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     requestAnimationFrame(() => {
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined);
+      const statsPeaks = state.replicateGroup?.peakStats.map(ps => ({
+        x: ps.xMean,
+        y: ps.yMean,
+        fwhm: ps.fwhmMean,
+        area: ps.areaMean
+      })) || [];
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, state.showPeakAnnotations ? statsPeaks : []);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -424,7 +433,7 @@ function renderPlots() {
         name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : [], state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
         attachManualBaselineListener(div);
       });
     } else {

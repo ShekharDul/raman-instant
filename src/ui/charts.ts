@@ -273,7 +273,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number]) {
+  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number], peaksToShow: Peak[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -301,6 +301,13 @@ export class ChartRenderer {
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     if (range) layout.xaxis.range = range;
+
+    if (peaksToShow.length > 0) {
+      const peakAnnotations = this.createPeakAnnotations(peaksToShow);
+      layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
+      traces.push(...peakAnnotations.lines);
+    }
+
     Plotly.react(container, traces, layout, CONFIG);
   }
 
