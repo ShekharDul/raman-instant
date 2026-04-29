@@ -200,7 +200,7 @@ export class ChartRenderer {
       if (showUnprocessed && d.raw) {
         traces.push({
           x: d.raw.wavenumberData, 
-          y: isWaterfall ? d.raw.intensityData.map((v, idx) => v + (i * ((window as any).state?.stackOffset || 0))) : d.raw.intensityData,
+          y: isWaterfall ? d.raw.intensityData.map((v) => v + (i * ((window as any).state?.stackOffset || 0))) : d.raw.intensityData,
           mode: 'lines', 
           name: `Unprocessed (${d.name})`,
           line: { color: '#cbd5e1', width: 1, dash: 'dot' },
