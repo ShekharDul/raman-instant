@@ -27,3 +27,5 @@ export interface NormalizedSpectrum extends SpectralData {
     laserWavelength?: number;
   };
 }
+
+export type NormalizationMode = 'none' | 'max' | 'area' | 'point';

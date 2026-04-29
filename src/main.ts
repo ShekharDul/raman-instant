@@ -8,7 +8,7 @@ import { UniversalParser } from './parsers/universalParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
-import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult } from './engine/types.ts';
+import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode } from './engine/types.ts';
 import * as XLSX from 'xlsx';
 
 // ── Types ──
@@ -16,13 +16,13 @@ interface ProcessedFile {
   id: string;
   name: string;
   raw: NormalizedSpectrum;
-  cleaned: SpectralData;
+  corrected: SpectralData;
   baseline: SpectralData;
   processed: SpectralData;
   peaks: Peak[];
   variance: VarianceResult;
   spikesRemoved: number;
-  params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string };
+  params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode };
   anchors: { x: number; y: number }[];
   color: string;
 }
@@ -38,6 +38,9 @@ interface AppState {
   hideYAxis: boolean;
   viewRange: [number, number] | null;
   replicateGroup: ReplicateStats | null;
+  normalizationMode: NormalizationMode;
+  normTargetX: number | null;
+  showPeakAnnotations: boolean;
 }
 
 // ── State ──
@@ -51,7 +54,10 @@ const state: AppState = {
   stackOffset: 0,
   hideYAxis: false,
   viewRange: null,
-  replicateGroup: null
+  replicateGroup: null,
+  normalizationMode: 'none',
+  normTargetX: null,
+  showPeakAnnotations: false
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -70,6 +76,8 @@ initUpload();
 initSliders();
 initBaselineControls();
 initLayoutControls();
+initNormalization();
+initPeakAnnotations();
 initCalibration();
 setTimeout(() => updateUI(), 150);
 
@@ -146,14 +154,26 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
     intensityData: cleaned.intensityData.map((v, i) => Math.max(0, v - baseline.intensityData[i]))
   };
   
-  const processed = SpectralProcessor.savitzkyGolay(corrected, sg);
+  const smoothed = SpectralProcessor.savitzkyGolay(corrected, sg);
+  
+  // Normalization
+  let processed = smoothed;
+  const normMode = state.normalizationMode;
+  if (normMode === 'max') {
+    processed = SpectralProcessor.normalizeMax(smoothed).normalized;
+  } else if (normMode === 'area') {
+    processed = SpectralProcessor.normalizeArea(smoothed).normalized;
+  } else if (normMode === 'point' && state.normTargetX !== null) {
+    processed = SpectralProcessor.normalizeToPoint(smoothed, state.normTargetX).normalized;
+  }
+
   const peaks = SpectralProcessor.findPeaks(processed);
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
 
   state.files.set(id, {
-    id, name, raw, cleaned, baseline, processed, peaks, variance,
+    id, name, raw, corrected, baseline, processed, peaks, variance,
     spikesRemoved: replacedCount,
-    params: { snip, sg, mode, timestamp: new Date().toISOString() },
+    params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length]
   });
@@ -287,23 +307,34 @@ function renderPlots() {
     return;
   }
 
+  const normLabel = state.normalizationMode === 'none' ? '' : 
+                    state.normalizationMode === 'max' ? 'Max Intensity' :
+                    state.normalizationMode === 'area' ? 'Total Area' :
+                    `Point (${state.normTargetX?.toFixed(0)})`;
+
   if (state.layoutMode === 'stacked' && filesToRender.length > 1) {
     const div = document.createElement('div');
     div.className = 'plot-container';
     container.appendChild(div);
     const datasets = filesToRender.map((f, i) => {
-      const { normalized } = SpectralProcessor.normalizeMax(f.processed);
+      // Use pre-processed (normalized) data, but ensure it's in 0-1 range for waterfall consistency
+      // if not already normalized.
+      let displayData = f.processed;
+      if (state.normalizationMode === 'none') {
+        displayData = SpectralProcessor.normalizeMax(f.processed).normalized;
+      }
+      
       const offset = i * state.stackOffset;
       const offsetData = {
-        wavenumberData: normalized.wavenumberData,
-        intensityData: normalized.intensityData.map(v => v + offset)
+        wavenumberData: displayData.wavenumberData,
+        intensityData: displayData.intensityData.map(v => v + offset)
       };
       return {
         name: f.name, data: offsetData, color: f.color
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : []);
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -323,7 +354,7 @@ function renderPlots() {
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis);
+        ChartRenderer.renderSingle(plotEl, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -337,13 +368,13 @@ function renderPlots() {
         name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : []);
         attachManualBaselineListener(div);
       });
     } else {
       const f = filesToRender[0];
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
+        ChartRenderer.renderSingle(div, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations);
         attachManualBaselineListener(div);
       });
     }
@@ -357,6 +388,11 @@ function attachManualBaselineListener(el: HTMLElement) {
       if (state.baselineMode === 'manual') {
         const { x, y } = data.points[0];
         addAnchor(x, y);
+      } else if (state.normalizationMode === 'point') {
+        const { x } = data.points[0];
+        state.normTargetX = x;
+        UI.text('norm-target-display', `Ref: ${x.toFixed(1)} cm⁻¹`);
+        reprocessAll();
       }
     });
   }
@@ -542,6 +578,26 @@ function initLayoutControls() {
   });
 }
 
+function initNormalization() {
+  UI.get('select-norm')?.addEventListener('change', (e) => {
+    state.normalizationMode = (e.target as HTMLSelectElement).value as NormalizationMode;
+    if (state.normalizationMode === 'point') {
+      UI.get('norm-point-info')?.classList.remove('hidden');
+    } else {
+      UI.get('norm-point-info')?.classList.add('hidden');
+      reprocessAll();
+    }
+    updateUI();
+  });
+}
+
+function initPeakAnnotations() {
+  UI.get('check-show-peaks')?.addEventListener('change', (e) => {
+    state.showPeakAnnotations = (e.target as HTMLInputElement).checked;
+    updateUI();
+  });
+}
+
 function initSliders() {
   UI.get('slider-snip')?.addEventListener('input', (e) => {
     UI.text('val-snip', (e.target as HTMLInputElement).value);
@@ -640,11 +696,22 @@ async function exportExcel() {
       }
 
       spectralData.push([]); // Spacer
-      spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Processed Intensity']);
+      
+      const normLabel = file.params.norm === 'none' ? 'None' : 
+                       file.params.norm === 'max' ? 'Max Intensity' :
+                       file.params.norm === 'area' ? 'Total Area (AUC)' :
+                       `Point Ref (${state.normTargetX?.toFixed(1)} cm⁻¹)`;
+
+      spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Baseline Corrected', `Normalized (${normLabel})`]);
       
       for (let i = 0; i < file.raw.wavenumberData.length; i++) {
         if (state.viewRange && (file.raw.wavenumberData[i] < state.viewRange[0] || file.raw.wavenumberData[i] > state.viewRange[1])) continue;
-        spectralData.push([file.raw.wavenumberData[i], file.raw.intensityData[i], file.processed.intensityData[i]]);
+        spectralData.push([
+          file.raw.wavenumberData[i], 
+          file.raw.intensityData[i], 
+          file.corrected.intensityData[i],
+          file.processed.intensityData[i]
+        ]);
       }
 
       const spectralSheet = XLSX.utils.aoa_to_sheet(spectralData);
@@ -694,7 +761,11 @@ async function exportFigure(format: 'png' | 'svg') {
   if (filesToRender.length === 0) return;
 
   try {
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format);
+    const normLabel = state.normalizationMode === 'none' ? '' : 
+                    state.normalizationMode === 'max' ? 'Max Intensity' :
+                    state.normalizationMode === 'area' ? 'Total Area' :
+                    `Point (${state.normTargetX?.toFixed(0)})`;
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }

@@ -102,7 +102,7 @@ import type { SpectralData, Peak } from '../engine/types.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, showPeaks = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -120,6 +120,22 @@ export class ChartRenderer {
     const baseLayout = isGrid ? GRID_LAYOUT : PAPER_LAYOUT;
     const layout = JSON.parse(JSON.stringify(baseLayout));
     layout.annotations = annotations;
+    
+    if (normLabel && !isGrid) {
+      layout.annotations.push({
+        text: `<b>NORM: ${normLabel.toUpperCase()}</b>`,
+        xref: 'paper', yref: 'paper',
+        x: 0, y: 1.05, showarrow: false,
+        font: { size: 10, color: '#64748b', family: 'Arial' },
+        xanchor: 'left', yanchor: 'bottom'
+      });
+    }
+
+    if (showPeaks) {
+      const peakAnnotations = this.createPeakAnnotations(peaks);
+      layout.annotations.push(...peakAnnotations.labels);
+      traces.push(...peakAnnotations.lines);
+    }
     if (range) layout.xaxis.range = range;
 
     if (hideY) {
@@ -131,7 +147,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -143,6 +159,21 @@ export class ChartRenderer {
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     if (range) layout.xaxis.range = range;
+    if (normLabel) {
+      layout.annotations = [{
+        text: `<b>NORM: ${normLabel.toUpperCase()}</b>`,
+        xref: 'paper', yref: 'paper',
+        x: 0, y: 1.05, showarrow: false,
+        font: { size: 10, color: '#64748b', family: 'Arial' },
+        xanchor: 'left', yanchor: 'bottom'
+      }];
+    }
+
+    if (peaksToShow.length > 0) {
+      const peakAnnotations = this.createPeakAnnotations(peaksToShow);
+      layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
+      traces.push(...peakAnnotations.lines);
+    }
 
     if (isWaterfall) {
       layout.yaxis.title.text = '<b>Offset Intensity (a.u.)</b>';
@@ -255,7 +286,7 @@ export class ChartRenderer {
     }], layout, { ...CONFIG, displayModeBar: false });
   }
 
-  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png') {
+  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, showPeaks = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -279,7 +310,7 @@ export class ChartRenderer {
 
       if (!isMatrix && !isVertical && !isStacked) {
         const f = files[0];
-        this.renderSingle(tempDiv, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis);
+        this.renderSingle(tempDiv, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
@@ -288,15 +319,18 @@ export class ChartRenderer {
         await this.triggerDownload(dataUrl, filename);
       } else if (isStacked) {
         const datasets = files.map((f, i) => {
-          const { normalized } = (window as any).SpectralProcessor.normalizeMax(f.processed);
+          let displayData = f.processed;
+          if (state.normalizationMode === 'none') {
+            displayData = (window as any).SpectralProcessor.normalizeMax(f.processed).normalized;
+          }
           const offset = i * state.stackOffset;
           const offsetData = {
-            wavenumberData: normalized.wavenumberData,
-            intensityData: normalized.intensityData.map((v: number) => v + offset)
+            wavenumberData: displayData.wavenumberData,
+            intensityData: displayData.intensityData.map((v: number) => v + offset)
           };
           return { name: f.name, data: offsetData, color: f.color };
         });
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis);
+        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, showPeaks ? files[0].peaks : []);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
@@ -324,6 +358,16 @@ export class ChartRenderer {
             x: f.processed.wavenumberData, y: f.processed.intensityData, mode: 'lines', name: 'Processed', line: { color: f.color || COLORS.main, width: 2.5 },
             xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
           });
+          
+          if (showPeaks) {
+            const peakAnnotations = (this as any).createPeakAnnotations(f.peaks);
+            traces.push(...peakAnnotations.lines.map((l: any) => ({ ...l, xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}` })));
+            layout.annotations.push(...peakAnnotations.labels.map((a: any) => ({ 
+              ...a, 
+              xref: axisIdx ? `x${axisIdx}` : 'x', 
+              yref: axisIdx ? `y${axisIdx} domain` : 'y domain' 
+            })));
+          }
 
           const panelLabel = String.fromCharCode(65 + i);
           layout[`xaxis${axisIdx}`] = { ...PAPER_LAYOUT.xaxis, title: { text: `Shift (cm⁻¹)`, font: { size: 14 } }, tickfont: { size: 12 } };
@@ -336,6 +380,13 @@ export class ChartRenderer {
           }
 
           if (!layout.annotations) layout.annotations = [];
+          if (normLabel) {
+            layout.annotations.push({
+              text: `NORM: ${normLabel.toUpperCase()}`,
+              xref: `x${axisIdx} domain`, yref: `y${axisIdx} domain`,
+              x: 1, y: 1.1, showarrow: false, xanchor: 'right', font: { size: 10, color: '#64748b' }
+            });
+          }
           layout.annotations.push({
             text: `<b>(${panelLabel}) ${f.name}</b>`, font: { size: 18 },
             xref: `x${axisIdx} domain`, yref: `y${axisIdx} domain`,
@@ -353,6 +404,56 @@ export class ChartRenderer {
     } finally {
       document.body.removeChild(tempDiv);
     }
+  }
+
+  /**
+   * Generates peak annotation lines and labels with collision detection.
+   */
+  private static createPeakAnnotations(peaks: Peak[]) {
+    const lines: any[] = [];
+    const labels: any[] = [];
+    
+    // Sort peaks by wavenumber
+    const sortedPeaks = [...peaks].sort((a, b) => a.x - b.x);
+    
+    let lastX = -Infinity;
+    let stackLevel = 0;
+    const MIN_X_DIST = 60; // minimum cm-1 to avoid label overlap
+
+    sortedPeaks.forEach((p) => {
+      // Collision detection for labels
+      if (Math.abs(p.x - lastX) < MIN_X_DIST) {
+        stackLevel++;
+      } else {
+        stackLevel = 0;
+      }
+      lastX = p.x;
+
+      // Vertical line (muted dashed)
+      lines.push({
+        x: [p.x, p.x],
+        y: [0, p.y],
+        mode: 'lines',
+        line: { color: '#94a3b8', width: 0.8, dash: 'dot' },
+        showlegend: false,
+        hoverinfo: 'skip'
+      });
+
+      // Label (small, readable, offset vertically if stacked)
+      labels.push({
+        x: p.x,
+        y: 1.02 + (stackLevel * 0.06), // paper relative
+        xref: 'x',
+        yref: 'paper',
+        text: `<b>${p.x.toFixed(1)}</b>`,
+        showarrow: false,
+        font: { size: 9, color: '#475569', family: 'Arial' },
+        xanchor: 'center',
+        yanchor: 'bottom'
+      });
+    });
+
+    return { lines, labels };
   }
 
   static renderSparkline(canvas: HTMLCanvasElement, data: SpectralData) {

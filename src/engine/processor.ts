@@ -187,17 +187,62 @@ export class SpectralProcessor {
   }
 
   /**
-   * Normalizes intensity to 0-1 range based on maximum value.
+   * Normalizes intensity based on the maximum value (Vector Normalization / Peak Max).
    */
-  static normalizeMax(data: SpectralData): { normalized: SpectralData, factor: number, peakIdx: number } {
+  static normalizeMax(data: SpectralData): { normalized: SpectralData, factor: number } {
     const y = data.intensityData;
-    let maxVal = 0, peakIdx = 0;
-    for (let i = 0; i < y.length; i++) { if (y[i] > maxVal) { maxVal = y[i]; peakIdx = i; } }
+    let maxVal = 0;
+    for (let i = 0; i < y.length; i++) { if (y[i] > maxVal) { maxVal = y[i]; } }
     const factor = maxVal > 0 ? 1 / maxVal : 1;
     return { 
       normalized: { wavenumberData: data.wavenumberData, intensityData: y.map(v => v * factor) }, 
-      factor, 
-      peakIdx 
+      factor
+    };
+  }
+
+  /**
+   * Normalizes intensity based on the total area under the curve (AUC).
+   */
+  static normalizeArea(data: SpectralData): { normalized: SpectralData, factor: number } {
+    const y = data.intensityData;
+    const x = data.wavenumberData;
+    let area = 0;
+    for (let i = 1; i < y.length; i++) {
+      const dx = Math.abs(x[i] - x[i - 1]);
+      const avgY = (y[i] + y[i - 1]) / 2;
+      area += avgY * dx;
+    }
+    const factor = area > 0 ? 1 / area : 1;
+    return {
+      normalized: { wavenumberData: x, intensityData: y.map(v => v * factor) },
+      factor
+    };
+  }
+
+  /**
+   * Normalizes intensity based on a specific wavenumber target.
+   */
+  static normalizeToPoint(data: SpectralData, targetX: number): { normalized: SpectralData, factor: number, actualX: number } {
+    const x = data.wavenumberData;
+    const y = data.intensityData;
+    
+    // Find closest index
+    let minDiff = Infinity;
+    let targetIdx = 0;
+    for (let i = 0; i < x.length; i++) {
+      const diff = Math.abs(x[i] - targetX);
+      if (diff < minDiff) {
+        minDiff = diff;
+        targetIdx = i;
+      }
+    }
+    
+    const targetY = y[targetIdx];
+    const factor = targetY > 0 ? 1 / targetY : 1;
+    return {
+      normalized: { wavenumberData: x, intensityData: y.map(v => v * factor) },
+      factor,
+      actualX: x[targetIdx]
     };
   }
 

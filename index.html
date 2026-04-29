@@ -797,6 +797,28 @@
             <option value="grid2x2">2x2 Matrix Grid</option>
           </select>
         </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-label"><span>SPECTRAL NORMALIZATION</span></div>
+          <select id="select-norm"
+            style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
+            <option value="none">Raw (Baseline Corrected)</option>
+            <option value="max">Max Intensity (Peak 1.0)</option>
+            <option value="area">Total Area (AUC 1.0)</option>
+            <option value="point">User Point (Target Peak)</option>
+          </select>
+          <div id="norm-point-info" class="hidden" style="margin-top: 8px; font-size: 9px; color: var(--text-muted);">
+            Click on the plot to select normalization reference.
+            <div id="norm-target-display" style="font-weight: 700; color: #000; margin-top: 4px;">Ref: --- cm⁻¹</div>
+          </div>
+        </div>
+
+        <div class="ctrl-group" style="margin-top: 16px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 10px; font-weight: 700; text-transform: uppercase;">
+            <input type="checkbox" id="check-show-peaks" style="width: 14px; height: 14px;" />
+            <span>Show Peak Labels (Annotate)</span>
+          </label>
+        </div>
       </div>
 
       <div class="section" style="background: rgba(45, 212, 191, 0.03);">
