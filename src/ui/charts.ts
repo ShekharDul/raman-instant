@@ -372,8 +372,23 @@ export class ChartRenderer {
 
   private static async triggerDownload(dataUrl: string, filename: string) {
     try {
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      // Direct data URL to blob conversion for better reliability with large files
+      let blob: Blob;
+      if (dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const contentType = parts[0].split(':')[1].split(';')[0];
+        const byteString = atob(parts[1]);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+          uint8Array[i] = byteString.charCodeAt(i);
+        }
+        blob = new Blob([arrayBuffer], { type: contentType });
+      } else {
+        const response = await fetch(dataUrl);
+        blob = await response.blob();
+      }
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -386,7 +401,8 @@ export class ChartRenderer {
         window.URL.revokeObjectURL(url);
       }, 100);
     } catch (err) {
-      console.error('[Instant Raman] Manual download trigger failed:', err);
+      console.error('[Instant Raman] Download trigger failed:', err);
+      // Fallback to direct link click
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = dataUrl;
@@ -431,7 +447,9 @@ export class ChartRenderer {
       const citation = {
         text: 'INSTANT RAMAN — OPEN RESEARCH',
         xref: 'paper', yref: 'paper',
-        x: 1, y: -0.1, showarrow: false,
+        x: 1, y: 0, 
+        yshift: -100, // Fixed offset below X-axis
+        showarrow: false,
         font: { size: 9, color: '#94a3b8', family: 'Arial' },
         xanchor: 'right', yanchor: 'top'
       };
@@ -459,13 +477,15 @@ export class ChartRenderer {
         scale: format === 'png' ? exportScale : 1 
       };
 
-      if (format === 'png' && state.exportTransparent) {
-        // To make background transparent, we need to temporarily modify layout
-        await Plotly.relayout(tempDiv, { 
-          paper_bgcolor: 'rgba(0,0,0,0)',
-          plot_bgcolor: 'rgba(0,0,0,0)'
-        });
-      }
+      // Transparency logic moved to after plot initialization inside branches
+      const applyTransparency = async () => {
+        if (format === 'png' && state.exportTransparent) {
+          await Plotly.relayout(tempDiv, { 
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+          });
+        }
+      };
 
       if (!isMatrix && !isVertical && !isStacked) {
         const f = files[0];
@@ -476,8 +496,14 @@ export class ChartRenderer {
         const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
         this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, ratio, fontSize, showBox);
         
-        // Apply sizing to layout before final render
-        await Plotly.relayout(tempDiv, { width: exportW, height: exportH });
+        // Apply sizing and transparency after plot creation
+        await Plotly.relayout(tempDiv, { 
+          width: exportW, 
+          height: exportH,
+          'margin.b': 140 // Ensure enough space for citation
+        });
+
+        await applyTransparency();
 
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
@@ -505,7 +531,13 @@ export class ChartRenderer {
         
         this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels);
         
-        await Plotly.relayout(tempDiv, { width: exportW, height: exportH });
+        await Plotly.relayout(tempDiv, { 
+          width: exportW, 
+          height: exportH,
+          'margin.b': 140 
+        });
+
+        await applyTransparency();
 
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
@@ -585,9 +617,11 @@ export class ChartRenderer {
         });
 
         layout.annotations = layout.annotations || [];
-        layout.annotations.push({ ...citation, y: -0.08 }); 
+        layout.annotations.push(citation); 
+        layout.margin.b = 140;
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
+        await applyTransparency();
         
         const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
         await this.triggerDownload(dataUrl, filename);
