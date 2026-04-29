@@ -19,6 +19,7 @@ interface ProcessedFile {
   corrected: SpectralData;
   baseline: SpectralData;
   processed: SpectralData;
+  normFactor: number;
   peaks: Peak[];
   variance: VarianceResult;
   spikesRemoved: number;
@@ -158,20 +159,28 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   
   // Normalization
   let processed = smoothed;
+  let normFactor = 1.0;
   const normMode = state.normalizationMode;
+  
   if (normMode === 'max') {
-    processed = SpectralProcessor.normalizeMax(smoothed).normalized;
+    const res = SpectralProcessor.normalizeMax(smoothed);
+    processed = res.normalized;
+    normFactor = res.factor;
   } else if (normMode === 'area') {
-    processed = SpectralProcessor.normalizeArea(smoothed).normalized;
+    const res = SpectralProcessor.normalizeArea(smoothed);
+    processed = res.normalized;
+    normFactor = res.factor;
   } else if (normMode === 'point' && state.normTargetX !== null) {
-    processed = SpectralProcessor.normalizeToPoint(smoothed, state.normTargetX).normalized;
+    const res = SpectralProcessor.normalizeToPoint(smoothed, state.normTargetX);
+    processed = res.normalized;
+    normFactor = res.factor;
   }
 
   const peaks = SpectralProcessor.findPeaks(processed);
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
 
   state.files.set(id, {
-    id, name, raw, corrected, baseline, processed, peaks, variance,
+    id, name, raw, corrected, baseline, processed, normFactor, peaks, variance,
     spikesRemoved: replacedCount,
     params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
     anchors,
@@ -353,8 +362,13 @@ function renderPlots() {
       container.appendChild(wrapper);
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
+      const rawNormalized: SpectralData = {
+        wavenumberData: f.raw.wavenumberData,
+        intensityData: f.raw.intensityData.map(v => v * f.normFactor)
+      };
+
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -373,8 +387,12 @@ function renderPlots() {
       });
     } else {
       const f = filesToRender[0];
+      const rawNormalized: SpectralData = {
+        wavenumberData: f.raw.wavenumberData,
+        intensityData: f.raw.intensityData.map(v => v * f.normFactor)
+      };
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations);
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations);
         attachManualBaselineListener(div);
       });
     }

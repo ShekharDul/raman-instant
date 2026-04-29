@@ -310,7 +310,11 @@ export class ChartRenderer {
 
       if (!isMatrix && !isVertical && !isStacked) {
         const f = files[0];
-        this.renderSingle(tempDiv, f.raw, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks);
+        const rawNormalized = { 
+          wavenumberData: f.raw.wavenumberData, 
+          intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
+        };
+        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });
@@ -350,8 +354,12 @@ export class ChartRenderer {
 
         files.slice(0, cols * rows).forEach((f, i) => {
           const axisIdx = i === 0 ? '' : (i + 1);
+          const rawNormalized = { 
+            wavenumberData: f.raw.wavenumberData, 
+            intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
+          };
           traces.push({
-            x: f.raw.wavenumberData, y: f.raw.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 },
+            x: rawNormalized.wavenumberData, y: rawNormalized.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 },
             xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
           });
           traces.push({
