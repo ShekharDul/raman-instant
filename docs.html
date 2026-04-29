@@ -234,13 +234,18 @@
         <p>When you’re happy with the results, you can download your data in several ways:</p>
         <ul>
           <li><strong>Analytical Excel:</strong> A clean spreadsheet containing your raw data, the calculated baseline, and the final corrected data.</li>
-          <li><strong>Publication Image:</strong> High-quality PNG or Vector SVG graphs, ready for papers.</li>
-          <li><strong>Interactive Report:</strong> A self-contained "HTML Capsule" that you can email to collaborators. It includes the interactive plot, all peak data, and your full processing history in one file.</li>
+          <li><strong>Publication Figure:</strong> High-resolution PNG or Vector SVG graphs. When in <strong>Peak Fitting</strong> mode, the exporter automatically generates a professional dual-pane figure containing both the cumulative fit and the residual analysis.</li>
+          <li><strong>Interactive Analytical Report:</strong> A self-contained "HTML Capsule" for seamless collaboration. This report includes high-fidelity interactive plots, complete peak parameter tables, replicate statistics (if applicable), and full metadata transparency.</li>
         </ul>
       </section>
 
+      <section id="reporting">
+        <h2>06. Analytical Reporting</h2>
+        <p>Beyond static images, Instant Raman generates a <strong>Self-Contained Analytical Report</strong>. This "HTML Capsule" embeds the raw data, processing settings, and high-fidelity interactive visualizations (including Deconvolution and Replicate Stats) into a single, shareable file. It requires no external dependencies or specialized software to view, making it ideal for sharing findings with collaborators or attaching to lab notebooks.</p>
+      </section>
+
       <section id="cosmic-rays">
-        <h2>06. Cosmic Ray Rejection</h2>
+        <h2>07. Cosmic Ray Rejection</h2>
         <p>Sensitive CCD detectors used in Raman spectrometers are susceptible to high-energy cosmic rays, which appear as sharp, unphysical spikes in your data. Instant Raman implements a non-destructive <strong>Z-score sliding window</strong> algorithm using <strong>Median Absolute Deviation (MAD)</strong>.</p>
         <div class="info-box">
           <p><strong>The Healing Process:</strong> When a spike is detected, the engine "heals" the data using a local median filter, ensuring your integration and peak areas remain mathematically accurate for quantitative work.</p>
@@ -248,7 +253,7 @@
       </section>
 
       <section id="deconvolution">
-        <h2>07. Advanced Spectral Deconvolution</h2>
+        <h2>08. Advanced Spectral Deconvolution</h2>
         <p>For complex research, Instant Raman features a professional <strong>Levenberg-Marquardt (LM)</strong> non-linear fitting engine. This allows you to resolve overlapping bands that are otherwise impossible to quantify.</p>
         
         <h3>Supported Profiles</h3>
@@ -263,13 +268,12 @@
       </section>
 
       <section id="analysis-methods">
-        <h2>08. Peak Metrology</h2>
+        <h2>09. Peak Metrology</h2>
         <p>Center positions are calculated using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. For overlapping bands, the LM deconvolution engine should be used for rigorous results.</p>
-      </section>
       </section>
 
       <section id="citation">
-        <h2>08. Citing the Tool</h2>
+        <h2>10. Citing the Tool</h2>
         <p>If Instant Raman helped with your research, please kindly cite it by name in your publication.</p>
       </section>
     </main>
