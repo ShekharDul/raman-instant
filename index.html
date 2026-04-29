@@ -889,12 +889,23 @@
       <button class="modal-close" id="btn-close-about">✕</button>
       
       <div class="docs-section">
-        <h1 style="font-size: 24px; margin-bottom: 8px;">RamanInstant Guide</h1>
+        <h1 style="font-size: 24px; margin-bottom: 8px;">Instant Raman Guide</h1>
         <p style="color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 32px;">Protocol & Technical Specifications</p>
       </div>
 
       <div class="docs-section">
-        <h2>01. Baseline Correction</h2>
+        <h2>01. Universal File Ingest</h2>
+        <p>Instant Raman features an intelligent ingest engine that automatically detects and normalizes professional spectral formats, ensuring you can drop files directly from your spectrometer.</p>
+        <ul style="font-size: 11px; color: var(--text-muted);">
+          <li><strong>JCAMP-DX:</strong> .dx and .jdx standards.</li>
+          <li><strong>Bruker:</strong> .dpt native exports.</li>
+          <li><strong>Horiba:</strong> LabSpec .xml and .txt exports.</li>
+          <li><strong>Generic:</strong> Column-based CSV, TXT, and ASC.</li>
+        </ul>
+      </div>
+
+      <div class="docs-section">
+        <h2>02. Baseline Correction</h2>
         <p>We use the <strong>SNIP algorithm</strong> (Statistics-sensitive Non-linear Iterative Peak-clipping) to estimate the background signal (fluorescence, etc.) without distorting Raman peaks.</p>
         <div class="docs-info-box">
           <strong>Iterations:</strong> More iterations remove more background. Use the slider in the sidebar to fine-tune the removal depth for your specific sample.
@@ -902,19 +913,9 @@
       </div>
 
       <div class="docs-section">
-        <h2>02. Data Requirements</h2>
-        <p>For high-fidelity analysis, please ensure your files meet these standards:</p>
-        <ul>
-          <li><strong>Format:</strong> .csv, .txt, or .asc (UTF-8).</li>
-          <li><strong>Columns:</strong> Column 1 = Raman Shift (cm⁻¹), Column 2 = Intensity.</li>
-          <li><strong>Cleanliness:</strong> The parser handles most headers, but raw 2-column data is preferred.</li>
-        </ul>
-      </div>
-
-      <div class="docs-section">
-        <h2>03. Peak Analysis</h2>
-        <p>Center positions are calculated using <strong>parabolic interpolation</strong> of the highest 3 points for sub-pixel precision. FWHM is calculated directly from the half-maximum threshold.</p>
-        <div class="docs-info-box" style="border-left: 4px solid var(--reference);">
+        <h2>03. Peak Analysis & Metrology</h2>
+        <p>Center positions are calculated using <strong>parabolic interpolation</strong> for sub-pixel precision. Use the <strong>Si Calibration Check</strong> tool to verify instrument accuracy against the standard 520.7 cm⁻¹ Silicon peak.</p>
+        <div class="docs-info-box" style="border-left: 4px solid #f59e0b;">
           <strong>Note on Overlaps:</strong> If peaks are blended (e.g., D and G bands in carbon), the software reports the envelope centroid. Use specialized fitting for deconvolution.
         </div>
       </div>
@@ -938,7 +939,7 @@
       </div>
 
       <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: center; letter-spacing: 0.1em;">
-        <span>RAMANINSTANT — OPEN RESEARCH</span>
+        <span>INSTANT RAMAN — OPEN RESEARCH</span>
       </div>
     </div>
   </div>
