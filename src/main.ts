@@ -21,6 +21,7 @@ interface ProcessedFile {
   processed: SpectralData;
   normFactor: number;
   peaks: Peak[];
+  selectedPeakX: Set<number>;
   variance: VarianceResult;
   spikesRemoved: number;
   params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode };
@@ -41,7 +42,6 @@ interface AppState {
   replicateGroup: ReplicateStats | null;
   normalizationMode: NormalizationMode;
   normTargetX: number | null;
-  showPeakAnnotations: boolean;
   ratioMode: boolean;
   ratioSelection: { p1: Peak | null; p2: Peak | null };
   exportSize: 'full' | 'single' | 'double' | 'custom';
@@ -66,7 +66,6 @@ const state: AppState = {
   replicateGroup: null,
   normalizationMode: 'none',
   normTargetX: null,
-  showPeakAnnotations: false,
   ratioMode: false,
   ratioSelection: { p1: null, p2: null },
   exportSize: 'full',
@@ -94,7 +93,6 @@ initSliders();
 initBaselineControls();
 initLayoutControls();
 initNormalization();
-initPeakAnnotations();
 initRatioCalculator();
 initCalibration();
 setTimeout(() => updateUI(), 150);
@@ -197,7 +195,9 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
 
   state.files.set(id, {
-    id, name, raw, corrected, baseline, processed, normFactor, peaks, variance,
+    id, name, raw, corrected, baseline, processed, normFactor, peaks,
+    selectedPeakX: existing?.selectedPeakX || new Set(),
+    variance,
     spikesRemoved: replacedCount,
     params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
     anchors,
@@ -347,7 +347,7 @@ function renderPlots() {
     .filter(f => !!f) as ProcessedFile[];
 
   const activeFile = state.files.get(state.activeFileId || '');
-  const peaksForPlot = (state.showPeakAnnotations && activeFile) ? activeFile.peaks : [];
+  const peaksForPlot = activeFile ? activeFile.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) : [];
 
   const hasData = filesToRender.length > 0;
 
@@ -405,14 +405,16 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     requestAnimationFrame(() => {
-      const statsPeaks: Peak[] = state.replicateGroup?.peakStats.map(ps => ({
-        x: ps.xMean,
-        y: ps.yMean,
-        fwhm: ps.fwhmMean,
-        relIntensity: 0,
-        area: 0
-      })) || [];
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, state.showPeakAnnotations ? statsPeaks : []);
+      const statsPeaks: Peak[] = state.replicateGroup?.peakStats
+        .filter(ps => state.replicateGroup?.selectedPeakX.has(ps.xMean))
+        .map(ps => ({
+          x: ps.xMean,
+          y: ps.yMean,
+          fwhm: ps.fwhmMean,
+          relIntensity: 0,
+          area: 0
+        })) || [];
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -429,7 +431,8 @@ function renderPlots() {
       };
 
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox);
+        const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -455,7 +458,8 @@ function renderPlots() {
         intensityData: f.raw.intensityData.map(v => v * f.normFactor)
       };
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox);
+        const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox);
         attachManualBaselineListener(div);
       });
     }
@@ -539,13 +543,27 @@ function renderPeakTable() {
     warning?.classList.add('hidden');
     
     state.replicateGroup.peakStats.forEach(p => {
+      const isSelected = state.replicateGroup!.selectedPeakX.has(p.xMean);
       const tr = document.createElement('tr');
+      if (isSelected) tr.classList.add('selected');
+      
       tr.innerHTML = `
         <td>${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}</td>
         <td>${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}</td>
         <td>${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}</td>
         <td></td>
       `;
+      
+      tr.addEventListener('click', () => {
+        if (state.replicateGroup!.selectedPeakX.has(p.xMean)) {
+          state.replicateGroup!.selectedPeakX.delete(p.xMean);
+        } else {
+          state.replicateGroup!.selectedPeakX.add(p.xMean);
+        }
+        renderPeakTable();
+        renderPlots();
+      });
+      
       body.appendChild(tr);
     });
     return;
@@ -571,13 +589,27 @@ function renderPeakTable() {
   else warning?.classList.add('hidden');
 
   sortedPeaks.forEach(p => {
+    const isSelected = active.selectedPeakX.has(p.x);
     const tr = document.createElement('tr');
+    if (isSelected) tr.classList.add('selected');
+    
     tr.innerHTML = `
       <td>${p.x.toFixed(1)}</td>
       <td>${p.y.toFixed(2)}</td>
       <td>${p.fwhm.toFixed(1)}</td>
       <td></td>
     `;
+    
+    tr.addEventListener('click', () => {
+      if (active.selectedPeakX.has(p.x)) {
+        active.selectedPeakX.delete(p.x);
+      } else {
+        active.selectedPeakX.add(p.x);
+      }
+      renderPeakTable();
+      renderPlots();
+    });
+    
     body.appendChild(tr);
   });
 }
@@ -689,12 +721,6 @@ function initNormalization() {
   });
 }
 
-function initPeakAnnotations() {
-  UI.get('check-show-peaks')?.addEventListener('change', (e) => {
-    state.showPeakAnnotations = (e.target as HTMLInputElement).checked;
-    updateUI();
-  });
-}
 
 function initRatioCalculator() {
   UI.get('btn-ratio-mode')?.addEventListener('click', () => {
@@ -991,7 +1017,7 @@ async function exportFigure(format: 'png' | 'svg') {
                     state.normalizationMode === 'max' ? 'Max Intensity' :
                     state.normalizationMode === 'area' ? 'Total Area' :
                     `Point (${state.normTargetX?.toFixed(0)})`;
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }

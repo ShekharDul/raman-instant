@@ -16,6 +16,7 @@ export interface ReplicateStats {
     fwhmMean: number;
     fwhmSD: number;
   }[];
+  selectedPeakX: Set<number>;
 }
 
 export class ReplicateEngine {
@@ -98,7 +99,7 @@ export class ReplicateEngine {
       };
     });
 
-    return { mean: { wavenumberData: x, intensityData: meanY }, sd, peakStats };
+    return { mean: { wavenumberData: x, intensityData: meanY }, sd, peakStats, selectedPeakX: new Set() };
   }
 }
 

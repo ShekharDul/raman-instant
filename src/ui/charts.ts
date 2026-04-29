@@ -102,7 +102,7 @@ import type { SpectralData, Peak } from '../engine/types.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, showPeaks = false, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -135,10 +135,8 @@ export class ChartRenderer {
       });
     }
 
-    if (showPeaks || !isGrid) {
-      // If showPeaks is false but we're in main view, show top 10 peaks as default indexing
-      const peaksToDisplay = showPeaks ? peaks : peaks.slice(0, 10);
-      const peakAnnotations = this.createPeakAnnotations(peaksToDisplay);
+    if (peaks.length > 0) {
+      const peakAnnotations = this.createPeakAnnotations(peaks);
       layout.annotations.push(...peakAnnotations.labels);
       traces.push(...peakAnnotations.lines);
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
@@ -364,7 +362,7 @@ export class ChartRenderer {
     }], layout, { ...CONFIG, displayModeBar: false });
   }
 
-  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, showPeaks = false, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
+  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -423,7 +421,8 @@ export class ChartRenderer {
           wavenumberData: f.raw.wavenumberData, 
           intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
         };
-        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks, ratio, fontSize, showBox);
+        const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
+        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, ratio, fontSize, showBox);
         
         // Apply sizing to layout before final render
         await Plotly.relayout(tempDiv, { width: exportW, height: exportH });
@@ -447,7 +446,12 @@ export class ChartRenderer {
           };
           return { name: f.name, data: offsetData, color: f.color };
         });
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, showPeaks ? files[0].peaks : [], ratio, fontSize, showBox, showDirectLabels);
+        
+        // For stacked view, we show peaks of the active file or first file if not specified
+        const activeFile = files.find((f: any) => f.id === state.activeFileId) || files[0];
+        const filteredPeaks = activeFile.peaks.filter((p: any) => activeFile.selectedPeakX.has(p.x));
+        
+        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels);
         
         await Plotly.relayout(tempDiv, { width: exportW, height: exportH });
 
@@ -486,9 +490,11 @@ export class ChartRenderer {
             xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
           });
           
-          if (showPeaks) {
-            const peakAnnotations = (this as any).createPeakAnnotations(f.peaks);
+          const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
+          if (filteredPeaks.length > 0) {
+            const peakAnnotations = (this as any).createPeakAnnotations(filteredPeaks);
             traces.push(...peakAnnotations.lines.map((l: any) => ({ ...l, xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}` })));
+            layout.annotations = layout.annotations || [];
             layout.annotations.push(...peakAnnotations.labels.map((a: any) => ({ 
               ...a, 
               xref: axisIdx ? `x${axisIdx}` : 'x', 
@@ -521,6 +527,7 @@ export class ChartRenderer {
           });
         });
 
+        layout.annotations = layout.annotations || [];
         layout.annotations.push({ ...citation, y: -0.08 }); 
 
         await Plotly.newPlot(tempDiv, traces, layout, CONFIG);

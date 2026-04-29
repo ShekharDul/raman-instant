@@ -353,6 +353,27 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .peak-table tbody tr {
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .peak-table tbody tr:hover {
+      background: rgba(45, 212, 191, 0.08);
+      padding-left: 8px;
+    }
+
+    .peak-table tbody tr.selected {
+      background: rgba(45, 212, 191, 0.15);
+      border-left: 4px solid var(--laser);
+    }
+
+    .peak-table tbody tr.selected td {
+      color: var(--laser);
+      font-weight: 700;
+      padding-left: 12px;
+    }
+
     .export-section {
       padding: 24px;
       background: var(--bg-panel);
@@ -886,12 +907,6 @@
               </div>
             </div>
     
-            <div class="ctrl-group" style="margin-top: 16px;">
-              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 10px; font-weight: 700; text-transform: uppercase;">
-                <input type="checkbox" id="check-show-peaks" style="width: 14px; height: 14px;" />
-                <span>Show Peak Labels (Annotate)</span>
-              </label>
-            </div>
           </div>
     
           <div class="section" style="background: rgba(45, 212, 191, 0.03);">
