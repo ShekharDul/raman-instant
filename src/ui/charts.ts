@@ -459,16 +459,9 @@ export class ChartRenderer {
       // Calculate Dimensions
       // Standard: 1200x800 (96 DPI)
       // Journal: mm to pixels at 96 DPI
-      let exportW = 1200;
-      let exportH = 800;
-      let exportScale = 2; // Default scale
-
-      if (state.exportSize !== 'full') {
-        const mmToPx = 96 / 25.4;
-        exportW = Math.round(state.exportWidth * mmToPx);
-        exportH = Math.round(exportW * 0.75); // 4:3 aspect ratio for single/double column
-        exportScale = 300 / 96; // 3.125 for 300 DPI
-      }
+      const exportW = 1200;
+      const exportH = 800;
+      const exportScale = 2; // Fixed high-quality scale for PNGs
 
       const exportOptions: any = { 
         format, 

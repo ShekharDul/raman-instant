@@ -44,8 +44,6 @@ interface AppState {
   normTargetX: number | null;
   ratioMode: boolean;
   ratioSelection: { p1: Peak | null; p2: Peak | null };
-  exportSize: 'full' | 'single' | 'double' | 'custom';
-  exportWidth: number; // in mm
   exportTransparent: boolean;
   axisFontSize: number;
   showAxisBox: boolean;
@@ -69,8 +67,6 @@ const state: AppState = {
   normTargetX: null,
   ratioMode: false,
   ratioSelection: { p1: null, p2: null },
-  exportSize: 'full',
-  exportWidth: 86,
   exportTransparent: false,
   axisFontSize: 16,
   showAxisBox: true,
@@ -811,21 +807,7 @@ function initSliders() {
   UI.get('btn-export-png')?.addEventListener('click', () => exportFigure('png'));
   UI.get('btn-export-svg')?.addEventListener('click', () => exportFigure('svg'));
 
-  UI.get('select-export-size')?.addEventListener('change', (e) => {
-    state.exportSize = (e.target as HTMLSelectElement).value as any;
-    const custom = UI.get('custom-width-ctrl');
-    if (state.exportSize === 'custom') {
-      custom?.classList.remove('hidden');
-    } else {
-      custom?.classList.add('hidden');
-      if (state.exportSize === 'single') state.exportWidth = 86;
-      if (state.exportSize === 'double') state.exportWidth = 174;
-    }
-  });
 
-  UI.get('input-export-width')?.addEventListener('input', (e) => {
-    state.exportWidth = parseFloat((e.target as HTMLInputElement).value) || 86;
-  });
 
   UI.get('check-export-transparent')?.addEventListener('change', (e) => {
     state.exportTransparent = (e.target as HTMLInputElement).checked;
