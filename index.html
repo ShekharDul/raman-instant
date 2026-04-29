@@ -905,6 +905,13 @@
         <label for="file-input" id="upload-zone" class="upload-zone" style="display: block; margin-bottom: 12px;"
           aria-label="Upload spectral data files">SELECT SPECTRAL DATA<br />(DX / BRUKER / HORIBA / CSV)</label>
         <input type="file" id="file-input" multiple hidden aria-hidden="true" />
+        <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(45, 212, 191, 0.05); padding: 8px; border: 1px solid rgba(45, 212, 191, 0.2); border-radius: 2px;">
+          <span style="font-size: 9px; font-weight: 700; color: var(--laser); letter-spacing: 0.05em; text-transform: uppercase;">Auto Cosmic Ray Removal</span>
+          <div class="toggle-slider-wrap">
+            <input type="checkbox" id="check-cosmic-ray" class="toggle-input" checked>
+            <label for="check-cosmic-ray" class="toggle-label"></label>
+          </div>
+        </div>
         
         <div class="section-title" style="margin-top: 24px;">Calibration</div>
         <div id="cal-status-container" class="hidden" style="margin-bottom: 12px; padding: 12px; background: #fff; border: 1px solid var(--border); font-size: 10px;">
@@ -1052,7 +1059,7 @@
             </div>
           </div>
     
-          <div class="section hidden" style="background: rgba(59, 130, 246, 0.03);">
+          <div class="section" style="background: rgba(59, 130, 246, 0.03);">
             <div class="section-title">PEAK FITTING (LM)</div>
             <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
               Select a region by dragging on the plot to start simultaneous multi-peak fitting.
@@ -1062,6 +1069,7 @@
               <select id="select-fit-type" style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
                 <option value="lorentzian">LORENTZIAN (DEFAULT)</option>
                 <option value="gaussian">GAUSSIAN</option>
+                <option value="voigt">VOIGT (4-PARAM)</option>
               </select>
             </div>
             <button id="btn-exit-fit" class="btn-small hidden" style="width: 100%; border: 1px solid #3b82f6; color: #3b82f6; font-weight: 700;">EXIT FITTING MODE</button>
@@ -1190,6 +1198,7 @@
             <button id="btn-export-excel" class="btn-premium excel">📊 Download Excel</button>
             <button id="btn-export-png" class="btn-premium svg">🖼️ Download PNG (300 DPI)</button>
             <button id="btn-export-svg" class="btn-premium svg" style="background: #1e293b;">📐 Download SVG (Vector)</button>
+            <button id="btn-export-report" class="btn-premium" style="background: #0f172a; margin-top: 12px; border: 1px solid var(--laser); color: #fff;">🌐 Generate Interactive Report</button>
           </div>
   
           <div class="section" style="background: rgba(147, 197, 253, 0.03); padding: 24px;">

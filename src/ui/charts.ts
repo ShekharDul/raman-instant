@@ -435,6 +435,50 @@ export class ChartRenderer {
     }
   }
 
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[]) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const traces: any[] = [
+      {
+        x: rawX,
+        y: rawY,
+        mode: 'markers',
+        name: 'Experimental Data',
+        marker: { color: '#94a3b8', size: 4, opacity: 0.6 },
+        hoverinfo: 'skip'
+      },
+      {
+        x: fitX,
+        y: fitY,
+        mode: 'lines',
+        name: 'Cumulative Fit',
+        line: { color: COLORS.residual, width: 3 },
+        hoverinfo: 'x+y'
+      }
+    ];
+
+    componentTraces.forEach((ct, i) => {
+      traces.push({
+        x: ct.x,
+        y: ct.y,
+        mode: 'lines',
+        name: ct.name,
+        line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5, dash: 'dash' },
+        fill: 'tozeroy',
+        fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
+        hoverinfo: 'skip'
+      });
+    });
+
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.showlegend = true;
+    layout.legend = { ...PAPER_LAYOUT.legend, x: 1, y: 1, xanchor: 'right' };
+    layout.xaxis.range = [Math.min(...rawX), Math.max(...rawX)];
+    
+    Plotly.react(container, traces, layout, CONFIG);
+  }
+
   static renderResidual(container: HTMLElement | string, data: SpectralData, range?: [number, number]) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;

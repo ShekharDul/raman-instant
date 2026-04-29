@@ -1,0 +1,43 @@
+import { REPORT_TEMPLATE } from './reportTemplate.ts';
+
+export interface ReportData {
+  timestamp: string;
+  filenames: string[];
+  totalPeaks: number;
+  settings: {
+    snip: number;
+    norm: string;
+  };
+  peaks: { x: number; y: number; fwhm: number; area: number; fileName?: string }[];
+  files: { name: string; x: number[]; y: number[] }[];
+}
+
+export class ReportGenerator {
+  static async generate(data: ReportData) {
+    // 1. Serialize Data
+    const jsonData = JSON.stringify(data);
+    
+    // 2. Inject Data into Template
+    // Replace the placeholder comment with the actual JSON
+    let finalHtml = REPORT_TEMPLATE.replace('/* DATA_INJECTION_POINT */', jsonData);
+    
+    // 3. Create Blob and Trigger Download
+    const blob = new Blob([finalHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = `Raman_Report_${new Date().toISOString().split('T')[0]}.html`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('[Instant Raman] Report generated successfully:', filename);
+  }
+}

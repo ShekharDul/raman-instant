@@ -10,6 +10,8 @@ import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode } from './engine/types.ts';
 import * as XLSX from 'xlsx';
+import { ReportGenerator, type ReportData } from './ui/reportGenerator.ts';
+import { FittingEngine, type FitResult } from './engine/fitting.ts';
 
 // ── Types ──
 interface ProcessedFile {
@@ -51,6 +53,9 @@ interface AppState {
   viewHistory: ([number, number] | null)[];
   maxXData: number;
   showUnprocessed: boolean;
+  cosmicRayRemoval: boolean;
+  fitResult: FitResult | null;
+  fittingMode: boolean;
 }
 
 // ── State ──
@@ -76,6 +81,9 @@ const state: AppState = {
   viewHistory: [],
   maxXData: 4000,
   showUnprocessed: true,
+  cosmicRayRemoval: true,
+  fitResult: null,
+  fittingMode: false,
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -187,7 +195,17 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   const anchors = existing?.anchors || [];
 
   // Cosmic Ray Rejection
-  const { cleaned, replacedCount } = SpectralProcessor.rejectCosmicRays(raw);
+  let cleaned = raw;
+  let replacedCount = 0;
+  if (state.cosmicRayRemoval) {
+    const result = SpectralProcessor.rejectCosmicRays(raw);
+    cleaned = result.cleaned;
+    replacedCount = result.replacedCount;
+    
+    if (replacedCount > 0) {
+        showToast(`CLEANED: Removed ${replacedCount} cosmic ray spikes from ${name}`);
+    }
+  }
 
   // Baseline Estimation
   let baseline: SpectralData;
@@ -406,6 +424,11 @@ function renderPlots() {
     return;
   }
 
+  if (state.fittingMode && state.fitResult) {
+    renderFitResults();
+    return;
+  }
+
   const normLabel = state.normalizationMode === 'none' ? '' : 
                     state.normalizationMode === 'max' ? 'Max Intensity' :
                     state.normalizationMode === 'area' ? 'Total Area' :
@@ -506,9 +529,21 @@ function renderPlots() {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
         ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
         attachManualBaselineListener(div);
+        if (state.fittingMode) attachFitListener(div);
       });
     }
   }
+}
+
+function attachFitListener(el: HTMLElement) {
+  const plotEl = el as any;
+  if (!plotEl) return;
+  
+  plotEl.on('plotly_selected', (data: any) => {
+    if (!data) return;
+    const range = data.range.x;
+    runFitting(range[0], range[1]);
+  });
 }
 
 function attachManualBaselineListener(el: HTMLElement) {
@@ -851,6 +886,7 @@ function initSliders() {
   UI.get('btn-export-excel')?.addEventListener('click', exportExcel);
   UI.get('btn-export-png')?.addEventListener('click', () => exportFigure('png'));
   UI.get('btn-export-svg')?.addEventListener('click', () => exportFigure('svg'));
+  UI.get('btn-export-report')?.addEventListener('click', generateReport);
 
 
 
@@ -861,6 +897,11 @@ function initSliders() {
   UI.get('check-show-unprocessed')?.addEventListener('change', (e) => {
     state.showUnprocessed = (e.target as HTMLInputElement).checked;
     renderPlots();
+  });
+
+  UI.get('check-cosmic-ray')?.addEventListener('change', (e) => {
+    state.cosmicRayRemoval = (e.target as HTMLInputElement).checked;
+    reprocessAll();
   });
 
   // Feature 5 - Caption
@@ -1129,4 +1170,144 @@ function generateCaption() {
   const area = UI.get('text-caption') as HTMLTextAreaElement;
   if (area) area.value = caption;
   UI.get('caption-container')?.classList.remove('hidden');
+}
+
+async function generateReport() {
+  const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
+  if (fileIds.length === 0) return;
+
+  const filesToExport = fileIds.map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
+  
+  // Aggregate peaks from all exported files
+  const allPeaks: any[] = [];
+  filesToExport.forEach(f => {
+    f.peaks.forEach(p => {
+      allPeaks.push({
+        x: p.x,
+        y: p.y,
+        fwhm: p.fwhm,
+        area: p.area,
+        fileName: f.name
+      });
+    });
+  });
+
+  const reportData: ReportData = {
+    timestamp: new Date().toISOString(),
+    filenames: filesToExport.map(f => f.name),
+    totalPeaks: allPeaks.length,
+    settings: {
+      snip: parseInt(UI.val('slider-snip') || '25'),
+      norm: state.normalizationMode
+    },
+    peaks: allPeaks,
+    files: filesToExport.map(f => ({
+      name: f.name,
+      x: f.processed.wavenumberData,
+      y: f.processed.intensityData
+    }))
+  };
+
+  await ReportGenerator.generate(reportData);
+}
+
+async function runFitting(minX: number, maxX: number) {
+  const active = state.files.get(state.activeFileId || '');
+  if (!active) return;
+
+  const data = active.processed;
+  const roiX: number[] = [];
+  const roiY: number[] = [];
+  
+  for (let i = 0; i < data.wavenumberData.length; i++) {
+    const x = data.wavenumberData[i];
+    if (x >= minX && x <= maxX) {
+      roiX.push(x);
+      roiY.push(data.intensityData[i]);
+    }
+  }
+
+  if (roiX.length < 5) return;
+
+  const type = (UI.get('select-fit-type') as HTMLSelectElement).value as any;
+  const initial = FittingEngine.estimateInitial(roiX, roiY, type);
+  
+  UI.text('system-status', 'FITTING...');
+  
+  // Run fit in microtask to not block UI immediately
+  setTimeout(() => {
+    const result = FittingEngine.fit(roiX, roiY, initial, type);
+    state.fitResult = result;
+    state.fittingMode = true;
+    UI.get('btn-exit-fit')?.classList.remove('hidden');
+    UI.text('system-status', 'READY');
+    updateUI();
+  }, 10);
+}
+
+function renderFitResults() {
+  const container = UI.get('workspace-container');
+  if (!container || !state.fitResult) return;
+  
+  const active = state.files.get(state.activeFileId || '');
+  if (!active) return;
+
+  // We need a secondary panel for residuals
+  container.innerHTML = '';
+  container.className = 'workspace-grid grid-2x1';
+  
+  const fitDiv = document.createElement('div');
+  fitDiv.className = 'plot-container';
+  container.appendChild(fitDiv);
+  
+  const resDiv = document.createElement('div');
+  resDiv.className = 'plot-container';
+  container.appendChild(resDiv);
+
+  const componentTraces = state.fitResult.peaks.map((p, i) => {
+    const y = state.fitResult!.fitX.map(xv => {
+      if (p.type === 'voigt') return FittingEngine.voigt(xv, p.amplitude.value, p.center.value, p.fwhm.value, p.shape!.value);
+      if (p.type === 'gaussian') return FittingEngine.gaussian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+      return FittingEngine.lorentzian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+    });
+    return { x: state.fitResult!.fitX, y, name: `Peak ${i+1} (${p.center.value.toFixed(1)})` };
+  });
+
+  ChartRenderer.renderFit(fitDiv, state.fitResult.fitX, state.fitResult.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult.fitX, state.fitResult.fitY, componentTraces);
+  
+  ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult.fitX, intensityData: state.fitResult.residuals });
+}
+
+UI.get('btn-exit-fit')?.addEventListener('click', () => {
+  state.fittingMode = false;
+  state.fitResult = null;
+  UI.get('btn-exit-fit')?.classList.add('hidden');
+  updateUI();
+});
+
+function showToast(message: string) {
+  const toast = document.createElement('div');
+  toast.style.position = 'fixed';
+  toast.style.bottom = '40px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.background = 'var(--laser)';
+  toast.style.color = '#000';
+  toast.style.padding = '8px 16px';
+  toast.style.fontSize = '10px';
+  toast.style.fontWeight = '700';
+  toast.style.textTransform = 'uppercase';
+  toast.style.letterSpacing = '0.1em';
+  toast.style.borderRadius = '2px';
+  toast.style.zIndex = '99999';
+  toast.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
+  toast.textContent = message;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s ease';
+    setTimeout(() => document.body.removeChild(toast), 500);
+  }, 3000);
 }

@@ -11,21 +11,36 @@ export class SpectralProcessor {
    * Rejects cosmic ray spikes using a median filter and sigma threshold.
    * Returns a normalized SpectralData structure.
    */
-  static rejectCosmicRays(data: SpectralData, window = 5, thresholdSigma = 5): { cleaned: SpectralData, replacedCount: number } {
+  static rejectCosmicRays(data: SpectralData, window = 7, threshold = 6): { cleaned: SpectralData, replacedCount: number } {
     const y = data.intensityData;
     const resultY = [...y];
     let replacedCount = 0;
+    
+    // We use a modified Z-score based on Median Absolute Deviation (MAD)
+    // for robust spike detection in a sliding window.
     for (let i = window; i < y.length - window; i++) {
       const neighborhood = y.slice(i - window, i + window + 1);
+      
+      // Calculate Median
       const sorted = [...neighborhood].sort((a, b) => a - b);
-      const median = sorted[window];
-      const mean = neighborhood.reduce((a, b) => a + b, 0) / neighborhood.length;
-      const std = Math.sqrt(neighborhood.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / neighborhood.length);
-      if (Math.abs(y[i] - median) > thresholdSigma * Math.max(std, 0.01)) {
+      const median = sorted[Math.floor(neighborhood.length / 2)];
+      
+      // Calculate MAD
+      const absoluteDeviations = neighborhood.map(val => Math.abs(val - median));
+      const sortedDeviations = [...absoluteDeviations].sort((a, b) => a - b);
+      const mad = sortedDeviations[Math.floor(absoluteDeviations.length / 2)];
+      
+      // Modified Z-score: 0.6745 * (x - median) / MAD
+      // Using a threshold of ~6 for aggressive spike detection
+      const score = mad === 0 ? 0 : 0.6745 * (y[i] - median) / mad;
+      
+      if (score > threshold) {
+        // Spike detected! Heal using the median of neighbors
         resultY[i] = median;
         replacedCount++;
       }
     }
+    
     return { 
       cleaned: { wavenumberData: data.wavenumberData, intensityData: resultY }, 
       replacedCount 
