@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- Primary Meta Tags -->
-  <title>RamanInstant — Documentation & Protocol</title>
-  <meta name="title" content="RamanInstant — Documentation & Protocol" />
-  <meta name="description" content="Technical guide for RamanInstant: Learn about the SNIP algorithm, data requirements, and how to process spectral data." />
+  <title>Instant Raman — Documentation & Protocol</title>
+  <meta name="title" content="Instant Raman — Documentation & Protocol" />
+  <meta name="description" content="Technical guide for Instant Raman: Learn about the SNIP algorithm, data requirements, and how to process spectral data." />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
@@ -175,14 +175,14 @@
     <a href="/raman-instant/" class="nav-back">← Back to Workstation</a>
     
     <header>
-      <h1>RamanInstant Guide</h1>
+      <h1>Instant Raman Guide</h1>
       <div class="subtitle">Protocol & Technical Specifications</div>
     </header>
 
     <main>
       <section id="about">
         <h2>01. About the App</h2>
-        <p>RamanInstant is a fast, simple tool built to help researchers process Raman spectroscopy data. It handles the heavy lifting of baseline correction and data visualization right in your browser, so you can focus on your results.</p>
+        <p>Instant Raman is a fast, simple tool built to help researchers process Raman spectroscopy data. It handles the heavy lifting of baseline correction and data visualization right in your browser, so you can focus on your results.</p>
       </section>
 
       <section id="math">
@@ -203,17 +203,14 @@
         
         <h3>Supported Formats</h3>
         <ul>
-          <li><code>.csv</code>, <code>.txt</code>, or <code>.asc</code> files.</li>
+          <li><strong>Universal Formats:</strong> <code>.dx</code>, <code>.jdx</code> (JCAMP-DX)</li>
+          <li><strong>Native Exports:</strong> <code>.dpt</code> (Bruker), <code>.xml</code> / <code>.txt</code> (Horiba LabSpec)</li>
+          <li><strong>Generic Data:</strong> <code>.csv</code>, <code>.txt</code>, <code>.asc</code></li>
           <li>Standard UTF-8 encoding.</li>
         </ul>
 
         <h3>Layout</h3>
-        <p>Your file should have two columns of numbers:</p>
-        <ul>
-          <li><strong>First Column (X):</strong> Raman Shift (cm⁻¹)</li>
-          <li><strong>Second Column (Y):</strong> Intensity</li>
-        </ul>
-        <p>The app is smart enough to skip most text headers, so you can usually just drop your raw files straight in.</p>
+        <p>For generic text files, the app expects two columns (Shift and Intensity). For professional formats (DX, Bruker, Horiba), the app automatically handles complex headers, metadata, and non-linear spacing.</p>
       </section>
 
       <section id="workflow">
@@ -244,10 +241,8 @@
       <section id="analysis-methods">
         <h2>07. Peak Analysis — Methods and Limitations</h2>
         
-        <h3>What RamanInstant Does</h3>
         <p>The app performs sub-pixel peak detection using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. These methods are highly accurate for well-resolved, isolated Raman peaks.</p>
 
-        <h3>What RamanInstant Does Not Yet Do</h3>
         <p>The app does not yet perform <strong>non-linear curve fitting</strong> using mathematical profiles (Gaussian, Lorentzian, or Voigt) or the deconvolution of overlapping peaks into individual components.</p>
 
         <div class="info-box" style="border-left: 4px solid #f59e0b;">
@@ -260,12 +255,12 @@
 
       <section id="citation">
         <h2>08. Citing the Tool</h2>
-        <p>If RamanInstant helped with your research, please kindly cite it by name in your publication.</p>
+        <p>If Instant Raman helped with your research, please kindly cite it by name in your publication.</p>
       </section>
     </main>
 
     <footer>
-      <div style="width: 100%; text-align: center; letter-spacing: 0.1em;">RAMANINSTANT — OPEN RESEARCH</div>
+      <div style="width: 100%; text-align: center; letter-spacing: 0.1em;">INSTANT RAMAN — OPEN RESEARCH</div>
     </footer>
   </div>
 </body>
