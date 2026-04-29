@@ -102,7 +102,7 @@ import type { SpectralData, Peak } from '../engine/types.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, showPeaks = false) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, showPeaks = false, ratio?: { p1: Peak | null, p2: Peak | null } | null) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -138,6 +138,23 @@ export class ChartRenderer {
     }
     if (range) layout.xaxis.range = range;
 
+    if (ratio && ratio.p1 && ratio.p2) {
+      const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
+      const areaRatio = (ratio.p1.area / ratio.p2.area).toFixed(3);
+      layout.annotations.push({
+        text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b><br>Area Ratio = ${areaRatio}`,
+        xref: 'paper', yref: 'paper',
+        x: 0.98, y: 0.95,
+        showarrow: false,
+        xanchor: 'right', yanchor: 'top',
+        font: { size: 12, color: '#0f172a', family: 'Arial' },
+        bgcolor: 'rgba(255,255,255,0.85)',
+        bordercolor: '#cbd5e1',
+        borderwidth: 1,
+        borderpad: 4
+      });
+    }
+
     if (hideY) {
       layout.yaxis.showticklabels = false;
       layout.yaxis.title.text = '';
@@ -147,7 +164,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = []) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -159,6 +176,21 @@ export class ChartRenderer {
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     if (range) layout.xaxis.range = range;
+
+    if (ratio && ratio.p1 && ratio.p2) {
+      const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
+      layout.annotations = [{
+        text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b>`,
+        xref: 'paper', yref: 'paper',
+        x: 0.98, y: 0.95,
+        showarrow: false,
+        xanchor: 'right', yanchor: 'top',
+        font: { size: 12, color: '#0f172a' },
+        bgcolor: 'rgba(255,255,255,0.8)',
+        bordercolor: '#000',
+        borderwidth: 1
+      }];
+    }
     if (normLabel) {
       layout.annotations = [{
         text: `<b>NORM: ${normLabel.toUpperCase()}</b>`,
@@ -286,7 +318,7 @@ export class ChartRenderer {
     }], layout, { ...CONFIG, displayModeBar: false });
   }
 
-  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, showPeaks = false) {
+  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, showPeaks = false, ratio?: { p1: Peak | null, p2: Peak | null } | null) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -314,7 +346,7 @@ export class ChartRenderer {
           wavenumberData: f.raw.wavenumberData, 
           intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
         };
-        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks);
+        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, showPeaks, ratio);
         const layout = (tempDiv as any).layout;
         layout.annotations = [...(layout.annotations || []), citation];
         await Plotly.relayout(tempDiv, { annotations: layout.annotations });

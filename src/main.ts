@@ -226,6 +226,11 @@ function updateUI() {
   const activeCount = state.comparisonIds.size || (state.activeFileId ? 1 : 0);
   UI.text('footer-stats', `FILES: ${totalFiles} ; ACTIVE FILES: ${activeCount}`);
 
+  // Update Ratio Results visibility
+  if (state.ratioSelection.p1 || state.ratioSelection.p2) {
+    UI.get('ratio-results')?.classList.remove('hidden');
+  }
+
   // Update Ratio Results if both p1 and p2 selected
   if (state.ratioSelection.p1 && state.ratioSelection.p2) {
     const p1 = state.ratioSelection.p1;
@@ -386,7 +391,7 @@ function renderPlots() {
       };
 
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -400,7 +405,7 @@ function renderPlots() {
         name: f.name, data: f.processed, color: f.color
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : []);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations ? filesToRender[0].peaks : [], state.ratioSelection);
         attachManualBaselineListener(div);
       });
     } else {
@@ -410,7 +415,7 @@ function renderPlots() {
         intensityData: f.raw.intensityData.map(v => v * f.normFactor)
       };
       requestAnimationFrame(() => {
-        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations);
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, f.peaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.showPeakAnnotations, state.ratioSelection);
         attachManualBaselineListener(div);
       });
     }
@@ -854,7 +859,7 @@ async function exportFigure(format: 'png' | 'svg') {
                     state.normalizationMode === 'max' ? 'Max Intensity' :
                     state.normalizationMode === 'area' ? 'Total Area' :
                     `Point (${state.normTargetX?.toFixed(0)})`;
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations);
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.showPeakAnnotations, state.ratioSelection);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }
