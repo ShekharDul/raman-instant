@@ -9,9 +9,13 @@ export interface ReportData {
   settings: {
     snip: number;
     norm: string;
+    baselineMode: string;
+    cosmicRayRemoval: boolean;
   };
   peaks: { x: number; y: number; fwhm: number; area: number; fileName?: string }[];
   files: { name: string; x: number[]; y: number[] }[];
+  fitResult?: any;
+  replicateGroup?: any;
 }
 
 export class ReportGenerator {

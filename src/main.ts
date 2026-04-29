@@ -1221,14 +1221,18 @@ async function generateReport() {
     totalPeaks: allPeaks.length,
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
-      norm: state.normalizationMode
+      norm: state.normalizationMode,
+      baselineMode: state.baselineMode,
+      cosmicRayRemoval: state.cosmicRayRemoval
     },
     peaks: allPeaks,
     files: filesToExport.map(f => ({
       name: f.name,
       x: f.processed.wavenumberData,
       y: f.processed.intensityData
-    }))
+    })),
+    fitResult: state.fittingMode ? state.fitResult : null,
+    replicateGroup: state.layoutMode === 'replicate' ? state.replicateGroup : null
   };
 
   await ReportGenerator.generate(reportData);
