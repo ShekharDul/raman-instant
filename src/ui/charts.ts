@@ -98,11 +98,11 @@ const GRID_LAYOUT: any = {
 
 
 
-import { SpectralData, Peak } from '../engine/types.ts';
+import type { SpectralData, Peak } from '../engine/types.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
