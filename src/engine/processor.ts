@@ -3,7 +3,7 @@
  * Pure math. No identification. No interpretation.
  */
 
-import { Peak, VarianceResult, SpectralData } from './types.ts';
+import type { Peak, VarianceResult, SpectralData } from './types.ts';
 
 export class SpectralProcessor {
 

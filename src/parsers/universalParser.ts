@@ -4,7 +4,7 @@
  * Normalizes all data into a standard internal structure.
  */
 
-import { NormalizedSpectrum, SpectralData } from '../engine/types.ts';
+import type { NormalizedSpectrum } from '../engine/types.ts';
 
 export class UniversalParser {
   /**
@@ -67,7 +67,7 @@ export class UniversalParser {
            fileName.endsWith('.dx');
   }
 
-  private static isOceanOptics(text: string, fileName: string): boolean {
+  private static isOceanOptics(text: string, _fileName: string): boolean {
     return text.includes('>>>>>Begin Spectral Data<<<<<') || 
            text.includes('Ocean Optics') || 
            text.includes('OOIBase32') ||
@@ -79,7 +79,7 @@ export class UniversalParser {
            (fileName.endsWith('.xml') && text.includes('<Dataset>'));
   }
 
-  private static isHoribaText(text: string, fileName: string): boolean {
+  private static isHoribaText(text: string, _fileName: string): boolean {
     return text.includes('LabSpec') || 
            text.includes('Horiba') || 
            text.includes('Software Name: LabSpec');

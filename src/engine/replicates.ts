@@ -3,7 +3,7 @@
  * Handles averaging and standard deviation for multiple spectra.
  */
 
-import { SpectralData, Peak } from './types.ts';
+import type { SpectralData, Peak } from './types.ts';
 
 export interface ReplicateStats {
   mean: SpectralData;
