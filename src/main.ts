@@ -339,8 +339,15 @@ function renderPlots() {
     .map(id => state.files.get(id))
     .filter(f => !!f) as ProcessedFile[];
 
-  if (filesToRender.length === 0) {
-    console.log("[Instant Raman] Rendering placeholder...");
+  const hasData = filesToRender.length > 0;
+
+  // Toggle Empty States in Sidebar
+  UI.get('analysis-empty')?.classList.toggle('hidden', hasData);
+  UI.get('analysis-content')?.classList.toggle('hidden', !hasData);
+  UI.get('export-empty')?.classList.toggle('hidden', hasData);
+  UI.get('export-content')?.classList.toggle('hidden', !hasData);
+
+  if (!hasData) {
     container.innerHTML = `
       <div class="viewer-placeholder">
         <h2>Spectral Viewer</h2>
