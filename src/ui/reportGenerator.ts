@@ -23,10 +23,10 @@ export class ReportGenerator {
     // 1. Serialize Data
     const jsonData = JSON.stringify(data);
     
-    // 2. Inject Data and Plotly into Template
+    // 2. Inject Data and Plotly into Template (Safe split/join to avoid '$' issues in replace)
     let finalHtml = REPORT_TEMPLATE
-      .replace('/* DATA_INJECTION_POINT */', jsonData)
-      .replace('/* PLOTLY_INJECTION_POINT */', plotlyCartesian);
+      .split('/* DATA_INJECTION_POINT */').join(jsonData)
+      .split('/* PLOTLY_INJECTION_POINT */').join(plotlyCartesian);
     
     // 3. Create Blob and Trigger Download
     const blob = new Blob([finalHtml], { type: 'text/html' });

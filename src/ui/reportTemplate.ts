@@ -260,137 +260,177 @@ export const REPORT_TEMPLATE = `
     </script>
     <script id="bootstrapper">
         (function() {
-            const dataEl = document.getElementById('raman-data');
-            if (!dataEl) return;
-            const data = JSON.parse(dataEl.textContent);
-            
-            document.getElementById('report-date').textContent = new Date(data.timestamp).toLocaleString();
+            try {
+                const dataEl = document.getElementById('raman-data');
+                if (!dataEl) throw new Error('Data element not found');
+                const data = JSON.parse(dataEl.textContent);
+                
+                document.getElementById('report-date').textContent = new Date(data.timestamp).toLocaleString();
 
-            // 1. Metadata Panel
-            const metaPanel = document.getElementById('metadata-panel');
-            const metaItems = [
-                { label: 'Files', value: data.filenames.join(', ') },
-                { label: 'Baseline', value: (data.settings.baselineMode || 'SNIP').toUpperCase() },
-                { label: 'SNIP Iterations', value: data.settings.snip },
-                { label: 'Normalization', value: data.settings.norm.toUpperCase() },
-                { label: 'Cosmic Ray Removal', value: data.settings.cosmicRayRemoval ? 'ENABLED' : 'DISABLED' },
-                { label: 'Total Peaks', value: data.totalPeaks }
-            ];
-
-            metaPanel.innerHTML = metaItems.map(item => \`
-                <div class="meta-item">
-                    <label>\${item.label}</label>
-                    <span>\${item.value}</span>
-                </div>
-            \`).join('');
-
-            // 2. Main Spectral Plot
-            const traces = data.files.map((f) => ({
-                x: f.x,
-                y: f.y,
-                mode: 'lines',
-                name: f.name,
-                line: { width: 2 }
-            }));
-
-            const layout = {
-                paper_bgcolor: '#ffffff',
-                plot_bgcolor: '#ffffff',
-                font: { family: 'Inter, sans-serif', color: '#0f172a' },
-                margin: { l: 80, r: 40, t: 40, b: 80 },
-                xaxis: { title: 'Raman Shift (cm⁻¹)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
-                yaxis: { title: 'Intensity (a.u.)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
-                legend: { x: 1.02, y: 1 },
-                hovermode: 'x unified'
-            };
-
-            Plotly.newPlot('plot-container', traces, layout, { responsive: true, displaylogo: false });
-
-            // 3. Peak Table
-            const tableBody = document.getElementById('peak-table-body');
-            tableBody.innerHTML = data.peaks.map(p => \`
-                <tr>
-                    <td>\${p.x.toFixed(2)}</td>
-                    <td>\${p.y.toFixed(2)}</td>
-                    <td>\${p.fwhm.toFixed(2)}</td>
-                    <td>\${p.area.toFixed(2)}</td>
-                    <td style="font-size: 10px; color: var(--text-muted); font-weight: 500;">\${p.fileName || 'N/A'}</td>
-                </tr>
-            \`).join('');
-
-            // 4. Fitting Section (Conditional)
-            if (data.fitResult) {
-                const fitSec = document.getElementById('fitting-section');
-                const fitPlot = document.getElementById('fit-plot-container');
-                fitSec.classList.add('active');
-                fitPlot.style.display = 'block';
-
-                const fr = data.fitResult;
-                const fitTraces = [
-                    { x: fr.fitX, y: fr.fitX.map((_, i) => fr.fitY[i] + fr.residuals[i]), mode: 'markers', name: 'Experimental', marker: { color: '#94a3b8', size: 4, opacity: 0.5 } },
-                    { x: fr.fitX, y: fr.fitY, mode: 'lines', name: 'Cumulative Fit', line: { color: '#0f172a', width: 3 } },
-                    { x: fr.fitX, y: fr.residuals, mode: 'lines', name: 'Residual', line: { color: '#be123c', width: 1 }, yaxis: 'y2' }
+                // 1. Metadata Panel
+                const metaPanel = document.getElementById('metadata-panel');
+                const metaItems = [
+                    { label: 'Files', value: (data.filenames || []).join(', ') },
+                    { label: 'Baseline', value: (data.settings?.baselineMode || 'SNIP').toUpperCase() },
+                    { label: 'SNIP Iterations', value: data.settings?.snip || 'N/A' },
+                    { label: 'Normalization', value: (data.settings?.norm || 'NONE').toUpperCase() },
+                    { label: 'Cosmic Ray Removal', value: data.settings?.cosmicRayRemoval ? 'ENABLED' : 'DISABLED' },
+                    { label: 'Total Peaks', value: data.totalPeaks || 0 }
                 ];
 
-                const fitLayout = {
-                    ...layout,
-                    height: 700,
-                    grid: { rows: 2, columns: 1, pattern: 'independent' },
-                    yaxis: { ...layout.yaxis, domain: [0.3, 1] },
-                    yaxis2: { ...layout.yaxis, domain: [0, 0.2], title: 'Δ' },
-                    xaxis: { ...layout.xaxis, anchor: 'y2' }
-                };
-
-                Plotly.newPlot('fit-plot-container', fitTraces, fitLayout, { responsive: true, displaylogo: false });
-
-                document.getElementById('fit-table-body').innerHTML = fr.peaks.map((p, i) => \`
-                    <tr>
-                        <td>\${i + 1}</td>
-                        <td>\${p.type.toUpperCase()}</td>
-                        <td>\${p.center.value.toFixed(2)}</td>
-                        <td>\${p.amplitude.value.toFixed(2)}</td>
-                        <td>\${p.fwhm.value.toFixed(2)}</td>
-                        <td>\${p.shape ? p.shape.value.toFixed(2) : '-'}</td>
-                    </tr>
+                metaPanel.innerHTML = metaItems.map(item => \`
+                    <div class="meta-item">
+                        <label>\${item.label}</label>
+                        <span>\${item.value}</span>
+                    </div>
                 \`).join('');
 
-                document.getElementById('fit-stats').innerHTML = \`
-                    R²: \${fr.r2.toFixed(4)} | Reduced χ²: \${fr.reducedChi2.toFixed(4)} | Iterations: \${fr.iterations}
-                \`;
-            }
+                // 2. Main Spectral Plot
+                if (typeof Plotly !== 'undefined' && data.files && data.files.length > 0) {
+                    const traces = data.files.map((f) => ({
+                        x: f.x,
+                        y: f.y,
+                        mode: 'lines',
+                        name: f.name,
+                        line: { width: 2 }
+                    }));
 
-            // 5. Replicate Section (Conditional)
-            if (data.replicateGroup) {
-                const repSec = document.getElementById('replicate-section');
-                const repPlot = document.getElementById('replicate-plot-container');
-                repSec.classList.add('active');
-                repPlot.style.display = 'block';
+                    const layout = {
+                        paper_bgcolor: '#ffffff',
+                        plot_bgcolor: '#ffffff',
+                        font: { family: 'Inter, sans-serif', color: '#0f172a' },
+                        margin: { l: 80, r: 40, t: 40, b: 80 },
+                        xaxis: { title: 'Raman Shift (cm⁻¹)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                        yaxis: { title: 'Intensity (a.u.)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                        legend: { x: 1.02, y: 1 },
+                        hovermode: 'x unified'
+                    };
 
-                const rg = data.replicateGroup;
-                const repTraces = [
-                    { x: rg.wavenumbers, y: rg.mean, mode: 'lines', name: 'Mean Spectrum', line: { color: '#0f172a', width: 2.5 } },
-                    { 
-                        x: [...rg.wavenumbers, ...[...rg.wavenumbers].reverse()],
-                        y: [...rg.mean.map((m, i) => m + rg.sd[i]), ...[...rg.mean.map((m, i) => m - rg.sd[i])].reverse()],
-                        fill: 'toself',
-                        fillcolor: 'rgba(15, 23, 42, 0.1)',
-                        line: { color: 'transparent' },
-                        name: 'SD Confidence Interval'
+                    Plotly.newPlot('plot-container', traces, layout, { responsive: true, displaylogo: false });
+                } else {
+                    document.getElementById('plot-container').style.display = 'none';
+                }
+
+                // 3. Peak Table
+                if (data.peaks && data.peaks.length > 0) {
+                    const tableBody = document.getElementById('peak-table-body');
+                    tableBody.innerHTML = data.peaks.map(p => \`
+                        <tr>
+                            <td>\${(p.x || 0).toFixed(2)}</td>
+                            <td>\${(p.y || 0).toFixed(2)}</td>
+                            <td>\${(p.fwhm || 0).toFixed(2)}</td>
+                            <td>\${(p.area || 0).toFixed(2)}</td>
+                            <td style="font-size: 10px; color: var(--text-muted); font-weight: 500;">\${p.fileName || 'N/A'}</td>
+                        </tr>
+                    \`).join('');
+                } else {
+                    document.getElementById('peak-section').style.display = 'none';
+                }
+
+                // 4. Fitting Section (Conditional)
+                if (data.fitResult && data.fitResult.peaks && data.fitResult.peaks.length > 0) {
+                    const fitSec = document.getElementById('fitting-section');
+                    const fitPlot = document.getElementById('fit-plot-container');
+                    fitSec.classList.add('active');
+                    fitPlot.style.display = 'block';
+
+                    const fr = data.fitResult;
+                    const fitTraces = [
+                        { x: fr.fitX, y: fr.fitX.map((_, i) => fr.fitY[i] + fr.residuals[i]), mode: 'markers', name: 'Experimental', marker: { color: '#94a3b8', size: 4, opacity: 0.5 } },
+                        { x: fr.fitX, y: fr.fitY, mode: 'lines', name: 'Cumulative Fit', line: { color: '#0f172a', width: 3 } },
+                        { x: fr.fitX, y: fr.residuals, mode: 'lines', name: 'Residual', line: { color: '#be123c', width: 1 }, yaxis: 'y2' }
+                    ];
+
+                    const fitLayout = {
+                        paper_bgcolor: '#ffffff',
+                        plot_bgcolor: '#ffffff',
+                        font: { family: 'Inter, sans-serif', color: '#0f172a' },
+                        margin: { l: 80, r: 40, t: 40, b: 80 },
+                        xaxis: { title: 'Raman Shift (cm⁻¹)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                        height: 700,
+                        grid: { rows: 2, columns: 1, pattern: 'independent' },
+                        yaxis: { domain: [0.3, 1], title: 'Intensity (a.u.)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' },
+                        yaxis2: { domain: [0, 0.2], title: 'Δ', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' },
+                        xaxis: { anchor: 'y2' }
+                    };
+
+                    if (typeof Plotly !== 'undefined') {
+                        Plotly.newPlot('fit-plot-container', fitTraces, fitLayout, { responsive: true, displaylogo: false });
                     }
-                ];
 
-                Plotly.newPlot('replicate-plot-container', repTraces, layout, { responsive: true, displaylogo: false });
+                    document.getElementById('fit-table-body').innerHTML = fr.peaks.map((p, i) => \`
+                        <tr>
+                            <td>\${i + 1}</td>
+                            <td>\${(p.type || 'N/A').toUpperCase()}</td>
+                            <td>\${(p.center?.value || 0).toFixed(2)}</td>
+                            <td>\${(p.amplitude?.value || 0).toFixed(2)}</td>
+                            <td>\${(p.fwhm?.value || 0).toFixed(2)}</td>
+                            <td>\${p.shape ? (p.shape.value || 0).toFixed(2) : '-'}</td>
+                        </tr>
+                    \`).join('');
 
-                document.getElementById('replicate-table-body').innerHTML = rg.peaks.map(p => \`
-                    <tr>
-                        <td>\${p.center.toFixed(2)}</td>
-                        <td>\${p.meanArea.toFixed(2)}</td>
-                        <td>\${p.sdArea.toFixed(2)}</td>
-                        <td style="color: \${p.rsdArea > 10 ? '#be123c' : 'inherit'}">\${p.rsdArea.toFixed(2)}%</td>
-                    </tr>
-                \`).join('');
+                    document.getElementById('fit-stats').innerHTML = \`
+                        R²: \${(fr.r2 || 0).toFixed(4)} | Reduced χ²: \${(fr.reducedChi2 || 0).toFixed(4)} | Iterations: \${fr.iterations || 0}
+                    \`;
+                }
+
+                // 5. Replicate Section (Conditional)
+                if (data.replicateGroup && data.replicateGroup.wavenumbers) {
+                    const repSec = document.getElementById('replicate-section');
+                    const repPlot = document.getElementById('replicate-plot-container');
+                    repSec.classList.add('active');
+                    repPlot.style.display = 'block';
+
+                    const rg = data.replicateGroup;
+                    const repTraces = [
+                        { x: rg.wavenumbers, y: rg.mean, mode: 'lines', name: 'Mean Spectrum', line: { color: '#0f172a', width: 2.5 } },
+                        { 
+                            x: [...rg.wavenumbers, ...[...rg.wavenumbers].reverse()],
+                            y: [...(rg.mean || []).map((m, i) => m + (rg.sd[i] || 0)), ...[...(rg.mean || []).map((m, i) => m - (rg.sd[i] || 0))].reverse()],
+                            fill: 'toself',
+                            fillcolor: 'rgba(15, 23, 42, 0.1)',
+                            line: { color: 'transparent' },
+                            name: 'SD Confidence Interval'
+                        }
+                    ];
+
+                    if (typeof Plotly !== 'undefined') {
+                        const repLayout = {
+                            paper_bgcolor: '#ffffff',
+                            plot_bgcolor: '#ffffff',
+                            font: { family: 'Inter, sans-serif', color: '#0f172a' },
+                            margin: { l: 80, r: 40, t: 40, b: 80 },
+                            xaxis: { title: 'Raman Shift (cm⁻¹)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                            yaxis: { title: 'Intensity (a.u.)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                            legend: { x: 1.02, y: 1 },
+                            hovermode: 'x unified'
+                        };
+                        Plotly.newPlot('replicate-plot-container', repTraces, repLayout, { responsive: true, displaylogo: false });
+                    }
+
+                    document.getElementById('replicate-table-body').innerHTML = (rg.peaks || []).map(p => \`
+                        <tr>
+                            <td>\${(p.center || 0).toFixed(2)}</td>
+                            <td>\${(p.meanArea || 0).toFixed(2)}</td>
+                            <td>\${(p.sdArea || 0).toFixed(2)}</td>
+                            <td style="color: \${p.rsdArea > 10 ? '#be123c' : 'inherit'}">\${(p.rsdArea || 0).toFixed(2)}%</td>
+                        </tr>
+                    \`).join('');
+                }
+            } catch (err) {
+                console.error('[Instant Raman] Report Bootstrapper Error:', err);
+                const container = document.querySelector('.container');
+                const errorDiv = document.createElement('div');
+                errorDiv.style.padding = '20px';
+                errorDiv.style.background = '#fee2e2';
+                errorDiv.style.color = '#991b1b';
+                errorDiv.style.border = '1px solid #f87171';
+                errorDiv.style.marginTop = '20px';
+                errorDiv.style.fontFamily = 'monospace';
+                errorDiv.innerHTML = '<strong>Report Rendering Error:</strong> ' + err.message;
+                container.insertBefore(errorDiv, container.firstChild);
             }
         })();
     </script>
 </body>
-</html>`;
+</html>\`;
