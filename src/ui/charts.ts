@@ -138,7 +138,7 @@ export class ChartRenderer {
     if (peaks.length > 0) {
       const peakAnnotations = this.createPeakAnnotations(peaks);
       layout.annotations.push(...peakAnnotations.labels);
-      traces.push(...peakAnnotations.lines);
+      layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
     if (range) layout.xaxis.range = range;
@@ -238,7 +238,7 @@ export class ChartRenderer {
     if (peaksToShow.length > 0) {
       const peakAnnotations = this.createPeakAnnotations(peaksToShow, waterfallOffset);
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
-      traces.push(...peakAnnotations.lines);
+      layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
 
@@ -304,7 +304,7 @@ export class ChartRenderer {
     if (peaksToShow.length > 0) {
       const peakAnnotations = this.createPeakAnnotations(peaksToShow);
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
-      traces.push(...peakAnnotations.lines);
+      layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
     }
 
     Plotly.react(container, traces, layout, CONFIG);
@@ -493,7 +493,12 @@ export class ChartRenderer {
           const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
           if (filteredPeaks.length > 0) {
             const peakAnnotations = (this as any).createPeakAnnotations(filteredPeaks);
-            traces.push(...peakAnnotations.lines.map((l: any) => ({ ...l, xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}` })));
+            layout.shapes = layout.shapes || [];
+            layout.shapes.push(...peakAnnotations.shapes.map((s: any) => ({
+              ...s,
+              xref: axisIdx ? `x${axisIdx}` : 'x',
+              yref: axisIdx ? `y${axisIdx} domain` : 'y domain'
+            })));
             layout.annotations = layout.annotations || [];
             layout.annotations.push(...peakAnnotations.labels.map((a: any) => ({ 
               ...a, 
@@ -544,7 +549,7 @@ export class ChartRenderer {
    * Generates peak annotation lines and labels with collision detection.
    */
   private static createPeakAnnotations(peaks: Peak[], yOffset: number = 0) {
-    const lines: any[] = [];
+    const shapes: any[] = [];
     const labels: any[] = [];
     
     // Sort peaks by wavenumber
@@ -555,8 +560,6 @@ export class ChartRenderer {
     const MIN_X_DIST = 45; // reduced slightly for tighter packing
     let maxStack = 0;
 
-    const maxY = sortedPeaks.length > 0 ? Math.max(...sortedPeaks.map(p => p.y)) : 0;
-
     sortedPeaks.forEach((p) => {
       let level = 0;
       while (level < levelLastX.length && p.x < levelLastX[level] + MIN_X_DIST) {
@@ -565,14 +568,21 @@ export class ChartRenderer {
       levelLastX[level] = p.x;
       if (level > maxStack) maxStack = level;
 
-      // Vertical line (muted dashed)
-      lines.push({
-        x: [p.x, p.x],
-        y: [p.y + yOffset, p.y + yOffset + (maxY * 0.02)],
-        mode: 'lines',
-        line: { color: '#94a3b8', width: 0.8, dash: 'dot' },
-        showlegend: false,
-        hoverinfo: 'skip'
+      // Vertical line (full height, dotted, muted)
+      shapes.push({
+        type: 'line',
+        xref: 'x',
+        yref: 'paper',
+        x0: p.x,
+        x1: p.x,
+        y0: 0,
+        y1: 1,
+        line: {
+          color: 'rgba(148, 163, 184, 0.4)',
+          width: 1,
+          dash: 'dot'
+        },
+        layer: 'below'
       });
 
       // Label (small, readable, offset vertically if stacked)
@@ -589,7 +599,7 @@ export class ChartRenderer {
       });
     });
 
-    return { lines, labels, maxStack };
+    return { shapes, labels, maxStack };
   }
 
   static renderSparkline(canvas: HTMLCanvasElement, data: SpectralData) {
