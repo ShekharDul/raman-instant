@@ -111,15 +111,9 @@ export class ChartRenderer {
       { x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' }
     ];
 
-    const annotations: any[] = isGrid ? [] : peaks.slice(0, 5).map(p => ({
-      x: p.x, y: p.y, text: `${p.x.toFixed(0)}`, showarrow: true, arrowhead: 0, ax: 0, ay: -15,
-      font: { size: 9, family: 'JetBrains Mono', color: '#000' },
-      bgcolor: '#fff', bordercolor: '#000', borderwidth: 1, borderpad: 2
-    }));
-    
     const baseLayout = isGrid ? GRID_LAYOUT : PAPER_LAYOUT;
     const layout = JSON.parse(JSON.stringify(baseLayout));
-    layout.annotations = annotations;
+    layout.annotations = [];
     
     // Apply Axis Styling
     layout.font.size = fontSize;
@@ -141,8 +135,10 @@ export class ChartRenderer {
       });
     }
 
-    if (showPeaks) {
-      const peakAnnotations = this.createPeakAnnotations(peaks);
+    if (showPeaks || !isGrid) {
+      // If showPeaks is false but we're in main view, show top 10 peaks as default indexing
+      const peaksToDisplay = showPeaks ? peaks : peaks.slice(0, 10);
+      const peakAnnotations = this.createPeakAnnotations(peaksToDisplay);
       layout.annotations.push(...peakAnnotations.labels);
       traces.push(...peakAnnotations.lines);
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
@@ -256,8 +252,9 @@ export class ChartRenderer {
         layout.yaxis.ticks = '';
       }
       
-      // Add per-trace labels on the right
-      layout.annotations = datasets.map((d) => {
+      // Add per-trace labels on the right without overwriting peak labels
+      layout.annotations = layout.annotations || [];
+      const traceLabels = datasets.map((d) => {
         const lastY = d.data.intensityData[d.data.intensityData.length - 1];
         return {
           x: 1, y: lastY, xref: 'paper', yref: 'y',
@@ -269,6 +266,7 @@ export class ChartRenderer {
           borderpad: 2
         };
       });
+      layout.annotations.push(...traceLabels);
       // Adjust margin for labels
       layout.margin.r = 140;
     }

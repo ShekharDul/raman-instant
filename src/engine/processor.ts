@@ -124,7 +124,7 @@ export class SpectralProcessor {
     };
 
     const maxY = getSafeMax(y);
-    const threshold = maxY * 0.05;
+    const threshold = maxY * 0.02; // Lowered threshold to 2% for better sensitivity
     const candidates: Peak[] = [];
     for (let i = 5; i < y.length - 5; i++) {
       if (y[i] > threshold && y[i] >= y[i - 1] && y[i] > y[i + 1]) {
@@ -166,7 +166,8 @@ export class SpectralProcessor {
       let best = candidates[i];
       for (let j = i + 1; j < candidates.length; j++) {
         if (used.has(j)) continue;
-        if (Math.abs(candidates[j].x - best.x) <= 5) {
+        // Reduced dedup distance to 2.5 cm-1 for higher resolution detection
+        if (Math.abs(candidates[j].x - best.x) <= 2.5) {
           if (candidates[j].y > best.y) best = candidates[j];
           used.add(j);
         }
@@ -176,7 +177,8 @@ export class SpectralProcessor {
     }
     const globalMax = getSafeMax(deduped.map(p => p.y));
     if (globalMax <= 0) return [];
-    return deduped.map(p => ({ ...p, relIntensity: parseFloat(((p.y / globalMax) * 100).toFixed(1)) })).sort((a, b) => b.y - a.y).slice(0, 20);
+    // Increased peak limit to 50 for comprehensive analysis
+    return deduped.map(p => ({ ...p, relIntensity: parseFloat(((p.y / globalMax) * 100).toFixed(1)) })).sort((a, b) => b.y - a.y).slice(0, 50);
   }
 
   /**
