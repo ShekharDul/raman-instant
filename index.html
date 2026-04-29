@@ -964,12 +964,21 @@
 
     </aside>
 
-    <main class="workspace">
+    <main class="workspace" style="position: relative;">
+      <div id="plot-controls-overlay" style="position: absolute; top: 24px; left: 24px; z-index: 100; display: flex; gap: 12px; pointer-events: none;">
+        <div class="glass-toggle" style="pointer-events: auto; background: rgba(13, 13, 18, 0.7); backdrop-filter: blur(8px); border: 1px solid var(--border-strong); padding: 6px 12px; display: flex; align-items: center; gap: 10px; border-radius: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+          <div style="font-size: 9px; font-weight: 800; color: var(--text-secondary); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;">Raw Baseline</div>
+          <label class="switch-premium" style="position: relative; display: inline-block; width: 32px; height: 16px;">
+            <input type="checkbox" id="check-show-unprocessed" checked style="opacity: 0; width: 0; height: 0;">
+            <span class="slider-premium"></span>
+          </label>
+        </div>
+      </div>
       <div id="workspace-container" class="workspace-grid grid-single">
         <div id="plot-main" class="plot-container"></div>
       </div>
-      <!-- Floating buttons removed to avoid overlapping graph -->
     </main>
+
     
     <aside class="data-panel">
       <div class="tab-header">
@@ -1053,10 +1062,6 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <input type="checkbox" id="check-export-transparent">
                   <label for="check-export-transparent" style="font-size: 10px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">TRANSPARENT PNG</label>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <input type="checkbox" id="check-show-unprocessed">
-                  <label for="check-show-unprocessed" style="font-size: 10px; font-weight: 700; cursor: pointer; color: var(--text-secondary);">SHOW UNPROCESSED DATA</label>
                 </div>
               </div>
             </div>
