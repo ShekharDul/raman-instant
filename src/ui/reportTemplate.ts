@@ -277,12 +277,12 @@ export const REPORT_TEMPLATE = `
                 { label: 'Total Peaks', value: data.totalPeaks }
             ];
 
-            metaPanel.innerHTML = metaItems.map(item => `
+            metaPanel.innerHTML = metaItems.map(item => \`
                 <div class="meta-item">
-                    <label>${item.label}</label>
-                    <span>${item.value}</span>
+                    <label>\${item.label}</label>
+                    <span>\${item.value}</span>
                 </div>
-            `).join('');
+            \`).join('');
 
             // 2. Main Spectral Plot
             const traces = data.files.map((f) => ({
@@ -308,15 +308,15 @@ export const REPORT_TEMPLATE = `
 
             // 3. Peak Table
             const tableBody = document.getElementById('peak-table-body');
-            tableBody.innerHTML = data.peaks.map(p => `
+            tableBody.innerHTML = data.peaks.map(p => \`
                 <tr>
-                    <td>${p.x.toFixed(2)}</td>
-                    <td>${p.y.toFixed(2)}</td>
-                    <td>${p.fwhm.toFixed(2)}</td>
-                    <td>${p.area.toFixed(2)}</td>
-                    <td style="font-size: 10px; color: var(--text-muted); font-weight: 500;">${p.fileName || 'N/A'}</td>
+                    <td>\${p.x.toFixed(2)}</td>
+                    <td>\${p.y.toFixed(2)}</td>
+                    <td>\${p.fwhm.toFixed(2)}</td>
+                    <td>\${p.area.toFixed(2)}</td>
+                    <td style="font-size: 10px; color: var(--text-muted); font-weight: 500;">\${p.fileName || 'N/A'}</td>
                 </tr>
-            `).join('');
+            \`).join('');
 
             // 4. Fitting Section (Conditional)
             if (data.fitResult) {
@@ -343,20 +343,20 @@ export const REPORT_TEMPLATE = `
 
                 Plotly.newPlot('fit-plot-container', fitTraces, fitLayout, { responsive: true, displaylogo: false });
 
-                document.getElementById('fit-table-body').innerHTML = fr.peaks.map((p, i) => `
+                document.getElementById('fit-table-body').innerHTML = fr.peaks.map((p, i) => \`
                     <tr>
-                        <td>${i + 1}</td>
-                        <td>${p.type.toUpperCase()}</td>
-                        <td>${p.center.value.toFixed(2)}</td>
-                        <td>${p.amplitude.value.toFixed(2)}</td>
-                        <td>${p.fwhm.value.toFixed(2)}</td>
-                        <td>${p.shape ? p.shape.value.toFixed(2) : '-'}</td>
+                        <td>\${i + 1}</td>
+                        <td>\${p.type.toUpperCase()}</td>
+                        <td>\${p.center.value.toFixed(2)}</td>
+                        <td>\${p.amplitude.value.toFixed(2)}</td>
+                        <td>\${p.fwhm.value.toFixed(2)}</td>
+                        <td>\${p.shape ? p.shape.value.toFixed(2) : '-'}</td>
                     </tr>
-                `).join('');
+                \`).join('');
 
-                document.getElementById('fit-stats').innerHTML = `
-                    R²: ${fr.r2.toFixed(4)} | Reduced χ²: ${fr.reducedChi2.toFixed(4)} | Iterations: ${fr.iterations}
-                `;
+                document.getElementById('fit-stats').innerHTML = \`
+                    R²: \${fr.r2.toFixed(4)} | Reduced χ²: \${fr.reducedChi2.toFixed(4)} | Iterations: \${fr.iterations}
+                \`;
             }
 
             // 5. Replicate Section (Conditional)
@@ -381,14 +381,14 @@ export const REPORT_TEMPLATE = `
 
                 Plotly.newPlot('replicate-plot-container', repTraces, layout, { responsive: true, displaylogo: false });
 
-                document.getElementById('replicate-table-body').innerHTML = rg.peaks.map(p => `
+                document.getElementById('replicate-table-body').innerHTML = rg.peaks.map(p => \`
                     <tr>
-                        <td>${p.center.toFixed(2)}</td>
-                        <td>${p.meanArea.toFixed(2)}</td>
-                        <td>${p.sdArea.toFixed(2)}</td>
-                        <td style="color: ${p.rsdArea > 10 ? '#be123c' : 'inherit'}">${p.rsdArea.toFixed(2)}%</td>
+                        <td>\${p.center.toFixed(2)}</td>
+                        <td>\${p.meanArea.toFixed(2)}</td>
+                        <td>\${p.sdArea.toFixed(2)}</td>
+                        <td style="color: \${p.rsdArea > 10 ? '#be123c' : 'inherit'}">\${p.rsdArea.toFixed(2)}%</td>
                     </tr>
-                `).join('');
+                \`).join('');
             }
         })();
     </script>
