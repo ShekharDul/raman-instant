@@ -780,137 +780,165 @@
         </div>
         <button id="btn-si-cal" class="btn-small" style="width: 100%;" title="Check active file for the standard Silicon peak at 520.7 cm⁻¹">RUN Si CAL CHECK</button>
       </div>
-      <div class="section">
-        <div class="section-title">Baseline Anchors</div>
-        <div id="anchor-list-container" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-            <thead style="position: sticky; top: 0; background: #fff; box-shadow: 0 1px 0 var(--border);">
-              <tr style="text-align: left; color: var(--text-muted); text-transform: uppercase;">
-                <th style="padding: 4px;">X (cm⁻¹)</th>
-                <th style="padding: 4px;">Y (Int)</th>
-                <th style="padding: 4px;"></th>
-              </tr>
-            </thead>
-            <tbody id="anchor-list-body"></tbody>
-          </table>
-        </div>
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>BASELINE MODE</span></div>
-          <div style="display: flex; gap: 4px;">
-            <button id="btn-mode-snip" class="btn-small active-compare" style="width: 50%;"
-              aria-label="Automatic SNIP baseline mode">AUTO (SNIP)</button>
-            <button id="btn-mode-manual" class="btn-small" style="width: 50%;"
-              aria-label="Manual baseline anchor mode">MANUAL</button>
-          </div>
-        </div>
-        <div id="snip-controls">
-          <div class="ctrl-group">
-            <div class="ctrl-label"><span>SNIP ITERATIONS</span><span class="ctrl-value" id="val-snip">25</span></div>
-            <input type="range" id="slider-snip" min="1" max="50" value="25" />
-          </div>
-        </div>
-        <div id="manual-controls" class="hidden">
-          <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 8px;">Click plot to add baseline anchors
-          </div>
-          <button id="btn-clear-anchors" class="btn-small" style="width: 100%; margin-bottom: 12px;">Clear All
-            Anchors</button>
+      <div class="tab-header">
+        <button id="btn-tab-plot" class="tab-btn active">PLOT SETTINGS</button>
+        <button id="btn-tab-files" class="tab-btn">FILE LIST</button>
+      </div>
 
-          <div
-            style="font-size: 9px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase;">
-            Current Anchors</div>
-          <div
-            style="background: var(--bg-surface); border: 1px solid var(--border); max-height: 150px; overflow-y: auto;">
-            <table style="width: 100%; font-size: 8px; border-collapse: collapse;">
-              <thead style="background: var(--bg-panel); position: sticky; top: 0;">
-                <tr style="text-align: left; border-bottom: 1px solid var(--border-strong);">
-                  <th style="padding: 4px 8px;">SHIFT</th>
-                  <th style="padding: 4px 8px;">INT</th>
-                  <th style="padding: 4px 8px;"></th>
-                </tr>
-              </thead>
-              <tbody id="anchor-list-body"></tbody>
-            </table>
-          </div>
-        </div>
-        <div id="stack-ctrl-group" class="ctrl-group hidden">
-          <div class="ctrl-label"><span>VERTICAL OFFSET</span><span class="ctrl-value" id="val-stack">0.0</span></div>
-          <input type="range" id="slider-stack" min="0" max="5.0" value="0" step="0.1" />
-          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="check-hide-y" />
-            <label for="check-hide-y" style="font-size: 9px; text-transform: uppercase;">Hide Y-Axis (Waterfall)</label>
-          </div>
-          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="check-direct-labels" />
-            <label for="check-direct-labels" style="font-size: 9px; text-transform: uppercase;">Direct Trace Labels</label>
-          </div>
-        </div>
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>WORKSPACE LAYOUT</span></div>
-          <select id="select-layout"
-            style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
-            <option value="single">Single Plot (Active)</option>
-            <option value="stacked">Waterfall (Stacked)</option>
-            <option value="grid2x1">2x1 Vertical Grid</option>
-            <option value="grid2x2">2x2 Matrix Grid</option>
-          </select>
-        </div>
-
-        <div class="ctrl-group">
-          <div class="ctrl-label"><span>SPECTRAL NORMALIZATION</span></div>
-          <select id="select-norm"
-            style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
-            <option value="none">Raw (Baseline Corrected)</option>
-            <option value="max">Max Intensity (Peak 1.0)</option>
-            <option value="area">Total Area (AUC 1.0)</option>
-            <option value="point">User Point (Target Peak)</option>
-          </select>
-          <div id="norm-point-info" class="hidden" style="margin-top: 8px; font-size: 9px; color: var(--text-muted);">
-            Click on the plot to select normalization reference.
-            <div id="norm-target-display" style="font-weight: 700; color: #000; margin-top: 4px;">Ref: --- cm⁻¹</div>
+      <div id="pane-plot" class="tab-pane active">
+        <!-- Empty State -->
+        <div id="plot-empty" class="pane-empty">
+          <div style="text-align:center; padding:40px 20px; opacity:0.6;">
+            <div style="font-size:32px; margin-bottom:16px;">⚙️</div>
+            <div style="font-size:12px; font-weight:700; color:#000;">NO FILES SELECTED</div>
+            <div style="font-size:10px; margin-top:8px;">Upload a file to configure plot settings</div>
           </div>
         </div>
 
-        <div class="ctrl-group" style="margin-top: 16px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 10px; font-weight: 700; text-transform: uppercase;">
-            <input type="checkbox" id="check-show-peaks" style="width: 14px; height: 14px;" />
-            <span>Show Peak Labels (Annotate)</span>
-          </label>
+        <div id="plot-content" class="hidden">
+          <div class="section">
+            <div class="section-title">Baseline Anchors</div>
+            <div id="anchor-list-container" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <thead style="position: sticky; top: 0; background: #fff; box-shadow: 0 1px 0 var(--border);">
+                  <tr style="text-align: left; color: var(--text-muted); text-transform: uppercase;">
+                    <th style="padding: 4px;">X (cm⁻¹)</th>
+                    <th style="padding: 4px;">Y (Int)</th>
+                    <th style="padding: 4px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="anchor-list-body"></tbody>
+              </table>
+            </div>
+            <div class="ctrl-group">
+              <div class="ctrl-label"><span>BASELINE MODE</span></div>
+              <div style="display: flex; gap: 4px;">
+                <button id="btn-mode-snip" class="btn-small active-compare" style="width: 50%;"
+                  aria-label="Automatic SNIP baseline mode">AUTO (SNIP)</button>
+                <button id="btn-mode-manual" class="btn-small" style="width: 50%;"
+                  aria-label="Manual baseline anchor mode">MANUAL</button>
+              </div>
+            </div>
+            <div id="snip-controls">
+              <div class="ctrl-group">
+                <div class="ctrl-label"><span>SNIP ITERATIONS</span><span class="ctrl-value" id="val-snip">25</span></div>
+                <input type="range" id="slider-snip" min="1" max="50" value="25" />
+              </div>
+            </div>
+            <div id="manual-controls" class="hidden">
+              <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 8px;">Click plot to add baseline anchors
+              </div>
+              <button id="btn-clear-anchors" class="btn-small" style="width: 100%; margin-bottom: 12px;">Clear All
+                Anchors</button>
+    
+              <div
+                style="font-size: 9px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase;">
+                Current Anchors</div>
+              <div
+                style="background: var(--bg-surface); border: 1px solid var(--border); max-height: 150px; overflow-y: auto;">
+                <table style="width: 100%; font-size: 8px; border-collapse: collapse;">
+                  <thead style="background: var(--bg-panel); position: sticky; top: 0;">
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border-strong);">
+                      <th style="padding: 4px 8px;">SHIFT</th>
+                      <th style="padding: 4px 8px;">INT</th>
+                      <th style="padding: 4px 8px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="anchor-list-body"></tbody>
+                </table>
+              </div>
+            </div>
+            <div id="stack-ctrl-group" class="ctrl-group hidden">
+              <div class="ctrl-label"><span>VERTICAL OFFSET</span><span class="ctrl-value" id="val-stack">0.0</span></div>
+              <input type="range" id="slider-stack" min="0" max="5.0" value="0" step="0.1" />
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="check-hide-y" />
+                <label for="check-hide-y" style="font-size: 9px; text-transform: uppercase;">Hide Y-Axis (Waterfall)</label>
+              </div>
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="check-direct-labels" />
+                <label for="check-direct-labels" style="font-size: 9px; text-transform: uppercase;">Direct Trace Labels</label>
+              </div>
+            </div>
+            <div class="ctrl-group">
+              <div class="ctrl-label"><span>WORKSPACE LAYOUT</span></div>
+              <select id="select-layout"
+                style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
+                <option value="single">Single Plot (Active)</option>
+                <option value="stacked">Waterfall (Stacked)</option>
+                <option value="grid2x1">2x1 Vertical Grid</option>
+                <option value="grid2x2">2x2 Matrix Grid</option>
+              </select>
+            </div>
+    
+            <div class="ctrl-group">
+              <div class="ctrl-label"><span>SPECTRAL NORMALIZATION</span></div>
+              <select id="select-norm"
+                style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
+                <option value="none">Raw (Baseline Corrected)</option>
+                <option value="max">Max Intensity (Peak 1.0)</option>
+                <option value="area">Total Area (AUC 1.0)</option>
+                <option value="point">User Point (Target Peak)</option>
+              </select>
+              <div id="norm-point-info" class="hidden" style="margin-top: 8px; font-size: 9px; color: var(--text-muted);">
+                Click on the plot to select normalization reference.
+                <div id="norm-target-display" style="font-weight: 700; color: #000; margin-top: 4px;">Ref: --- cm⁻¹</div>
+              </div>
+            </div>
+    
+            <div class="ctrl-group" style="margin-top: 16px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 10px; font-weight: 700; text-transform: uppercase;">
+                <input type="checkbox" id="check-show-peaks" style="width: 14px; height: 14px;" />
+                <span>Show Peak Labels (Annotate)</span>
+              </label>
+            </div>
+          </div>
+    
+          <div class="section" style="background: rgba(45, 212, 191, 0.03);">
+            <div class="section-title">COLLECTIVE ANALYSIS</div>
+            <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+              <button id="btn-group-replicates" class="btn-small" style="flex: 3; border: 1px solid var(--laser); color: var(--laser); padding: 8px; background: rgba(45, 212, 191, 0.05);" title="Averages all selected (COMP) files into a single mean ± SD trace">
+                STATISTICAL AVERAGE (MEAN ± SD)
+              </button>
+              <button id="btn-undo-replicates" class="btn-small hidden" 
+                      style="flex: 1; border: 1px solid var(--text-dim); color: var(--text-dim); padding: 8px; font-weight: 900;" 
+                      onmouseover="this.style.borderColor='var(--text-secondary)'; this.style.color='var(--text-secondary)';"
+                      onmouseout="this.style.borderColor='var(--text-dim)'; this.style.color='var(--text-dim)';"
+                      title="Exit statistical view and return to previous layout">
+                EXIT STATS
+              </button>
+            </div>
+          </div>
+    
+          <div class="section hidden" style="background: rgba(59, 130, 246, 0.03);">
+            <div class="section-title">PEAK FITTING (LM)</div>
+            <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+              Select a region by dragging on the plot to start simultaneous multi-peak fitting.
+            </p>
+            <div class="ctrl-group" style="margin-bottom: 8px;">
+              <div class="ctrl-label"><span>PROFILE</span></div>
+              <select id="select-fit-type" style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
+                <option value="lorentzian">LORENTZIAN (DEFAULT)</option>
+                <option value="gaussian">GAUSSIAN</option>
+              </select>
+            </div>
+            <button id="btn-exit-fit" class="btn-small hidden" style="width: 100%; border: 1px solid #3b82f6; color: #3b82f6; font-weight: 700;">EXIT FITTING MODE</button>
+          </div>
         </div>
       </div>
 
-      <div class="section" style="background: rgba(45, 212, 191, 0.03);">
-        <div class="section-title">COLLECTIVE ANALYSIS</div>
-        <div style="display: flex; gap: 4px; margin-bottom: 12px;">
-          <button id="btn-group-replicates" class="btn-small" style="flex: 3; border: 1px solid var(--laser); color: var(--laser); padding: 8px; background: rgba(45, 212, 191, 0.05);" title="Averages all selected (COMP) files into a single mean ± SD trace">
-            STATISTICAL AVERAGE (MEAN ± SD)
-          </button>
-          <button id="btn-undo-replicates" class="btn-small hidden" 
-                  style="flex: 1; border: 1px solid var(--text-dim); color: var(--text-dim); padding: 8px; font-weight: 900;" 
-                  onmouseover="this.style.borderColor='var(--text-secondary)'; this.style.color='var(--text-secondary)';"
-                  onmouseout="this.style.borderColor='var(--text-dim)'; this.style.color='var(--text-dim)';"
-                  title="Exit statistical view and return to previous layout">
-            EXIT STATS
-          </button>
+      <div id="pane-files" class="tab-pane">
+        <!-- Empty State -->
+        <div id="files-empty" class="pane-empty">
+          <div style="text-align:center; padding:40px 20px; opacity:0.6;">
+            <div style="font-size:32px; margin-bottom:16px;">📂</div>
+            <div style="font-size:12px; font-weight:700; color:#000;">NO FILES UPLOADED</div>
+            <div style="font-size:10px; margin-top:8px;">Select spectral data to begin</div>
+          </div>
         </div>
+        <div class="file-list" id="file-list"></div>
       </div>
 
-      <div class="section hidden" style="background: rgba(59, 130, 246, 0.03);">
-        <div class="section-title">PEAK FITTING (LM)</div>
-        <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-          Select a region by dragging on the plot to start simultaneous multi-peak fitting.
-        </p>
-        <div class="ctrl-group" style="margin-bottom: 8px;">
-          <div class="ctrl-label"><span>PROFILE</span></div>
-          <select id="select-fit-type" style="width: 100%; padding: 4px; font-family: var(--font-mono); font-size: 10px; background: #fff; border: 1px solid var(--border);">
-            <option value="lorentzian">LORENTZIAN (DEFAULT)</option>
-            <option value="gaussian">GAUSSIAN</option>
-          </select>
-        </div>
-        <button id="btn-exit-fit" class="btn-small hidden" style="width: 100%; border: 1px solid #3b82f6; color: #3b82f6; font-weight: 700;">EXIT FITTING MODE</button>
-      </div>
-
-
-      <div class="file-list" id="file-list"></div>
     </aside>
 
     <main class="workspace">

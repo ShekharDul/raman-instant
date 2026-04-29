@@ -255,6 +255,13 @@ function updateUI() {
     UI.text('ratio-p1', state.ratioSelection.p1 ? `${state.ratioSelection.p1.x.toFixed(1)} cm⁻¹` : '---');
     UI.text('ratio-p2', '---');
   }
+
+  // Toggle Left Sidebar Empty States
+  const hasFiles = state.files.size > 0;
+  UI.get('plot-empty')?.classList.toggle('hidden', hasFiles);
+  UI.get('plot-content')?.classList.toggle('hidden', !hasFiles);
+  UI.get('files-empty')?.classList.toggle('hidden', hasFiles);
+  UI.get('file-list')?.classList.toggle('hidden', !hasFiles);
 }
 
 function renderFileList() {
@@ -799,6 +806,21 @@ function initSliders() {
     UI.get('btn-tab-analysis')?.classList.remove('active');
     UI.get('pane-export')?.classList.add('active');
     UI.get('pane-analysis')?.classList.remove('active');
+  });
+
+  // Left Sidebar Tab Logic
+  UI.get('btn-tab-plot')?.addEventListener('click', () => {
+    UI.get('btn-tab-plot')?.classList.add('active');
+    UI.get('btn-tab-files')?.classList.remove('active');
+    UI.get('pane-plot')?.classList.add('active');
+    UI.get('pane-files')?.classList.remove('active');
+  });
+
+  UI.get('btn-tab-files')?.addEventListener('click', () => {
+    UI.get('btn-tab-files')?.classList.add('active');
+    UI.get('btn-tab-plot')?.classList.remove('active');
+    UI.get('pane-files')?.classList.add('active');
+    UI.get('pane-plot')?.classList.remove('active');
   });
 }
 
