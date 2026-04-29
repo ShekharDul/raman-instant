@@ -146,6 +146,11 @@ export class ChartRenderer {
     
     if (range) layout.xaxis.range = range;
 
+    // X-Axis Boundary Enforcement
+    const xData = raw.wavenumberData;
+    layout.xaxis.minallowed = Math.min(...xData);
+    layout.xaxis.maxallowed = Math.max(...xData);
+
     if (ratio && ratio.p1 && ratio.p2) {
       const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
       const areaRatio = (ratio.p1.area / ratio.p2.area).toFixed(3);
@@ -246,6 +251,11 @@ export class ChartRenderer {
     }
 
 
+    // Multi-trace X boundary enforcement
+    const allX = datasets.flatMap(d => d.data.wavenumberData);
+    layout.xaxis.minallowed = Math.min(...allX);
+    layout.xaxis.maxallowed = Math.max(...allX);
+
     if (isWaterfall) {
       layout.yaxis.title.text = '<b>Offset Intensity (a.u.)</b>';
       if (hideY) {
@@ -311,6 +321,10 @@ export class ChartRenderer {
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
     }
 
+
+    // X-Axis Boundary Enforcement
+    layout.xaxis.minallowed = Math.min(...x);
+    layout.xaxis.maxallowed = Math.max(...x);
 
     Plotly.react(container, traces, layout, CONFIG);
   }
