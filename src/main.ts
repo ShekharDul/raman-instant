@@ -396,11 +396,12 @@ function renderPlots() {
     div.className = 'plot-container';
     container.appendChild(div);
     requestAnimationFrame(() => {
-      const statsPeaks = state.replicateGroup?.peakStats.map(ps => ({
+      const statsPeaks: Peak[] = state.replicateGroup?.peakStats.map(ps => ({
         x: ps.xMean,
         y: ps.yMean,
         fwhm: ps.fwhmMean,
-        area: ps.areaMean
+        relIntensity: 0,
+        area: 0
       })) || [];
       ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, state.showPeakAnnotations ? statsPeaks : []);
     });
