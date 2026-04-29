@@ -1,4 +1,6 @@
 import { REPORT_TEMPLATE } from './reportTemplate.ts';
+// @ts-ignore
+import plotlyCartesian from 'plotly.js-cartesian-dist-min/plotly-cartesian.min.js?raw';
 
 export interface ReportData {
   timestamp: string;
@@ -17,9 +19,10 @@ export class ReportGenerator {
     // 1. Serialize Data
     const jsonData = JSON.stringify(data);
     
-    // 2. Inject Data into Template
-    // Replace the placeholder comment with the actual JSON
-    let finalHtml = REPORT_TEMPLATE.replace('/* DATA_INJECTION_POINT */', jsonData);
+    // 2. Inject Data and Plotly into Template
+    let finalHtml = REPORT_TEMPLATE
+      .replace('/* DATA_INJECTION_POINT */', jsonData)
+      .replace('/* PLOTLY_INJECTION_POINT */', plotlyCartesian);
     
     // 3. Create Blob and Trigger Download
     const blob = new Blob([finalHtml], { type: 'text/html' });

@@ -1,10 +1,3 @@
-/**
- * Instant Raman — Report Template
- * Self-contained HTML structure with embedded Plotly Cartesian and Paper-White styling.
- */
-// @ts-ignore
-import plotlyCartesian from 'plotly.js-cartesian-dist-min/plotly-cartesian.min.js?raw';
-
 export const REPORT_TEMPLATE = `
 <!DOCTYPE html>
 <html lang="en">
@@ -67,7 +60,6 @@ export const REPORT_TEMPLATE = `
             color: var(--text-muted);
         }
 
-        /* Metadata Panel */
         .metadata-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -203,7 +195,7 @@ export const REPORT_TEMPLATE = `
     </div>
 
     <script id="plotly-js">
-        \${plotlyCartesian}
+        /* PLOTLY_INJECTION_POINT */
     </script>
 
     <script id="raman-data" type="application/json">
@@ -213,12 +205,11 @@ export const REPORT_TEMPLATE = `
     <script id="bootstrapper">
         (function() {
             const dataEl = document.getElementById('raman-data');
+            if (!dataEl) return;
             const data = JSON.parse(dataEl.textContent);
             
-            // Set Date
             document.getElementById('report-date').textContent = new Date(data.timestamp).toLocaleString();
 
-            // Populate Metadata
             const metaPanel = document.getElementById('metadata-panel');
             const metaItems = [
                 { label: 'Files', value: data.filenames.join(', ') },
@@ -234,7 +225,6 @@ export const REPORT_TEMPLATE = `
                 </div>
             \`).join('');
 
-            // Populate Table
             const tableBody = document.getElementById('peak-table-body');
             tableBody.innerHTML = data.peaks.map(p => \`
                 <tr>
@@ -246,8 +236,7 @@ export const REPORT_TEMPLATE = `
                 </tr>
             \`).join('');
 
-            // Render Plot
-            const traces = data.files.map((f, i) => ({
+            const traces = data.files.map((f) => ({
                 x: f.x,
                 y: f.y,
                 mode: 'lines',
@@ -260,22 +249,8 @@ export const REPORT_TEMPLATE = `
                 plot_bgcolor: '#ffffff',
                 font: { family: 'Inter, sans-serif', color: '#0f172a' },
                 margin: { l: 80, r: 40, t: 40, b: 80 },
-                xaxis: { 
-                    title: 'Raman Shift (cm⁻¹)', 
-                    linecolor: '#0f172a', 
-                    linewidth: 2, 
-                    mirror: true,
-                    ticks: 'outside',
-                    gridcolor: '#f1f5f9'
-                },
-                yaxis: { 
-                    title: 'Intensity (a.u.)', 
-                    linecolor: '#0f172a', 
-                    linewidth: 2, 
-                    mirror: true,
-                    ticks: 'outside',
-                    gridcolor: '#f1f5f9'
-                },
+                xaxis: { title: 'Raman Shift (cm⁻¹)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
+                yaxis: { title: 'Intensity (a.u.)', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside', gridcolor: '#f1f5f9' },
                 legend: { x: 1.02, y: 1 },
                 hovermode: 'x unified'
             };
@@ -284,5 +259,4 @@ export const REPORT_TEMPLATE = `
         })();
     </script>
 </body>
-</html>
-\`;
+</html>`;

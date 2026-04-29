@@ -199,7 +199,7 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   let replacedCount = 0;
   if (state.cosmicRayRemoval) {
     const result = SpectralProcessor.rejectCosmicRays(raw);
-    cleaned = result.cleaned;
+    cleaned = { ...raw, intensityData: result.cleaned.intensityData };
     replacedCount = result.replacedCount;
     
     if (replacedCount > 0) {

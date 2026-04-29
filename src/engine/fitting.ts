@@ -5,8 +5,7 @@
  */
 
 // @ts-ignore
-import lm from 'ml-levenberg-marquardt';
-import { Matrix, inverse } from 'ml-matrix';
+import { levenbergMarquardt as lm } from 'ml-levenberg-marquardt';
 
 export interface FitParameter {
   value: number;
@@ -134,7 +133,7 @@ export class FittingEngine {
 
     const options = {
       damping: 1.5,
-      initialParameters: initialParams,
+      initialValues: initialParams,
       maxIterations: 100,
       errorTolerance: 1e-6,
       minValues,
