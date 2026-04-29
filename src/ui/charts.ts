@@ -578,8 +578,8 @@ export class ChartRenderer {
         y0: 0,
         y1: 1,
         line: {
-          color: 'rgba(148, 163, 184, 0.4)',
-          width: 1,
+          color: 'rgba(71, 85, 105, 0.7)',
+          width: 1.2,
           dash: 'dot'
         },
         layer: 'below'

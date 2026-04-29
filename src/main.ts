@@ -50,6 +50,7 @@ interface AppState {
   axisFontSize: number;
   showAxisBox: boolean;
   showDirectLabels: boolean;
+  viewHistory: ([number, number] | null)[];
 }
 
 // ── State ──
@@ -73,7 +74,8 @@ const state: AppState = {
   exportTransparent: false,
   axisFontSize: 16,
   showAxisBox: true,
-  showDirectLabels: false
+  showDirectLabels: false,
+  viewHistory: []
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -95,7 +97,25 @@ initLayoutControls();
 initNormalization();
 initRatioCalculator();
 initCalibration();
+initViewControls();
 setTimeout(() => updateUI(), 150);
+
+function initViewControls() {
+  UI.get('btn-undo-view')?.addEventListener('click', () => {
+    if (state.viewHistory.length > 0) {
+      state.viewRange = state.viewHistory.pop() || null;
+      updateUI();
+    }
+  });
+
+  UI.get('btn-reset-view')?.addEventListener('click', () => {
+    if (state.viewRange) {
+      state.viewHistory.push([...state.viewRange]);
+    }
+    state.viewRange = null;
+    updateUI();
+  });
+}
 
 function initCalibration() {
   UI.get('btn-si-cal')?.addEventListener('click', () => {
@@ -465,6 +485,30 @@ function renderPlots() {
 function attachManualBaselineListener(el: HTMLElement) {
   const plotEl = el as any;
   if (plotEl) {
+    plotEl.on('plotly_relayout', (data: any) => {
+      // Handle Zoom/Pan
+      if (data['xaxis.range[0]'] !== undefined) {
+        // Save current view to history before updating if it's a significant change
+        if (!state.viewRange || Math.abs(state.viewRange[0] - data['xaxis.range[0]']) > 1) {
+          state.viewHistory.push(state.viewRange ? [...state.viewRange] : null);
+          if (state.viewHistory.length > 20) state.viewHistory.shift();
+        }
+        state.viewRange = [data['xaxis.range[0]'], data['xaxis.range[1]']];
+      } 
+      // Handle Double-Click / Reset
+      else if (data['xaxis.autorange'] === true || data['autosize'] === true) {
+        if (state.viewRange) {
+          state.viewHistory.push([...state.viewRange]);
+        }
+        state.viewRange = null;
+        // Fix "Flat Line" issue: force Y-axis to also reset to auto-range
+        const Plotly = (window as any).Plotly;
+        if (Plotly) {
+          Plotly.relayout(plotEl, { 'yaxis.autorange': true });
+        }
+      }
+    });
+
     plotEl.on('plotly_click', (data: any) => {
       if (state.baselineMode === 'manual') {
         const { x, y } = data.points[0];
