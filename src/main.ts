@@ -323,20 +323,12 @@ function updateUI() {
     }
     
     UI.get('cal-status-container')?.classList.remove('hidden');
-    
-    // Apply background color to peak table container
-    const peakWrap = UI.get('peaks-list-body')?.parentElement?.parentElement;
-    if (peakWrap) {
-      peakWrap.style.background = `rgba(${hexToRgb(active.color)}, 0.04)`;
-    }
   } else {
     UI.get('cal-status-container')?.classList.add('hidden');
     if (app) {
       app.style.removeProperty('--active-color');
       app.style.removeProperty('--active-color-rgb');
     }
-    const peakWrap = UI.get('peaks-list-body')?.parentElement?.parentElement;
-    if (peakWrap) peakWrap.style.background = '';
   }
 
   // Collective Analysis Buttons

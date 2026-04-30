@@ -148,8 +148,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .file-item:hover { background: var(--bg-surface); }
 .file-item.active { 
-  background: rgba(var(--active-color-rgb, 45, 212, 191), 0.08); 
-  border-left: 2px solid var(--active-color, var(--laser)); 
+  background: rgba(var(--active-color-rgb, 45, 212, 191), 0.15); 
+  border-left: 4px solid var(--active-color, var(--laser)); 
 }
 .file-item.reference { border-right: 2px solid var(--reference); }
 
@@ -290,6 +290,21 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .peak-table tr:hover td { color: var(--text-primary); background: var(--bg-surface); }
+
+/* Dynamic Selection Sync */
+.peak-table tr.selected td {
+  background: rgba(var(--active-color-rgb, 45, 212, 191), 0.12) !important;
+  color: var(--active-color, #000) !important;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(var(--active-color-rgb), 0.3);
+}
+
+.peak-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  transition: background 0.3s ease;
+  border-top: 3px solid var(--active-color, transparent);
+}
 
 /* ── Export Controls (Bottom of Data Panel) ── */
 .export-section {
