@@ -714,6 +714,7 @@ function attachManualBaselineListener(el: HTMLElement) {
         }
       }
       else if (state.labelMode) {
+        if (!data || !data.points || data.points.length === 0) return;
         const { x, y } = data.points[0];
         state.pendingLabel = { x, y };
         

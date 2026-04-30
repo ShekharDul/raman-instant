@@ -1116,20 +1116,6 @@
       
       <div id="workspace-container" class="workspace-grid grid-single" style="flex: 1; min-height: 0;">
         <div id="plot-main" class="plot-container"></div>
-        <div id="modal-label" class="modal-overlay centered">
-          <div class="modal-content">
-            <div style="font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 16px;">ANNOTATION TEXT</div>
-            <div style="margin-bottom: 24px;">
-              <input type="text" id="input-label-text" placeholder="e.g. Si Peak (520.7 cm⁻¹)" 
-                     style="width: 100%; padding: 12px; border: 1px solid var(--border-strong); border-radius: 2px; font-size: 14px; outline: none; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); transition: border-color 0.2s;">
-            </div>
-            <div style="display: flex; gap: 8px; justify-content: flex-end;">
-              <button id="btn-label-cancel" class="btn-small" style="padding: 8px 16px; border: none; background: transparent;">CANCEL</button>
-              <button id="btn-label-save" class="btn-small active-compare" style="padding: 8px 24px; border-radius: 2px; font-weight: 700;">ADD LABEL</button>
-            </div>
-          </div>
-        </div>
-
         <div id="toast-container"></div>
       </div>
     </main>
@@ -1378,6 +1364,19 @@
     </div>
   </div>
 
+  <div id="modal-label" class="modal-overlay centered">
+    <div class="modal-content">
+      <div style="font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 16px;">ANNOTATION TEXT</div>
+      <div style="margin-bottom: 24px;">
+        <input type="text" id="input-label-text" placeholder="e.g. Si Peak (520.7 cm⁻¹)" 
+               style="width: 100%; padding: 12px; border: 1px solid var(--border-strong); border-radius: 2px; font-size: 14px; outline: none; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-sans); transition: border-color 0.2s;">
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button id="btn-label-cancel" class="btn-small" style="padding: 8px 16px; border: none; background: transparent;">CANCEL</button>
+        <button id="btn-label-save" class="btn-small active-compare" style="padding: 8px 24px; border-radius: 2px; font-weight: 700;">ADD LABEL</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
