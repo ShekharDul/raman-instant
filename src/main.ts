@@ -59,6 +59,7 @@ interface AppState {
   fittingMode: boolean;
   selectingROI: boolean;
   labelMode: boolean;
+  pendingLabel: { x: number; y: number } | null;
 }
 
 // ── State ──
@@ -88,7 +89,8 @@ const state: AppState = {
   fitResult: null,
   fittingMode: false,
   selectingROI: false,
-  labelMode: false
+  labelMode: false,
+  pendingLabel: null as { x: number; y: number } | null
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -713,20 +715,14 @@ function attachManualBaselineListener(el: HTMLElement) {
       }
       else if (state.labelMode) {
         const { x, y } = data.points[0];
-        const text = prompt("Enter label text:");
-        if (text) {
-          const active = state.files.get(state.activeFileId || '');
-          if (active) {
-            active.labels.push({
-              id: `label-${Math.random().toString(36).slice(2, 9)}`,
-              x, y, text
-            });
-            state.labelMode = false;
-            const btn = UI.get('btn-label-mode') as HTMLButtonElement;
-            btn.innerText = 'ADD CUSTOM LABEL';
-            btn.classList.remove('active-compare');
-            updateUI();
-          }
+        state.pendingLabel = { x, y };
+        
+        const modal = UI.get('modal-label');
+        const input = UI.get('input-label-text') as HTMLInputElement;
+        if (modal && input) {
+          modal.classList.add('active');
+          input.value = '';
+          input.focus();
         }
       }
     });
@@ -1137,6 +1133,45 @@ function initLabelControls() {
       btn.classList.remove('active-compare');
     }
   });
+
+  UI.get('btn-label-save')?.addEventListener('click', saveLabel);
+  UI.get('btn-label-cancel')?.addEventListener('click', closeLabelModal);
+  
+  UI.get('input-label-text')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveLabel();
+    if (e.key === 'Escape') closeLabelModal();
+  });
+}
+
+function saveLabel() {
+  const input = UI.get('input-label-text') as HTMLInputElement;
+  const text = input?.value.trim();
+  const active = state.files.get(state.activeFileId || '');
+  
+  if (text && active && state.pendingLabel) {
+    active.labels.push({
+      id: `label-${Math.random().toString(36).slice(2, 9)}`,
+      x: state.pendingLabel.x,
+      y: state.pendingLabel.y,
+      text
+    });
+    
+    state.labelMode = false;
+    const btn = UI.get('btn-label-mode') as HTMLButtonElement;
+    if (btn) {
+      btn.innerText = 'ADD CUSTOM LABEL';
+      btn.classList.remove('active-compare');
+    }
+    
+    closeLabelModal();
+    updateUI();
+  }
+}
+
+function closeLabelModal() {
+  const modal = UI.get('modal-label');
+  if (modal) modal.classList.remove('active');
+  state.pendingLabel = null;
 }
 
 function reprocessActive() {
