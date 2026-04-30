@@ -276,16 +276,29 @@ export const REPORT_TEMPLATE = `
                     const tbody = document.getElementById(\`tbody-\${snap.id}\`);
                     
                     if (snap.tableType === 'peaks') {
-                        thead.innerHTML = '<tr><th>Center (cm⁻¹)</th><th>Intensity</th><th>FWHM</th><th>Area</th><th>File</th></tr>';
-                        tbody.innerHTML = snap.tableData.map(p => \`
-                            <tr>
-                                <td>\${(p.x || 0).toFixed(2)}</td>
-                                <td>\${(p.y || 0).toFixed(2)}</td>
-                                <td>\${(p.fwhm || 0).toFixed(2)}</td>
-                                <td>\${(p.area || 0).toFixed(2)}</td>
-                                <td style="font-size: 9px; opacity:0.6;">\${p.fileName || '-'}</td>
-                            </tr>
-                        \`).join('');
+                        const tableContainer = document.getElementById(\`table-\${snap.id}\`).parentElement;
+                        tableContainer.innerHTML = '';
+                        snap.tableData.forEach(group => {
+                            const groupTitle = document.createElement('div');
+                            groupTitle.style.cssText = 'font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 32px 0 12px; border-left: 3px solid var(--accent); padding-left: 12px;';
+                            groupTitle.textContent = group.fileName;
+                            const table = document.createElement('table');
+                            table.innerHTML = \\\`
+                                <thead><tr><th>Center (cm⁻¹)</th><th>Intensity</th><th>FWHM</th><th>Area</th></tr></thead>
+                                <tbody>
+                                    \\\${group.peaks.length > 0 ? group.peaks.map(p => \\\`
+                                        <tr>
+                                            <td>\\\${(p.x || 0).toFixed(2)}</td>
+                                            <td>\\\${(p.y || 0).toFixed(2)}</td>
+                                            <td>\\\${(p.fwhm || 0).toFixed(2)}</td>
+                                            <td>\\\${(p.area || 0).toFixed(2)}</td>
+                                        </tr>
+                                    \\\`).join('') : '<tr><td colspan="4" style="text-align:center; opacity:0.5;">No peaks selected.</td></tr>'}
+                                </tbody>
+                            \\\`;
+                            tableContainer.appendChild(groupTitle);
+                            tableContainer.appendChild(table);
+                        });
                     } else if (snap.tableType === 'fit') {
                         thead.innerHTML = '<tr><th>Peak #</th><th>Center</th><th>Amplitude</th><th>FWHM</th><th>Shape</th></tr>';
                         tbody.innerHTML = snap.tableData.map((p, i) => \`

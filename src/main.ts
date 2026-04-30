@@ -1517,7 +1517,12 @@ async function saveSnapshot(title: string) {
     const fileIdsToRender = new Set(state.comparisonIds);
     if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
     const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
-    tableData = filesToRender.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
+    
+    // Group peaks by filename
+    tableData = filesToRender.map(f => ({
+      fileName: f.name,
+      peaks: f.peaks.filter(p => f.selectedPeakX.has(p.x))
+    }));
   }
 
   const snapshot: import('./ui/reportGenerator.ts').Snapshot = {
