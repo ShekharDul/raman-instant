@@ -329,6 +329,7 @@ export const REPORT_TEMPLATE = `
                                 Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
                             });
                         } else {
+                            // Single/Stacked/Replicate Rendering
                             const layout = { ...baseLayout };
                             
                             if (snap.ratio) {
