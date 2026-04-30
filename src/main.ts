@@ -1535,12 +1535,18 @@ async function saveSnapshot(title: string) {
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
     type = 'replicate';
     tableType = 'replicate';
-    tableData = state.replicateGroup.peakStats.map(ps => ({
-      center: ps.xMean,
-      meanArea: ps.yMean,
-      sdArea: ps.ySD,
-      rsdArea: (ps.ySD / ps.yMean) * 100
-    }));
+    // Robust Fix: Only capture peaks that are currently selected in the UI
+    tableData = state.replicateGroup.peakStats
+      .filter(ps => state.replicateGroup!.selectedPeakX.has(ps.xMean))
+      .map(ps => ({
+        center: ps.xMean,
+        centerSD: ps.xSD,
+        meanArea: ps.yMean,
+        sdArea: ps.ySD,
+        rsdArea: (ps.ySD / ps.yMean) * 100,
+        fwhm: ps.fwhmMean,
+        fwhmSD: ps.fwhmSD
+      }));
   } else if (state.fittingMode && state.fitResult) {
     type = 'fitting';
     tableType = 'fit';
