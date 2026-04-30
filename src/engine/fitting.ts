@@ -18,6 +18,7 @@ export interface PeakFit {
   fwhm: FitParameter;
   shape?: FitParameter; // For pseudo-Voigt (eta)
   type: 'lorentzian' | 'gaussian' | 'voigt';
+  yFit: number[];
 }
 
 export interface FitResult {
@@ -158,7 +159,15 @@ export class FittingEngine {
           center: { value: fittedParams[idx + 1], error: 0 },
           fwhm: { value: fittedParams[idx + 2], error: 0 },
           shape: type === 'voigt' ? { value: fittedParams[idx + 3], error: 0 } : undefined,
-          type
+          type,
+          yFit: x.map(xv => {
+            const a = fittedParams[idx];
+            const c = fittedParams[idx + 1];
+            const w = fittedParams[idx + 2];
+            if (type === 'voigt') return this.voigt(xv, a, c, w, fittedParams[idx + 3]);
+            if (type === 'gaussian') return this.gaussian(xv, a, c, w);
+            return this.lorentzian(xv, a, c, w);
+          })
         });
       }
 

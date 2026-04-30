@@ -8,7 +8,7 @@ import { UniversalParser } from './parsers/universalParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
-import { ReportGenerator, type ReportData } from './ui/reportGenerator.ts';
+import { ReportGenerator } from './ui/reportGenerator.ts';
 import { FittingEngine, type FitResult } from './engine/fitting.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
 import * as XLSX from 'xlsx';
@@ -60,6 +60,7 @@ interface AppState {
   selectingROI: boolean;
   labelMode: boolean;
   pendingLabel: { x: number; y: number } | null;
+  snapshots: import('./ui/reportGenerator.ts').Snapshot[];
 }
 
 // ── State ──
@@ -90,7 +91,8 @@ const state: AppState = {
   fittingMode: false,
   selectingROI: false,
   labelMode: false,
-  pendingLabel: null as { x: number; y: number } | null
+  pendingLabel: null,
+  snapshots: []
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -1390,28 +1392,109 @@ async function generateReport() {
     });
   });
 
-  const reportData: ReportData = {
-    timestamp: new Date().toISOString(),
-    filenames: filesToExport.map(f => f.name),
-    totalPeaks: allPeaks.length,
+  UI.get('btn-export-report')?.addEventListener('click', () => {
+    if (state.snapshots.length === 0) {
+      showToast("No snapshots captured! Capture some milestones first.");
+      return;
+    }
+    
+    const reportData: import('./ui/reportGenerator.ts').ReportData = {
+      timestamp: new Date().toISOString(),
+      snapshots: state.snapshots,
+      sessionSummary: {
+        totalFiles: state.files.size,
+        filenames: Array.from(state.files.values()).map(f => f.name)
+      }
+    };
+    
+    ReportGenerator.generate(reportData);
+    showToast(`Generating Portfolio with ${state.snapshots.length} analysis blocks...`);
+  });
+
+  UI.get('btn-capture-snapshot')?.addEventListener('click', captureSnapshot);
+}
+
+async function captureSnapshot() {
+  const activeFile = state.files.get(state.activeFileId || '');
+  if (!activeFile && state.layoutMode !== 'replicate') {
+    showToast("Load a file to capture a snapshot.");
+    return;
+  }
+
+  const timestamp = new Date().toISOString();
+  const id = `snap-${Math.random().toString(36).slice(2, 9)}`;
+  let title = prompt("Enter a title for this analysis snapshot:", `Analysis - ${new Date().toLocaleTimeString()}`);
+  if (title === null) return; // Cancelled
+  if (!title) title = "Untitled Analysis";
+
+  // Capture Current Traces and Layout
+  let traces: any[] = [];
+  let tableData: any[] = [];
+  let tableType: 'peaks' | 'fit' | 'replicate' = 'peaks';
+  let type: 'general' | 'fitting' | 'replicate' = 'general';
+
+  if (state.layoutMode === 'replicate' && state.replicateGroup) {
+    type = 'replicate';
+    tableType = 'replicate';
+    tableData = state.replicateGroup.peakStats.map(ps => ({
+      center: ps.xMean,
+      meanArea: ps.yMean,
+      sdArea: ps.ySD,
+      rsdArea: (ps.ySD / ps.yMean) * 100
+    }));
+    traces = [
+      { x: state.replicateGroup.mean.wavenumberData, y: state.replicateGroup.mean.intensityData, mode: 'lines', name: 'Mean Spectrum' },
+      { 
+        x: [...state.replicateGroup.mean.wavenumberData, ...[...state.replicateGroup.mean.wavenumberData].reverse()],
+        y: [...state.replicateGroup.mean.intensityData.map((m, i) => m + state.replicateGroup!.sd[i]), ...[...state.replicateGroup.mean.intensityData.map((m, i) => m - state.replicateGroup!.sd[i])].reverse()],
+        fill: 'toself', fillcolor: 'rgba(45, 212, 191, 0.1)', line: { color: 'transparent' }, name: '±1 SD'
+      }
+    ];
+  } else if (state.fittingMode && state.fitResult) {
+    type = 'fitting';
+    tableType = 'fit';
+    tableData = state.fitResult.peaks;
+    traces = [
+      { x: state.fitResult.fitX, y: state.fitResult.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), mode: 'markers', name: 'Experimental' },
+      { x: state.fitResult.fitX, y: state.fitResult.fitY, mode: 'lines', name: 'Cumulative Fit' },
+      ...state.fitResult.peaks.map((p, i) => ({ x: state.fitResult!.fitX, y: p.yFit, mode: 'lines', name: `Peak ${i+1}`, opacity: 0.5 }))
+    ];
+  } else {
+    // General Snapshot (Single, Grid, Stacked)
+    type = 'general';
+    tableType = 'peaks';
+    
+    if (state.layoutMode === 'single' || state.layoutMode.startsWith('grid')) {
+      traces = [{ x: activeFile!.raw.wavenumberData, y: activeFile!.processed.intensityData, mode: 'lines', name: activeFile!.name }];
+      tableData = activeFile!.peaks;
+    } else if (state.layoutMode === 'stacked') {
+      traces = Array.from(state.files.values()).map(f => ({ x: f.raw.wavenumberData, y: f.processed.intensityData, mode: 'lines', name: f.name }));
+      tableData = Array.from(state.files.values()).flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
+    }
+  }
+
+  const snapshot: import('./ui/reportGenerator.ts').Snapshot = {
+    id, title, type, timestamp, traces, tableData, tableType,
+    layout: {
+      xaxis: { title: 'Raman Shift (cm⁻¹)', range: state.viewRange || undefined },
+      yaxis: { title: 'Intensity (a.u.)' }
+    },
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
       norm: state.normalizationMode,
-      baselineMode: state.baselineMode,
-      cosmicRayRemoval: state.cosmicRayRemoval
-    },
-    peaks: allPeaks,
-    files: filesToExport.map(f => ({
-      name: f.name,
-      x: f.processed.wavenumberData,
-      y: f.processed.intensityData
-    })),
-    fitResult: state.fittingMode ? state.fitResult : null,
-    replicateGroup: state.layoutMode === 'replicate' ? state.replicateGroup : null
+      range: state.viewRange
+    }
   };
 
-  await ReportGenerator.generate(reportData);
+  state.snapshots.push(snapshot);
+  
+  const countEl = UI.get('snapshot-count');
+  if (countEl) countEl.innerText = state.snapshots.length.toString();
+  
+  showToast(`Snapshot captured: "${title}"`);
+  updateUI();
 }
+
 
 async function runFitting(minX: number, maxX: number) {
   const active = state.files.get(state.activeFileId || '');

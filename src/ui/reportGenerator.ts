@@ -2,20 +2,29 @@ import { REPORT_TEMPLATE } from './reportTemplate.ts';
 // @ts-ignore
 import plotlyCartesian from 'plotly.js-cartesian-dist-min/plotly-cartesian.min.js?raw';
 
-export interface ReportData {
+export interface Snapshot {
+  id: string;
+  title: string;
+  type: 'general' | 'fitting' | 'replicate';
   timestamp: string;
-  filenames: string[];
-  totalPeaks: number;
+  traces: any[];
+  layout: any;
+  tableData: any[];
+  tableType: 'peaks' | 'fit' | 'replicate';
   settings: {
     snip: number;
     norm: string;
-    baselineMode: string;
-    cosmicRayRemoval: boolean;
+    range: [number, number] | null;
   };
-  peaks: { x: number; y: number; fwhm: number; area: number; fileName?: string }[];
-  files: { name: string; x: number[]; y: number[] }[];
-  fitResult?: any;
-  replicateGroup?: any;
+}
+
+export interface ReportData {
+  timestamp: string;
+  snapshots: Snapshot[];
+  sessionSummary: {
+    totalFiles: number;
+    filenames: string[];
+  };
 }
 
 export class ReportGenerator {
