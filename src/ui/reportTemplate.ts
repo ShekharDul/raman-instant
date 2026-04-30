@@ -268,15 +268,7 @@ export const REPORT_TEMPLATE = `
                             if (resTrace) resTrace.yaxis = 'y2';
                         }
 
-                        // Apply Waterfall Offset if configured
-                        const finalTraces = snap.settings.isWaterfall 
-                            ? snap.traces.map((t, i) => ({
-                                ...t,
-                                y: t.y.map(val => val + (i * snap.settings.stackOffset))
-                              }))
-                            : snap.traces;
-
-                        Plotly.newPlot(plotId, finalTraces, layout, { responsive: true, displaylogo: false });
+                        Plotly.newPlot(plotId, snap.traces, layout, { responsive: true, displaylogo: false });
                     }
 
                     // 4. Render Table

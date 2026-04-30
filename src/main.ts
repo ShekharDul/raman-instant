@@ -1480,6 +1480,24 @@ async function saveSnapshot(title: string) {
   let tableType: 'peaks' | 'fit' | 'replicate' = 'peaks';
   let type: 'general' | 'fitting' | 'replicate' = 'general';
 
+  // 1. Direct Plot State Capture (The Source of Truth)
+  const plotEl = document.querySelector('.js-plotly-plot') as any;
+  if (plotEl && plotEl.data) {
+    traces = plotEl.data.map((d: any) => ({
+      x: Array.isArray(d.x) ? [...d.x] : d.x,
+      y: Array.isArray(d.y) ? [...d.y] : d.y,
+      mode: d.mode,
+      name: d.name,
+      type: d.type,
+      fill: d.fill,
+      fillcolor: d.fillcolor,
+      line: d.line ? { ...d.line } : undefined,
+      opacity: d.opacity,
+      marker: d.marker ? { ...d.marker } : undefined
+    }));
+  }
+
+  // 2. Coordinate Table Metadata with State
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
     type = 'replicate';
     tableType = 'replicate';
@@ -1489,44 +1507,17 @@ async function saveSnapshot(title: string) {
       sdArea: ps.ySD,
       rsdArea: (ps.ySD / ps.yMean) * 100
     }));
-    traces = [
-      { x: state.replicateGroup.mean.wavenumberData, y: state.replicateGroup.mean.intensityData, mode: 'lines', name: 'Mean Spectrum' },
-      { 
-        x: [...state.replicateGroup.mean.wavenumberData, ...[...state.replicateGroup.mean.wavenumberData].reverse()],
-        y: [...state.replicateGroup.mean.intensityData.map((m, i) => m + state.replicateGroup!.sd[i]), ...[...state.replicateGroup.mean.intensityData.map((m, i) => m - state.replicateGroup!.sd[i])].reverse()],
-        fill: 'toself', fillcolor: 'rgba(45, 212, 191, 0.1)', line: { color: 'transparent' }, name: '±1 SD'
-      }
-    ];
   } else if (state.fittingMode && state.fitResult) {
     type = 'fitting';
     tableType = 'fit';
     tableData = state.fitResult.peaks;
-    traces = [
-      { x: state.fitResult.fitX, y: state.fitResult.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), mode: 'markers', name: 'Experimental' },
-      { x: state.fitResult.fitX, y: state.fitResult.fitY, mode: 'lines', name: 'Cumulative Fit' },
-      ...state.fitResult.peaks.map((p, i) => ({ x: state.fitResult!.fitX, y: p.yFit, mode: 'lines', name: `Peak ${i+1}`, opacity: 0.5 }))
-    ];
   } else {
-    // General Snapshot (Single, Grid, Stacked)
     type = 'general';
     tableType = 'peaks';
-    
-    if (state.layoutMode === 'single' || state.layoutMode.startsWith('grid')) {
-      traces = [{ x: activeFile!.raw.wavenumberData, y: activeFile!.processed.intensityData, mode: 'lines', name: activeFile!.name }];
-      tableData = activeFile!.peaks;
-    } else if (state.layoutMode === 'stacked') {
-      const fileIdsToRender = new Set(state.comparisonIds);
-      if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
-      const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
-
-      traces = filesToRender.map(f => ({ 
-        x: f.raw.wavenumberData, 
-        y: f.processed.intensityData, 
-        mode: 'lines', 
-        name: f.name 
-      }));
-      tableData = filesToRender.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
-    }
+    const fileIdsToRender = new Set(state.comparisonIds);
+    if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
+    const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
+    tableData = filesToRender.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
   }
 
   const snapshot: import('./ui/reportGenerator.ts').Snapshot = {
@@ -1539,8 +1530,8 @@ async function saveSnapshot(title: string) {
       snip: parseInt(UI.val('slider-snip') || '25'),
       norm: state.normalizationMode,
       range: state.viewRange,
-      isWaterfall: state.layoutMode === 'stacked',
-      stackOffset: state.stackOffset
+      isWaterfall: false, // Already baked into DOM data
+      stackOffset: 0
     }
   };
 
