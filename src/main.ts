@@ -8,10 +8,9 @@ import { UniversalParser } from './parsers/universalParser.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
-import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode } from './engine/types.ts';
-import * as XLSX from 'xlsx';
 import { ReportGenerator, type ReportData } from './ui/reportGenerator.ts';
 import { FittingEngine, type FitResult } from './engine/fitting.ts';
+import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
 
 // ── Types ──
 interface ProcessedFile {
@@ -28,6 +27,7 @@ interface ProcessedFile {
   spikesRemoved: number;
   params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode };
   anchors: { x: number; y: number }[];
+  labels: CustomLabel[];
   color: string;
 }
 
@@ -57,6 +57,7 @@ interface AppState {
   fitResult: FitResult | null;
   fittingMode: boolean;
   selectingROI: boolean;
+  labelMode: boolean;
 }
 
 // ── State ──
@@ -85,7 +86,8 @@ const state: AppState = {
   cosmicRayRemoval: true,
   fitResult: null,
   fittingMode: false,
-  selectingROI: false
+  selectingROI: false,
+  labelMode: false
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -120,6 +122,7 @@ initNormalization();
 initRatioCalculator();
 initCalibration();
 initViewControls();
+initLabelControls();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -279,7 +282,8 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
     spikesRemoved: replacedCount,
     params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
     anchors,
-    color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length]
+    color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length],
+    labels: existing?.labels || []
   });
 
   updateMaxXData();
@@ -341,6 +345,49 @@ function updateUI() {
   UI.get('plot-content')?.classList.toggle('hidden', !hasFiles);
   UI.get('files-empty')?.classList.toggle('hidden', hasFiles);
   UI.get('file-list')?.classList.toggle('hidden', !hasFiles);
+
+  renderLabelList();
+}
+
+function renderLabelList() {
+  const active = state.files.get(state.activeFileId || '');
+  const container = UI.get('label-list');
+  const wrapper = UI.get('label-list-container');
+  if (!container || !wrapper) return;
+
+  if (!active || active.labels.length === 0) {
+    wrapper.classList.add('hidden');
+    return;
+  }
+
+  wrapper.classList.remove('hidden');
+  container.innerHTML = '';
+  active.labels.forEach((label) => {
+    const item = document.createElement('div');
+    item.style.display = 'flex';
+    item.style.alignItems = 'center';
+    item.style.justifyContent = 'space-between';
+    item.style.padding = '6px 8px';
+    item.style.background = '#fff';
+    item.style.border = '1px solid var(--border)';
+    item.style.fontSize = '10px';
+    item.style.borderRadius = '2px';
+
+    item.innerHTML = `
+      <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;">
+        <span style="font-weight:700; color:#3b82f6;">${label.x.toFixed(0)}</span>: ${label.text}
+      </div>
+      <button class="btn-del-label" style="background:none; border:none; color:#be123c; cursor:pointer; font-weight:700; padding:2px 4px;">✕</button>
+    `;
+
+    item.querySelector('.btn-del-label')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      active.labels = active.labels.filter(l => l.id !== label.id);
+      updateUI();
+    });
+
+    container.appendChild(item);
+  });
 }
 
 function renderFileList() {
@@ -492,7 +539,7 @@ function renderPlots() {
       };
 
       return {
-        name: f.name, data: offsetData, color: f.color, raw: rawScaled
+        name: f.name, data: offsetData, color: f.color, raw: rawScaled, labels: f.labels
       };
     });
     requestAnimationFrame(() => {
@@ -513,7 +560,7 @@ function renderPlots() {
           relIntensity: 0,
           area: 0
         })) || [];
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks);
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks, activeFile?.labels || []);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -531,7 +578,7 @@ function renderPlots() {
 
       requestAnimationFrame(() => {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, f.labels);
         attachManualBaselineListener(plotEl);
       });
     });
@@ -542,7 +589,7 @@ function renderPlots() {
 
     if (filesToRender.length > 1) {
       const datasets = filesToRender.map(f => ({
-        name: f.name, data: f.processed, color: f.color, raw: {
+        name: f.name, data: f.processed, color: f.color, labels: f.labels, raw: {
           wavenumberData: f.raw.wavenumberData,
           intensityData: f.raw.intensityData.map(v => v * f.normFactor)
         }
@@ -558,8 +605,8 @@ function renderPlots() {
         intensityData: f.raw.intensityData.map(v => v * f.normFactor)
       };
       requestAnimationFrame(() => {
-        const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(div, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed);
+        const filteredPeaks = activeFile?.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) || [];
+        ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, activeFile!.labels);
         attachManualBaselineListener(div);
         if (state.fittingMode || state.selectingROI) attachFitListener(div);
       });
@@ -659,6 +706,23 @@ function attachManualBaselineListener(el: HTMLElement) {
               btn.innerText = 'ENABLE RATIO SELECTION';
               btn.classList.remove('active-compare');
             }
+            updateUI();
+          }
+        }
+      else if (state.labelMode) {
+        const { x, y } = data.points[0];
+        const text = prompt("Enter label text:");
+        if (text) {
+          const active = state.files.get(state.activeFileId || '');
+          if (active) {
+            active.labels.push({
+              id: `label-${Math.random().toString(36).slice(2, 9)}`,
+              x, y, text
+            });
+            state.labelMode = false;
+            const btn = UI.get('btn-label-mode') as HTMLButtonElement;
+            btn.innerText = 'ADD CUSTOM LABEL';
+            btn.classList.remove('active-compare');
             updateUI();
           }
         }
@@ -1055,6 +1119,21 @@ function initSliders() {
     UI.get('btn-tab-plot')?.classList.remove('active');
     UI.get('pane-files')?.classList.add('active');
     UI.get('pane-plot')?.classList.remove('active');
+  });
+}
+
+function initLabelControls() {
+  UI.get('btn-label-mode')?.addEventListener('click', () => {
+    state.labelMode = !state.labelMode;
+    const btn = UI.get('btn-label-mode') as HTMLButtonElement;
+    if (state.labelMode) {
+      btn.innerText = 'CLICK PLOT TO PLACE';
+      btn.classList.add('active-compare');
+      showToast("Label Mode: Click any point on the spectrum to add a label.");
+    } else {
+      btn.innerText = 'ADD CUSTOM LABEL';
+      btn.classList.remove('active-compare');
+    }
   });
 }
 

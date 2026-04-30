@@ -99,12 +99,12 @@ const GRID_LAYOUT: any = {
 
 
 
-import type { SpectralData, Peak } from '../engine/types.ts';
+import type { SpectralData, Peak, CustomLabel } from '../engine/types.ts';
 import { FittingEngine, type PeakFit } from '../engine/fitting.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showUnprocessed = true) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showUnprocessed = true, customLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -143,6 +143,10 @@ export class ChartRenderer {
       layout.annotations.push(...peakAnnotations.labels);
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
+    }
+
+    if (customLabels.length > 0) {
+      layout.annotations.push(...this.createCustomLabelAnnotations(customLabels));
     }
     
     // Data-Driven View Clipping (X and Y)
@@ -190,7 +194,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string; raw?: SpectralData }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string; raw?: SpectralData; labels?: CustomLabel[] }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true, globalLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -281,6 +285,19 @@ export class ChartRenderer {
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
 
+    // Add per-trace custom labels (handling waterfall offsets)
+    datasets.forEach((d, i) => {
+      if (d.labels && d.labels.length > 0) {
+        const offset = isWaterfall ? (i * ((window as any).state?.stackOffset || 0)) : 0;
+        const offsetLabels = d.labels.map(l => ({ ...l, y: l.y + offset }));
+        layout.annotations.push(...this.createCustomLabelAnnotations(offsetLabels));
+      }
+    });
+
+    if (globalLabels.length > 0) {
+      layout.annotations.push(...this.createCustomLabelAnnotations(globalLabels));
+    }
+
 
     // Data-Driven View Clipping (X and Y)
     if (datasets.length > 0) {
@@ -334,7 +351,7 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number], peaksToShow: Peak[] = []) {
+  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number], peaksToShow: Peak[] = [], customLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
@@ -367,6 +384,10 @@ export class ChartRenderer {
       const peakAnnotations = this.createPeakAnnotations(peaksToShow);
       layout.annotations = [...(layout.annotations || []), ...peakAnnotations.labels];
       layout.shapes = [...(layout.shapes || []), ...peakAnnotations.shapes];
+    }
+
+    if (customLabels.length > 0) {
+      layout.annotations.push(...this.createCustomLabelAnnotations(customLabels));
     }
 
 
@@ -644,7 +665,7 @@ export class ChartRenderer {
           intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
         };
         const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
-        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, ratio, fontSize, showBox);
+        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, (state as any).viewRange || undefined, false, (state as any).hideYAxis, normLabel, ratio, fontSize, showBox, true, f.labels);
         
         // Apply sizing and transparency after plot creation
         await Plotly.relayout(tempDiv, { 
@@ -672,14 +693,14 @@ export class ChartRenderer {
             wavenumberData: displayData.wavenumberData,
             intensityData: displayData.intensityData.map((v: number) => v + offset)
           };
-          return { name: f.name, data: offsetData, color: f.color };
+          return { name: f.name, data: offsetData, color: f.color, labels: f.labels };
         });
         
         // For stacked view, we show peaks of the active file or first file if not specified
         const activeFile = files.find((f: any) => f.id === state.activeFileId) || files[0];
         const filteredPeaks = activeFile.peaks.filter((p: any) => activeFile.selectedPeakX.has(p.x));
         
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels);
+        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels, true);
         
         await Plotly.relayout(tempDiv, { 
           width: exportW, 
@@ -738,6 +759,15 @@ export class ChartRenderer {
               ...a, 
               xref: axisIdx ? `x${axisIdx}` : 'x', 
               yref: axisIdx ? `y${axisIdx} domain` : 'y domain' 
+            })));
+          }
+
+          if (f.labels && f.labels.length > 0) {
+            const customAnnos = (this as any).createCustomLabelAnnotations(f.labels);
+            layout.annotations.push(...customAnnos.map((a: any) => ({
+              ...a,
+              xref: axisIdx ? `x${axisIdx}` : 'x',
+              yref: axisIdx ? `y${axisIdx}` : 'y'
             })));
           }
 
@@ -836,6 +866,26 @@ export class ChartRenderer {
     });
 
     return { shapes, labels, maxStack };
+  }
+
+  private static createCustomLabelAnnotations(customLabels: CustomLabel[]) {
+    return customLabels.map(l => ({
+      x: l.x,
+      y: l.y,
+      text: `<b>${l.text}</b>`,
+      showarrow: true,
+      arrowhead: 2,
+      arrowsize: 1,
+      arrowwidth: 1.5,
+      arrowcolor: '#3b82f6',
+      ax: 20,
+      ay: -30,
+      font: { size: 12, color: '#3b82f6', family: 'Arial' },
+      bgcolor: 'rgba(255,255,255,0.95)',
+      bordercolor: '#3b82f6',
+      borderwidth: 1.5,
+      borderpad: 4
+    }));
   }
 
   static renderSparkline(canvas: HTMLCanvasElement, data: SpectralData) {

@@ -30,3 +30,10 @@ export interface NormalizedSpectrum extends SpectralData {
 }
 
 export type NormalizationMode = 'none' | 'max' | 'area' | 'point';
+
+export interface CustomLabel {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+}

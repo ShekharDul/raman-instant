@@ -1180,6 +1180,17 @@
               </div>
             </div>
           </div>
+
+          <div class="section" style="border-top: 1px solid var(--border); background: rgba(59, 130, 246, 0.02); padding: 16px 24px;">
+            <div class="ctrl-label"><span>CUSTOM ANNOTATIONS</span></div>
+            <button id="btn-label-mode" class="btn-small" style="width: 100%; margin-bottom: 12px;" title="Enable label mode, then click on the plot to add a custom text annotation">
+              ADD CUSTOM LABEL
+            </button>
+            <div id="label-list-container" class="hidden">
+              <div style="font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em;">Active Labels</div>
+              <div id="label-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
+            </div>
+          </div>
         </div>
       </div>
 
