@@ -129,6 +129,7 @@ initCalibration();
 initViewControls();
 initLabelControls();
 initReportControls();
+initSnapshotModal();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -1393,6 +1394,30 @@ function initReportControls() {
   UI.get('btn-capture-snapshot')?.addEventListener('click', captureSnapshot);
 }
 
+function initSnapshotModal() {
+  const modal = UI.get('modal-snapshot');
+  const input = UI.get('input-snapshot-title') as HTMLInputElement;
+  const btnConfirm = UI.get('btn-confirm-snapshot');
+  const btnCancel = UI.get('btn-cancel-snapshot');
+
+  if (!modal || !input || !btnConfirm || !btnCancel) return;
+
+  const close = () => modal.classList.remove('active');
+
+  btnConfirm.addEventListener('click', () => {
+    const title = input.value.trim() || `Analysis - ${new Date().toLocaleTimeString()}`;
+    saveSnapshot(title);
+    close();
+  });
+
+  btnCancel.addEventListener('click', close);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnConfirm.click();
+    if (e.key === 'Escape') close();
+  });
+}
+
 async function captureSnapshot() {
   const activeFile = state.files.get(state.activeFileId || '');
   if (!activeFile && state.layoutMode !== 'replicate') {
@@ -1400,11 +1425,22 @@ async function captureSnapshot() {
     return;
   }
 
+  const modal = UI.get('modal-snapshot');
+  const input = UI.get('input-snapshot-title') as HTMLInputElement;
+  if (modal && input) {
+    modal.classList.add('active');
+    input.value = `Analysis Block ${state.snapshots.length + 1}`;
+    input.focus();
+    input.select();
+  }
+}
+
+async function saveSnapshot(title: string) {
+  const activeFile = state.files.get(state.activeFileId || '');
+  if (!activeFile && state.layoutMode !== 'replicate') return;
+
   const timestamp = new Date().toISOString();
   const id = `snap-${Math.random().toString(36).slice(2, 9)}`;
-  let title = prompt("Enter a title for this analysis snapshot:", `Analysis - ${new Date().toLocaleTimeString()}`);
-  if (title === null) return; // Cancelled
-  if (!title) title = "Untitled Analysis";
 
   // Capture Current Traces and Layout
   let traces: any[] = [];

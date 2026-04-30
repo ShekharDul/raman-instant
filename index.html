@@ -1386,6 +1386,23 @@
       </div>
     </div>
   </div>
+    <!-- Modal: Snapshot Naming -->
+    <div id="modal-snapshot" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; padding: 32px; border: 1px solid var(--laser);">
+            <div style="font-size: 10px; font-weight: 800; letter-spacing: 0.2em; color: var(--laser); margin-bottom: 16px; text-transform: uppercase;">
+                Name Your Analysis Snapshot
+            </div>
+            <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6;">
+                Provide a descriptive title for this milestone to distinguish it in your final report.
+            </p>
+            <input type="text" id="input-snapshot-title" placeholder="e.g., Sample A - Region 1 Fit" 
+                   style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 12px; color: #fff; border-radius: 2px; font-size: 12px; margin-bottom: 24px; outline: none;">
+            <div style="display: flex; gap: 12px;">
+                <button id="btn-confirm-snapshot" class="btn-primary" style="flex: 1;">CAPTURE</button>
+                <button id="btn-cancel-snapshot" class="btn-secondary" style="flex: 1;">CANCEL</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
