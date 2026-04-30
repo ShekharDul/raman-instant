@@ -230,8 +230,8 @@
     }
 
     .file-item.active {
-      background: #fff;
-      border-left: 3px solid #000;
+      background: rgba(var(--active-color-rgb, 0, 0, 0), 0.15) !important;
+      border-left: 4px solid var(--active-color, #000) !important;
     }
 
     .file-name {
@@ -337,6 +337,8 @@
       overflow-y: auto;
       padding: 0 24px;
       min-height: 0;
+      border-top: 3px solid var(--active-color, transparent);
+      transition: all 0.3s ease;
     }
 
     .peak-table {
@@ -370,17 +372,17 @@
     }
 
     .peak-table tbody tr:hover {
-      background: rgba(45, 212, 191, 0.08);
+      background: rgba(var(--active-color-rgb, 45, 212, 191), 0.08);
       padding-left: 8px;
     }
 
     .peak-table tbody tr.selected {
-      background: rgba(45, 212, 191, 0.15);
-      border-left: 4px solid var(--laser);
+      background: rgba(var(--active-color-rgb, 45, 212, 191), 0.15);
+      border-left: 4px solid var(--active-color, var(--laser));
     }
 
     .peak-table tbody tr.selected td {
-      color: var(--laser);
+      color: var(--active-color, #000);
       font-weight: 700;
       padding-left: 12px;
     }
