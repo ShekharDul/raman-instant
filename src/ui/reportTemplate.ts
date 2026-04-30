@@ -215,6 +215,9 @@ export const REPORT_TEMPLATE = `
 
                 // 2. Render Snapshots
                 const main = document.getElementById('snapshots-main');
+                if (!data.snapshots || data.snapshots.length === 0) {
+                    main.innerHTML = '<div style="padding: 40px; text-align: center; opacity: 0.5;">No analysis snapshots captured. Add analysis blocks to your portfolio to see them here.</div>';
+                }
                 data.snapshots.forEach((snap, idx) => {
                     const block = document.createElement('section');
                     block.className = 'snapshot-block';
@@ -274,30 +277,30 @@ export const REPORT_TEMPLATE = `
                     // 4. Render Table
                     const thead = document.getElementById(\`thead-\${snap.id}\`);
                     const tbody = document.getElementById(\`tbody-\${snap.id}\`);
+                    const tableWrap = document.getElementById(\`table-\${snap.id}\`).parentElement;
                     
                     if (snap.tableType === 'peaks') {
-                        const tableContainer = document.getElementById(\`table-\${snap.id}\`).parentElement;
-                        tableContainer.innerHTML = '';
+                        tableWrap.innerHTML = '';
                         snap.tableData.forEach(group => {
                             const groupTitle = document.createElement('div');
                             groupTitle.style.cssText = 'font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 32px 0 12px; border-left: 3px solid var(--accent); padding-left: 12px;';
                             groupTitle.textContent = group.fileName;
                             const table = document.createElement('table');
-                            table.innerHTML = \\\`
+                            table.innerHTML = \`
                                 <thead><tr><th>Center (cm⁻¹)</th><th>Intensity</th><th>FWHM</th><th>Area</th></tr></thead>
                                 <tbody>
-                                    \\\${group.peaks.length > 0 ? group.peaks.map(p => \\\`
+                                    \${group.peaks.length > 0 ? group.peaks.map(p => \`
                                         <tr>
-                                            <td>\\\${(p.x || 0).toFixed(2)}</td>
-                                            <td>\\\${(p.y || 0).toFixed(2)}</td>
-                                            <td>\\\${(p.fwhm || 0).toFixed(2)}</td>
-                                            <td>\\\${(p.area || 0).toFixed(2)}</td>
+                                            <td>\${(p.x || 0).toFixed(2)}</td>
+                                            <td>\${(p.y || 0).toFixed(2)}</td>
+                                            <td>\${(p.fwhm || 0).toFixed(2)}</td>
+                                            <td>\${(p.area || 0).toFixed(2)}</td>
                                         </tr>
-                                    \\\`).join('') : '<tr><td colspan="4" style="text-align:center; opacity:0.5;">No peaks selected.</td></tr>'}
+                                    \`).join('') : '<tr><td colspan="4" style="text-align:center; opacity:0.5;">No peaks selected.</td></tr>'}
                                 </tbody>
-                            \\\`;
-                            tableContainer.appendChild(groupTitle);
-                            tableContainer.appendChild(table);
+                            \`;
+                            tableWrap.appendChild(groupTitle);
+                            tableWrap.appendChild(table);
                         });
                     } else if (snap.tableType === 'fit') {
                         thead.innerHTML = '<tr><th>Peak #</th><th>Center</th><th>Amplitude</th><th>FWHM</th><th>Shape</th></tr>';
