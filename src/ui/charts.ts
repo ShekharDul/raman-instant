@@ -109,14 +109,15 @@ export class ChartRenderer {
     const Plotly = (window as any).Plotly;
     
     const traces: any[] = [];
+    const baseLayout = isGrid ? GRID_LAYOUT : PAPER_LAYOUT;
+    const layout = JSON.parse(JSON.stringify(baseLayout));
+    layout.shapes = [];
+    layout.annotations = [];
+    
     if (showUnprocessed) {
       traces.push({ x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Raw Input', line: { color: '#94a3b8', width: 1 }, opacity: 0.4, hoverinfo: 'skip' });
     }
     traces.push({ x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' });
-
-    const baseLayout = isGrid ? GRID_LAYOUT : PAPER_LAYOUT;
-    const layout = JSON.parse(JSON.stringify(baseLayout));
-    layout.annotations = [];
     
     // Apply Axis Styling
     layout.font.size = fontSize;
@@ -183,6 +184,8 @@ export class ChartRenderer {
 
     // Ratio Markers
     if (ratio) {
+      layout.shapes = layout.shapes || [];
+      layout.annotations = layout.annotations || [];
       [ratio.p1, ratio.p2].forEach((p, idx) => {
         if (!p) return;
         layout.shapes.push({
@@ -255,6 +258,8 @@ export class ChartRenderer {
       });
     });
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.shapes = [];
+    layout.annotations = [];
     if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
 
     // Apply Axis Styling
@@ -269,10 +274,10 @@ export class ChartRenderer {
 
     // Ratio Markers
     if (ratio) {
+      layout.shapes = layout.shapes || [];
       layout.annotations = layout.annotations || [];
       [ratio.p1, ratio.p2].forEach((p, idx) => {
         if (!p) return;
-        layout.shapes = layout.shapes || [];
         layout.shapes.push({
           type: 'line', xref: 'x', yref: 'y',
           x0: p.x, x1: p.x, y0: 0, y1: p.y,
@@ -450,6 +455,8 @@ export class ChartRenderer {
     ];
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.shapes = [];
+    layout.annotations = [];
     if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
 
     if (peaksToShow.length > 0) {
@@ -808,7 +815,9 @@ export class ChartRenderer {
         const cols = isMatrix ? 2 : 1;
         const rows = isMatrix ? 2 : files.length;
         const traces: any[] = [];
-        const layout: any = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+        const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+        layout.shapes = [];
+        layout.annotations = [];
         layout.grid = { rows, columns: cols, pattern: 'independent' };
         layout.showlegend = false;
         
