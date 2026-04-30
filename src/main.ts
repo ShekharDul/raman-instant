@@ -1515,8 +1515,14 @@ async function saveSnapshot(title: string) {
       traces = [{ x: activeFile!.raw.wavenumberData, y: activeFile!.processed.intensityData, mode: 'lines', name: activeFile!.name }];
       tableData = activeFile!.peaks;
     } else if (state.layoutMode === 'stacked') {
-      traces = Array.from(state.files.values()).map(f => ({ x: f.raw.wavenumberData, y: f.processed.intensityData, mode: 'lines', name: f.name }));
-      tableData = Array.from(state.files.values()).flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
+      const filesArr = Array.from(state.files.values());
+      traces = filesArr.map((f, i) => ({ 
+        x: f.raw.wavenumberData, 
+        y: f.processed.intensityData.map(v => v + (i * state.stackOffset)), 
+        mode: 'lines', 
+        name: f.name 
+      }));
+      tableData = filesArr.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
     }
   }
 

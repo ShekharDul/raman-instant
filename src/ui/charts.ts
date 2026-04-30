@@ -216,7 +216,9 @@ export class ChartRenderer {
       }
 
       traces.push({
-        x: d.data.wavenumberData, y: d.data.intensityData, mode: 'lines', name: d.name, 
+        x: d.data.wavenumberData, 
+        y: isWaterfall ? d.data.intensityData.map((v) => v + (i * ((window as any).state?.stackOffset || 0))) : d.data.intensityData,
+        mode: 'lines', name: d.name, 
         line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
         hoverinfo: 'x+y+name'
       });
