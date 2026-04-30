@@ -98,6 +98,17 @@ const UI = {
   val: (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || ''
 };
 
+// ── Analytics ──
+function trackEvent(name: string, params: object = {}) {
+  try {
+    if ((window as any).gtag) {
+      (window as any).gtag('event', name, params);
+    }
+  } catch (e) {
+    console.warn('[Analytics] Failed to track event:', name, e);
+  }
+}
+
 // ── Initialization ──
 initAboutModal();
 initSupportModal();
@@ -167,6 +178,13 @@ function handleFiles(fileList: FileList) {
       const id = `file-${Math.random().toString(36).slice(2, 9)}`;
       processAndStore(id, file.name, parsed);
       if (state.files.size === 1) state.activeFileId = id;
+      
+      trackEvent('file_uploaded', { 
+        file_name: file.name, 
+        file_size: file.size,
+        file_type: file.name.split('.').pop()?.toLowerCase() || 'unknown'
+      });
+      
       updateUI();
       UI.text('system-status', `READY`);
     } catch (err: any) {
@@ -247,6 +265,12 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
 
   const peaks = SpectralProcessor.findPeaks(processed);
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
+
+  trackEvent('peak_detection_run', { 
+    peak_count: peaks.length,
+    file_id: id,
+    baseline_mode: mode
+  });
 
   state.files.set(id, {
     id, name, raw, corrected, baseline, processed, normFactor, peaks,
@@ -764,6 +788,9 @@ function initBaselineControls() {
     UI.get('btn-mode-manual')?.classList.remove('active-compare');
     UI.get('snip-controls')?.classList.remove('hidden');
     UI.get('manual-controls')?.classList.add('hidden');
+    
+    trackEvent('baseline_correction_applied', { mode: 'auto' });
+    
     reprocessAll();
   });
 
@@ -773,6 +800,9 @@ function initBaselineControls() {
     UI.get('btn-mode-snip')?.classList.remove('active-compare');
     UI.get('snip-controls')?.classList.add('hidden');
     UI.get('manual-controls')?.classList.remove('hidden');
+    
+    trackEvent('baseline_correction_applied', { mode: 'manual' });
+    
     reprocessAll();
   });
 
@@ -806,6 +836,12 @@ function initSupportModal() {
   UI.get('btn-close-support')?.addEventListener('click', () => modal.classList.remove('active'));
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
+  });
+
+  // Track support link click
+  const supportLink = modal.querySelector('a[href*="rzp.io"]');
+  supportLink?.addEventListener('click', () => {
+    trackEvent('donation_button_clicked');
   });
 }
 
@@ -893,8 +929,18 @@ function initRatioCalculator() {
 }
 
 function initSliders() {
+  let lastSnipTrack = 0;
   UI.get('slider-snip')?.addEventListener('input', (e) => {
-    UI.text('val-snip', (e.target as HTMLInputElement).value);
+    const val = (e.target as HTMLInputElement).value;
+    UI.text('val-snip', val);
+    
+    // Throttled tracking for slider
+    const now = Date.now();
+    if (now - lastSnipTrack > 1000) {
+      trackEvent('baseline_correction_applied', { mode: 'auto', iterations: parseInt(val) });
+      lastSnipTrack = now;
+    }
+    
     reprocessAll();
   });
   UI.get('slider-stack')?.addEventListener('input', (e) => {
@@ -906,10 +952,22 @@ function initSliders() {
     state.hideYAxis = (e.target as HTMLInputElement).checked;
     updateUI();
   });
-  UI.get('btn-export-excel')?.addEventListener('click', exportExcel);
-  UI.get('btn-export-png')?.addEventListener('click', () => exportFigure('png'));
-  UI.get('btn-export-svg')?.addEventListener('click', () => exportFigure('svg'));
-  UI.get('btn-export-report')?.addEventListener('click', generateReport);
+  UI.get('btn-export-excel')?.addEventListener('click', () => {
+    trackEvent('export_generated', { export_type: 'excel' });
+    exportExcel();
+  });
+  UI.get('btn-export-png')?.addEventListener('click', () => {
+    trackEvent('export_generated', { export_type: 'png' });
+    exportFigure('png');
+  });
+  UI.get('btn-export-svg')?.addEventListener('click', () => {
+    trackEvent('export_generated', { export_type: 'svg' });
+    exportFigure('svg');
+  });
+  UI.get('btn-export-report')?.addEventListener('click', () => {
+    trackEvent('export_generated', { export_type: 'html' });
+    generateReport();
+  });
 
 
 
