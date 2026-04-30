@@ -265,7 +265,7 @@ export const REPORT_TEMPLATE = `
                             // Grid Rendering
                             const container = document.getElementById(plotId);
                             container.style.display = 'grid';
-                            container.style.gap = '20px';
+                            container.style.gap = '32px'; // Increased gap for titles
                             container.style.height = 'auto';
                             container.style.minHeight = '400px';
                             
@@ -275,21 +275,41 @@ export const REPORT_TEMPLATE = `
                                 container.style.gridTemplateColumns = '1fr 1fr';
                             }
 
-                            snap.gridTraces.forEach((gTraces, gIdx) => {
+                            snap.gridTraces.forEach((gridItem, gIdx) => {
                                 const subPlotId = \`\${plotId}-grid-\${gIdx}\`;
+                                const wrapper = document.createElement('div');
+                                wrapper.style.display = 'flex';
+                                wrapper.style.flexDirection = 'column';
+                                
+                                // Add Subtitle (File Name)
+                                const subTitle = document.createElement('div');
+                                subTitle.style.cssText = 'font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;';
+                                subTitle.textContent = \`Plot \${gIdx + 1}: \${gridItem.name}\`;
+                                wrapper.appendChild(subTitle);
+
                                 const subDiv = document.createElement('div');
                                 subDiv.id = subPlotId;
                                 subDiv.style.minHeight = '400px';
-                                container.appendChild(subDiv);
+                                wrapper.appendChild(subDiv);
+                                
+                                container.appendChild(wrapper);
                                 
                                 const subLayout = { ...baseLayout };
-                                // If multiple grid plots, we might want to shrink labels or adjust margins
-                                Plotly.newPlot(subPlotId, gTraces, subLayout, { responsive: true, displaylogo: false });
+                                Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
                             });
                         } else {
                             // Single/Stacked/Replicate Rendering
                             const layout = { ...baseLayout };
                             
+                            // Add a subtle subtitle if filename is available and it's a single plot
+                            if (layoutMode === 'single' && !snap.title.includes(snap.gridTraces?.[0]?.name)) {
+                                const plotContainer = document.getElementById(plotId);
+                                const subTitle = document.createElement('div');
+                                subTitle.style.cssText = 'font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; opacity: 0.7;';
+                                subTitle.textContent = \`FILE: \${snap.gridTraces?.[0]?.name || 'N/A'}\`;
+                                plotContainer.parentElement.insertBefore(subTitle, plotContainer);
+                            }
+
                             if (snap.type === 'fitting') {
                                 layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
                                 layout.yaxis.domain = [0.3, 1];

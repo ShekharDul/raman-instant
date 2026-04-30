@@ -1503,10 +1503,14 @@ async function saveSnapshot(title: string) {
 
   // 1. Plot State Capture (Grid-Aware)
   const plotEls = document.querySelectorAll('.plot-container');
-  const snapshotTraces: any[][] = [];
+  const snapshotTraces: any[] = [];
   
   plotEls.forEach(el => {
     const plotlyEl = el as any;
+    const parentItem = el.closest('.plot-item');
+    const nameEl = parentItem ? parentItem.querySelector('.plot-item-title') : null;
+    const fileName = nameEl ? nameEl.textContent : (activeFile ? activeFile.name : 'Unknown');
+
     if (plotlyEl && plotlyEl.data) {
       const plotData = plotlyEl.data.map((d: any) => ({
         x: Array.isArray(d.x) ? [...d.x] : d.x,
@@ -1520,12 +1524,12 @@ async function saveSnapshot(title: string) {
         opacity: d.opacity,
         marker: d.marker ? { ...d.marker } : undefined
       }));
-      snapshotTraces.push(plotData);
+      snapshotTraces.push({ name: fileName, traces: plotData });
     }
   });
 
   // For backward compatibility and single-plot cases, we keep 'traces' as the first set
-  traces = snapshotTraces.length > 0 ? snapshotTraces[0] : [];
+  traces = snapshotTraces.length > 0 ? snapshotTraces[0].traces : [];
 
   // 2. Coordinate Table Metadata with State
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
