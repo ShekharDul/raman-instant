@@ -147,7 +147,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .file-item:hover { background: var(--bg-surface); }
-.file-item.active { background: var(--bg-active); border-left: 2px solid var(--laser); }
+.file-item.active { 
+  background: rgba(var(--active-color-rgb, 45, 212, 191), 0.08); 
+  border-left: 2px solid var(--active-color, var(--laser)); 
+}
 .file-item.reference { border-right: 2px solid var(--reference); }
 
 .file-name { font-size: 11px; font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -258,6 +261,7 @@ input[type="range"]::-webkit-slider-thumb {
 .peak-table-wrap {
   flex: 1;
   overflow-y: auto;
+  transition: background 0.3s ease;
 }
 
 .peak-table {

@@ -296,6 +296,13 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
   updateMaxXData();
 }
 
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? 
+    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
+    '45, 212, 191';
+}
+
 function updateUI() {
   renderFileList();
   renderPlots();
@@ -303,11 +310,33 @@ function updateUI() {
   renderPeakTable();
 
   const active = state.files.get(state.activeFileId || '');
+  const app = document.getElementById('app');
+  
   if (active) {
     UI.text('active-filename', active.name);
     UI.text('methods-summary', `Analysis: ${active.name} | Mode: ${active.params.mode.toUpperCase()} | ${active.peaks.length} peaks detected.`);
+    
+    // Dynamic Theming: Inject active color as CSS variables
+    if (app) {
+      app.style.setProperty('--active-color', active.color);
+      app.style.setProperty('--active-color-rgb', hexToRgb(active.color));
+    }
+    
+    UI.get('cal-status-container')?.classList.remove('hidden');
+    
+    // Apply background color to peak table container
+    const peakWrap = UI.get('peaks-list-body')?.parentElement?.parentElement;
+    if (peakWrap) {
+      peakWrap.style.background = `rgba(${hexToRgb(active.color)}, 0.04)`;
+    }
   } else {
     UI.get('cal-status-container')?.classList.add('hidden');
+    if (app) {
+      app.style.removeProperty('--active-color');
+      app.style.removeProperty('--active-color-rgb');
+    }
+    const peakWrap = UI.get('peaks-list-body')?.parentElement?.parentElement;
+    if (peakWrap) peakWrap.style.background = '';
   }
 
   // Collective Analysis Buttons
