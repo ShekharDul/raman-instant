@@ -133,32 +133,6 @@ export const REPORT_TEMPLATE = `
             font-family: var(--font-mono);
         }
 
-        .settings-tag {
-            display: inline-block;
-            background: #f1f5f9;
-            padding: 2px 6px;
-            border-radius: 2px;
-            font-size: 9px;
-            margin-right: 8px;
-        }
-
-        footer {
-            margin-top: 120px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border);
-            text-align: center;
-        }
-
-        .branding-link {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--text-muted);
-            text-decoration: none;
-            letter-spacing: 0.1em;
-        }
-
-        .branding-link span { color: var(--accent); font-weight: 700; }
-
         .ratio-summary {
             background: #f0fdfa;
             border: 1px solid #5eead4;
@@ -279,7 +253,7 @@ export const REPORT_TEMPLATE = `
 
                     // 3. Render Plot(s)
                     if (typeof Plotly !== 'undefined') {
-                        const baseLayout = {
+                        const layout = {
                             ...snap.layout,
                             paper_bgcolor: '#ffffff',
                             plot_bgcolor: '#ffffff',
@@ -325,56 +299,11 @@ export const REPORT_TEMPLATE = `
                                 
                                 container.appendChild(wrapper);
                                 
-                                const subLayout = { ...baseLayout };
+                                const subLayout = { ...layout };
                                 Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
                             });
                         } else {
                             // Single/Stacked/Replicate Rendering
-                            const layout = { ...baseLayout };
-                            
-                            if (snap.ratio) {
-                                layout.shapes = layout.shapes || [];
-                                layout.annotations = layout.annotations || [];
-                                
-                                const p1 = snap.ratio.p1;
-                                const p2 = snap.ratio.p2;
-
-                                [p1, p2].forEach((p, idx) => {
-                                    if (!p) return;
-                                    layout.shapes.push({
-                                        type: 'line', xref: 'x', yref: 'y',
-                                        x0: p.x, x1: p.x, y0: 0, y1: p.y,
-                                        line: { color: '#4f46e5', width: 2, dash: 'dot' }
-                                    });
-                                    layout.annotations.push({
-                                        x: p.x, y: p.y, xref: 'x', yref: 'y',
-                                        text: \`<b>P\${idx + 1}</b>\`, showarrow: true, arrowhead: 2,
-                                        ax: 0, ay: -40, font: { size: 12, color: '#4f46e5' },
-                                        bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#4f46e5', borderwidth: 1
-                                    });
-                                });
-
-                                layout.annotations.push({
-                                    text: \`<b>RATIO I(\${p1.x.toFixed(0)})/I(\${p2.x.toFixed(0)}) = \${snap.ratio.intRatio}</b>\`,
-                                    xref: 'paper', yref: 'paper',
-                                    x: 0.98, y: 0.95,
-                                    showarrow: false,
-                                    xanchor: 'right', yanchor: 'top',
-                                    font: { size: 12, color: '#0f172a' },
-                                    bgcolor: 'rgba(255,255,255,0.8)',
-                                    bordercolor: '#cbd5e1',
-                                    borderwidth: 1
-                                });
-                            }
-
-                            if (layoutMode === 'single' && !snap.title.includes(snap.gridTraces?.[0]?.name)) {
-                                const plotContainer = document.getElementById(plotId);
-                                const subTitle = document.createElement('div');
-                                subTitle.style.cssText = 'font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; opacity: 0.7;';
-                                subTitle.textContent = \`FILE: \${snap.gridTraces?.[0]?.name || 'N/A'}\`;
-                                plotContainer.parentElement.insertBefore(subTitle, plotContainer);
-                            }
-
                             if (snap.type === 'fitting') {
                                 layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
                                 layout.yaxis.domain = [0.3, 1];
@@ -461,4 +390,4 @@ export const REPORT_TEMPLATE = `
         })();
     </script>
 </body>
-</html>`;
+</html>\`;

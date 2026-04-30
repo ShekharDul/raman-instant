@@ -728,12 +728,16 @@ function attachManualBaselineListener(el: HTMLElement) {
             if (!state.ratioSelection.p1) {
               state.ratioSelection.p1 = nearest;
               showToast("Peak 1 selected. Now click on the second peak.");
+              // Auto-select for table inclusion
+              activeFile.selectedPeakX.add(nearest.x);
             } else if (!state.ratioSelection.p2) {
               state.ratioSelection.p2 = nearest;
               state.ratioMode = false;
               const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
               btn.innerText = 'ENABLE RATIO SELECTION';
               btn.classList.remove('active-compare');
+              // Auto-select for table inclusion
+              activeFile.selectedPeakX.add(nearest.x);
             }
             updateUI();
           }
@@ -1589,9 +1593,9 @@ async function saveSnapshot(title: string) {
     }
   }
 
-  // 4. Capture Ratio Metadata
+  // 4. Capture Ratio Metadata (Systematic fix: capture if results exist)
   let ratioData = undefined;
-  if (state.ratioMode && state.ratioSelection.p1 && state.ratioSelection.p2) {
+  if (state.ratioSelection.p1 && state.ratioSelection.p2) {
     ratioData = {
       p1: state.ratioSelection.p1,
       p2: state.ratioSelection.p2,
@@ -1600,15 +1604,29 @@ async function saveSnapshot(title: string) {
     };
   }
 
+  // 5. Build Robust Layout from Live Plot
+  const firstPlotEl = plotEls[0] as any;
+  const liveLayout = firstPlotEl?._fullLayout || {};
+  
+  const finalLayout = {
+    xaxis: { 
+      title: 'Raman Shift (cm⁻¹)', 
+      range: liveLayout.xaxis?.range || state.viewRange || undefined 
+    },
+    yaxis: { 
+      title: 'Intensity (a.u.)', 
+      range: liveLayout.yaxis?.range || yRange 
+    },
+    shapes: liveLayout.shapes || [],
+    annotations: liveLayout.annotations || []
+  };
+
   const snapshot: any = {
     id, title, type, timestamp, traces, 
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
     ratio: ratioData,
-    layout: {
-      xaxis: { title: 'Raman Shift (cm⁻¹)', range: state.viewRange || undefined },
-      yaxis: { title: 'Intensity (a.u.)', range: yRange }
-    },
+    layout: finalLayout,
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
       norm: state.normalizationMode,
