@@ -163,26 +163,57 @@ export class ChartRenderer {
     }
 
     if (yData.length > 0) {
-      const maxY = yData.reduce((a, b) => Math.max(a, b), -Infinity);
-      const minY = yData.reduce((a, b) => Math.min(a, b), Infinity);
+      // Robust Y-Scaling: Use only visible points if zoomed
+      let visibleY = yData;
+      if (layout.xaxis.range) {
+        const [xMin, xMax] = layout.xaxis.range;
+        const indices = [];
+        for (let i = 0; i < xData.length; i++) {
+          if (xData[i] >= xMin && xData[i] <= xMax) indices.push(i);
+        }
+        if (indices.length > 0) {
+          visibleY = indices.map(idx => yData[idx]);
+        }
+      }
+      
+      const maxY = visibleY.reduce((a, b) => Math.max(a, b), -Infinity);
+      const minY = visibleY.reduce((a, b) => Math.min(a, b), Infinity);
       layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
     }
 
-    if (ratio && ratio.p1 && ratio.p2) {
-      const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
-      const areaRatio = (ratio.p1.area / ratio.p2.area).toFixed(3);
-      layout.annotations.push({
-        text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b><br>Area Ratio = ${areaRatio}`,
-        xref: 'paper', yref: 'paper',
-        x: 0.98, y: 0.95,
-        showarrow: false,
-        xanchor: 'right', yanchor: 'top',
-        font: { size: 12, color: '#0f172a', family: 'Arial' },
-        bgcolor: 'rgba(255,255,255,0.85)',
-        bordercolor: '#cbd5e1',
-        borderwidth: 1,
-        borderpad: 4
+    // Ratio Markers
+    if (ratio) {
+      [ratio.p1, ratio.p2].forEach((p, idx) => {
+        if (!p) return;
+        layout.shapes.push({
+          type: 'line', xref: 'x', yref: 'y',
+          x0: p.x, x1: p.x, y0: 0, y1: p.y,
+          line: { color: '#4f46e5', width: 2, dash: 'dot' }
+        });
+        layout.annotations.push({
+          x: p.x, y: p.y, xref: 'x', yref: 'y',
+          text: `<b>P${idx + 1}</b>`, showarrow: true, arrowhead: 2,
+          ax: 0, ay: -40, font: { size: 12, color: '#4f46e5' },
+          bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#4f46e5', borderwidth: 1
+        });
       });
+
+      if (ratio.p1 && ratio.p2) {
+        const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
+        const areaRatio = (ratio.p1.area / ratio.p2.area).toFixed(3);
+        layout.annotations.push({
+          text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b><br>Area Ratio = ${areaRatio}`,
+          xref: 'paper', yref: 'paper',
+          x: 0.98, y: 0.95,
+          showarrow: false,
+          xanchor: 'right', yanchor: 'top',
+          font: { size: 12, color: '#0f172a', family: 'Arial' },
+          bgcolor: 'rgba(255,255,255,0.85)',
+          bordercolor: '#cbd5e1',
+          borderwidth: 1,
+          borderpad: 4
+        });
+      }
     }
 
     if (hideY) {
@@ -236,19 +267,39 @@ export class ChartRenderer {
     layout.xaxis.mirror = showBox ? 'all' : false;
     layout.yaxis.mirror = showBox ? 'all' : false;
 
-    if (ratio && ratio.p1 && ratio.p2) {
-      const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
-      layout.annotations = [{
-        text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b>`,
-        xref: 'paper', yref: 'paper',
-        x: 0.98, y: 0.95,
-        showarrow: false,
-        xanchor: 'right', yanchor: 'top',
-        font: { size: 12, color: '#0f172a' },
-        bgcolor: 'rgba(255,255,255,0.8)',
-        bordercolor: '#000',
-        borderwidth: 1
-      }];
+    // Ratio Markers
+    if (ratio) {
+      layout.annotations = layout.annotations || [];
+      [ratio.p1, ratio.p2].forEach((p, idx) => {
+        if (!p) return;
+        layout.shapes = layout.shapes || [];
+        layout.shapes.push({
+          type: 'line', xref: 'x', yref: 'y',
+          x0: p.x, x1: p.x, y0: 0, y1: p.y,
+          line: { color: '#4f46e5', width: 2, dash: 'dot' }
+        });
+        layout.annotations.push({
+          x: p.x, y: p.y, xref: 'x', yref: 'y',
+          text: `<b>P${idx + 1}</b>`, showarrow: true, arrowhead: 2,
+          ax: 0, ay: -40, font: { size: 12, color: '#4f46e5' },
+          bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#4f46e5', borderwidth: 1
+        });
+      });
+
+      if (ratio.p1 && ratio.p2) {
+        const intRatio = (ratio.p1.y / ratio.p2.y).toFixed(3);
+        layout.annotations.push({
+          text: `<b>RATIO I(${ratio.p1.x.toFixed(0)})/I(${ratio.p2.x.toFixed(0)}) = ${intRatio}</b>`,
+          xref: 'paper', yref: 'paper',
+          x: 0.98, y: 0.95,
+          showarrow: false,
+          xanchor: 'right', yanchor: 'top',
+          font: { size: 12, color: '#0f172a' },
+          bgcolor: 'rgba(255,255,255,0.8)',
+          bordercolor: '#cbd5e1',
+          borderwidth: 1
+        });
+      }
     }
     if (normLabel) {
       layout.annotations = layout.annotations || [];
@@ -306,13 +357,8 @@ export class ChartRenderer {
       const minsX = datasets.map(d => d.data.wavenumberData[0]);
       const maxsX = datasets.map(d => d.data.wavenumberData[d.data.wavenumberData.length - 1]);
       
-      const maxsY = datasets.map(d => d.data.intensityData.reduce((a, b) => Math.max(a, b), -Infinity));
-      const minsY = datasets.map(d => d.data.intensityData.reduce((a, b) => Math.min(a, b), Infinity));
-
       const minX = Math.min(...minsX, ...maxsX);
       const absMaxX = Math.max(...minsX, ...maxsX);
-      const maxY = Math.max(...maxsY);
-      const minY = Math.min(...minsY);
 
       const stateMaxX = (window as any).state?.maxXData || 4000;
       if (!range) {
@@ -320,7 +366,31 @@ export class ChartRenderer {
       } else {
         layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
       }
-      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
+
+      // Robust Y-Scaling for Overlay
+      const [curXMin, curXMax] = layout.xaxis.range;
+      let globalMinY = Infinity;
+      let globalMaxY = -Infinity;
+
+      datasets.forEach(d => {
+        const x = d.data.wavenumberData;
+        const y = isWaterfall ? d.data.intensityData.map((v, idx) => v + (datasets.indexOf(d) * ((window as any).state?.stackOffset || 0))) : d.data.intensityData;
+        
+        for (let i = 0; i < x.length; i++) {
+          if (x[i] >= curXMin && x[i] <= curXMax) {
+            if (y[i] < globalMinY) globalMinY = y[i];
+            if (y[i] > globalMaxY) globalMaxY = y[i];
+          }
+        }
+      });
+
+      if (globalMaxY === -Infinity) {
+        // Fallback if no points visible
+        globalMaxY = 1;
+        globalMinY = 0;
+      }
+
+      layout.yaxis.range = [Math.max(0, globalMinY - (globalMaxY * 0.05)), globalMaxY * 1.15];
     }
 
     if (isWaterfall) {

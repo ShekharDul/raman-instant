@@ -727,6 +727,7 @@ function attachManualBaselineListener(el: HTMLElement) {
           if (Math.abs(nearest.x - x) < 15) { // snapped range
             if (!state.ratioSelection.p1) {
               state.ratioSelection.p1 = nearest;
+              showToast("Peak 1 selected. Now click on the second peak.");
             } else if (!state.ratioSelection.p2) {
               state.ratioSelection.p2 = nearest;
               state.ratioMode = false;
