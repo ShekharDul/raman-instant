@@ -11,6 +11,7 @@ import type { ReplicateStats } from './engine/replicates.ts';
 import { ReportGenerator, type ReportData } from './ui/reportGenerator.ts';
 import { FittingEngine, type FitResult } from './engine/fitting.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
+import * as XLSX from 'xlsx';
 
 // ── Types ──
 interface ProcessedFile {
@@ -709,6 +710,7 @@ function attachManualBaselineListener(el: HTMLElement) {
             updateUI();
           }
         }
+      }
       else if (state.labelMode) {
         const { x, y } = data.points[0];
         const text = prompt("Enter label text:");
