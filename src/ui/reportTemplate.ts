@@ -159,6 +159,38 @@ export const REPORT_TEMPLATE = `
 
         .branding-link span { color: var(--accent); font-weight: 700; }
 
+        .ratio-summary {
+            background: #f0fdfa;
+            border: 1px solid #5eead4;
+            padding: 24px;
+            margin-bottom: 32px;
+            border-radius: 4px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .ratio-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ratio-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #0d9488;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .ratio-value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #0f172a;
+            font-family: var(--font-mono);
+        }
+
         @media print {
             body { padding: 20px; }
             .snapshot-block { page-break-before: always; border-top: none; padding-top: 0; }
@@ -265,7 +297,7 @@ export const REPORT_TEMPLATE = `
                             // Grid Rendering
                             const container = document.getElementById(plotId);
                             container.style.display = 'grid';
-                            container.style.gap = '32px'; // Increased gap for titles
+                            container.style.gap = '32px'; 
                             container.style.height = 'auto';
                             container.style.minHeight = '400px';
                             
@@ -281,7 +313,6 @@ export const REPORT_TEMPLATE = `
                                 wrapper.style.display = 'flex';
                                 wrapper.style.flexDirection = 'column';
                                 
-                                // Add Subtitle (File Name)
                                 const subTitle = document.createElement('div');
                                 subTitle.style.cssText = 'font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;';
                                 subTitle.textContent = \`Plot \${gIdx + 1}: \${gridItem.name}\`;
@@ -298,10 +329,43 @@ export const REPORT_TEMPLATE = `
                                 Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
                             });
                         } else {
-                            // Single/Stacked/Replicate Rendering
                             const layout = { ...baseLayout };
                             
-                            // Add a subtle subtitle if filename is available and it's a single plot
+                            if (snap.ratio) {
+                                layout.shapes = layout.shapes || [];
+                                layout.annotations = layout.annotations || [];
+                                
+                                const p1 = snap.ratio.p1;
+                                const p2 = snap.ratio.p2;
+
+                                [p1, p2].forEach((p, idx) => {
+                                    if (!p) return;
+                                    layout.shapes.push({
+                                        type: 'line', xref: 'x', yref: 'y',
+                                        x0: p.x, x1: p.x, y0: 0, y1: p.y,
+                                        line: { color: '#4f46e5', width: 2, dash: 'dot' }
+                                    });
+                                    layout.annotations.push({
+                                        x: p.x, y: p.y, xref: 'x', yref: 'y',
+                                        text: \`<b>P\${idx + 1}</b>\`, showarrow: true, arrowhead: 2,
+                                        ax: 0, ay: -40, font: { size: 12, color: '#4f46e5' },
+                                        bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#4f46e5', borderwidth: 1
+                                    });
+                                });
+
+                                layout.annotations.push({
+                                    text: \`<b>RATIO I(\${p1.x.toFixed(0)})/I(\${p2.x.toFixed(0)}) = \${snap.ratio.intRatio}</b>\`,
+                                    xref: 'paper', yref: 'paper',
+                                    x: 0.98, y: 0.95,
+                                    showarrow: false,
+                                    xanchor: 'right', yanchor: 'top',
+                                    font: { size: 12, color: '#0f172a' },
+                                    bgcolor: 'rgba(255,255,255,0.8)',
+                                    bordercolor: '#cbd5e1',
+                                    borderwidth: 1
+                                });
+                            }
+
                             if (layoutMode === 'single' && !snap.title.includes(snap.gridTraces?.[0]?.name)) {
                                 const plotContainer = document.getElementById(plotId);
                                 const subTitle = document.createElement('div');
@@ -323,11 +387,26 @@ export const REPORT_TEMPLATE = `
                         }
                     }
 
-                    // 4. Render Table
                     const thead = document.getElementById(\`thead-\${snap.id}\`);
                     const tbody = document.getElementById(\`tbody-\${snap.id}\`);
                     const tableWrap = document.getElementById(\`table-\${snap.id}\`).parentElement;
                     
+                    if (snap.ratio) {
+                        const ratioSummary = document.createElement('div');
+                        ratioSummary.className = 'ratio-summary';
+                        ratioSummary.innerHTML = \`
+                            <div class="ratio-item">
+                                <span class="ratio-label">Intensity Ratio I(\${snap.ratio.p1.x.toFixed(0)})/I(\${snap.ratio.p2.x.toFixed(0)})</span>
+                                <span class="ratio-value">\${snap.ratio.intRatio}</span>
+                            </div>
+                            <div class="ratio-item">
+                                <span class="ratio-label">Area Ratio A1/A2</span>
+                                <span class="ratio-value">\${snap.ratio.areaRatio}</span>
+                            </div>
+                        \`;
+                        tableWrap.insertBefore(ratioSummary, tableWrap.firstChild);
+                    }
+
                     if (snap.tableType === 'peaks') {
                         tableWrap.innerHTML = '';
                         snap.tableData.forEach(group => {

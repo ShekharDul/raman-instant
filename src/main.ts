@@ -1566,13 +1566,48 @@ async function saveSnapshot(title: string) {
     }));
   }
 
+  // 3. Robust Y-Scaling for Snapshot (Avoid Flattening)
+  let yRange: [number, number] | undefined = undefined;
+  if (snapshotTraces.length > 0 && state.viewRange) {
+    const firstTraceSet = snapshotTraces[0].traces;
+    const [xMin, xMax] = state.viewRange;
+    let globalMinY = Infinity;
+    let globalMaxY = -Infinity;
+
+    firstTraceSet.forEach((t: any) => {
+      if (!t.x || !t.y) return;
+      for (let i = 0; i < t.x.length; i++) {
+        if (t.x[i] >= xMin && t.x[i] <= xMax) {
+          if (t.y[i] < globalMinY) globalMinY = t.y[i];
+          if (t.y[i] > globalMaxY) globalMaxY = t.y[i];
+        }
+      }
+    });
+
+    if (globalMaxY !== -Infinity) {
+      yRange = [Math.max(0, globalMinY - (globalMaxY * 0.05)), globalMaxY * 1.15];
+    }
+  }
+
+  // 4. Capture Ratio Metadata
+  let ratioData = undefined;
+  if (state.ratioMode && state.ratioSelection.p1 && state.ratioSelection.p2) {
+    ratioData = {
+      p1: state.ratioSelection.p1,
+      p2: state.ratioSelection.p2,
+      intRatio: (state.ratioSelection.p1.y / state.ratioSelection.p2.y).toFixed(3),
+      areaRatio: (state.ratioSelection.p1.area! / state.ratioSelection.p2.area!).toFixed(3)
+    };
+  }
+
   const snapshot: any = {
     id, title, type, timestamp, traces, 
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
+    ratio: ratioData,
     layout: {
       xaxis: { title: 'Raman Shift (cm⁻¹)', range: state.viewRange || undefined },
-      yaxis: { title: 'Intensity (a.u.)' }
+      yaxis: { title: 'Intensity (a.u.)', range: yRange }
     },
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),

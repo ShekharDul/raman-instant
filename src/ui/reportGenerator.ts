@@ -18,6 +18,7 @@ export interface Snapshot {
     isWaterfall: boolean;
     stackOffset: number;
   };
+  ratio?: { p1: any, p2: any, intRatio: string, areaRatio: string };
 }
 
 export interface ReportData {
