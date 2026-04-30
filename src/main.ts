@@ -128,6 +128,7 @@ initRatioCalculator();
 initCalibration();
 initViewControls();
 initLabelControls();
+initReportControls();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -1029,10 +1030,6 @@ function initSliders() {
     trackEvent('export_generated', { export_type: 'svg' });
     exportFigure('svg');
   });
-  UI.get('btn-export-report')?.addEventListener('click', () => {
-    trackEvent('export_generated', { export_type: 'html' });
-    generateReport();
-  });
 
 
 
@@ -1372,31 +1369,13 @@ function generateCaption() {
   UI.get('caption-container')?.classList.remove('hidden');
 }
 
-async function generateReport() {
-  const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
-  if (fileIds.length === 0) return;
-
-  const filesToExport = fileIds.map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
-  
-  // Aggregate peaks from all exported files
-  const allPeaks: any[] = [];
-  filesToExport.forEach(f => {
-    f.peaks.forEach(p => {
-      allPeaks.push({
-        x: p.x,
-        y: p.y,
-        fwhm: p.fwhm,
-        area: p.area,
-        fileName: f.name
-      });
-    });
-  });
-
+function initReportControls() {
   UI.get('btn-export-report')?.addEventListener('click', () => {
     if (state.snapshots.length === 0) {
-      showToast("No snapshots captured! Capture some milestones first.");
+      showToast("No snapshots captured! Capture some analysis blocks first.");
       return;
     }
+    trackEvent('export_generated', { export_type: 'portfolio' });
     
     const reportData: import('./ui/reportGenerator.ts').ReportData = {
       timestamp: new Date().toISOString(),
