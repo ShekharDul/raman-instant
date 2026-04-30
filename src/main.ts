@@ -1515,14 +1515,17 @@ async function saveSnapshot(title: string) {
       traces = [{ x: activeFile!.raw.wavenumberData, y: activeFile!.processed.intensityData, mode: 'lines', name: activeFile!.name }];
       tableData = activeFile!.peaks;
     } else if (state.layoutMode === 'stacked') {
-      const filesArr = Array.from(state.files.values());
-      traces = filesArr.map((f, i) => ({ 
+      const fileIdsToRender = new Set(state.comparisonIds);
+      if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
+      const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
+
+      traces = filesToRender.map(f => ({ 
         x: f.raw.wavenumberData, 
-        y: f.processed.intensityData.map(v => v + (i * state.stackOffset)), 
+        y: f.processed.intensityData, 
         mode: 'lines', 
         name: f.name 
       }));
-      tableData = filesArr.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
+      tableData = filesToRender.flatMap(f => f.peaks.map(p => ({ ...p, fileName: f.name })));
     }
   }
 
@@ -1535,7 +1538,9 @@ async function saveSnapshot(title: string) {
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
       norm: state.normalizationMode,
-      range: state.viewRange
+      range: state.viewRange,
+      isWaterfall: state.layoutMode === 'stacked',
+      stackOffset: state.stackOffset
     }
   };
 

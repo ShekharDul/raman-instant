@@ -15,6 +15,8 @@ export interface Snapshot {
     snip: number;
     norm: string;
     range: [number, number] | null;
+    isWaterfall: boolean;
+    stackOffset: number;
   };
 }
 
