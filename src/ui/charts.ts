@@ -374,7 +374,7 @@ export class ChartRenderer {
 
       datasets.forEach(d => {
         const x = d.data.wavenumberData;
-        const y = isWaterfall ? d.data.intensityData.map((v, idx) => v + (datasets.indexOf(d) * ((window as any).state?.stackOffset || 0))) : d.data.intensityData;
+        const y = isWaterfall ? d.data.intensityData.map((v) => v + (datasets.indexOf(d) * ((window as any).state?.stackOffset || 0))) : d.data.intensityData;
         
         for (let i = 0; i < x.length; i++) {
           if (x[i] >= curXMin && x[i] <= curXMax) {
@@ -466,13 +466,29 @@ export class ChartRenderer {
     // Data-Driven View Clipping (X and Y)
     if (x.length > 0) {
       const minX = Math.min(x[0], x[x.length - 1]);
-      const maxX = Math.max(x[0], x[x.length - 1]);
-      const maxY = meanY.reduce((a, b) => Math.max(a, b), -Infinity);
-      const minY = meanY.reduce((a, b) => Math.min(a, b), Infinity);
+      const absMaxX = Math.max(x[0], x[x.length - 1]);
 
       const stateMaxX = (window as any).state?.maxXData || 4000;
-      layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, maxX)];
-      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
+      if (!range) {
+        layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, absMaxX)];
+      } else {
+        layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
+      }
+
+      // Robust Y-Scaling for Replicate
+      const [curXMin, curXMax] = layout.xaxis.range;
+      let visibleY = [];
+      for (let i = 0; i < x.length; i++) {
+        if (x[i] >= curXMin && x[i] <= curXMax) {
+          visibleY.push(meanY[i]);
+        }
+      }
+
+      if (visibleY.length > 0) {
+        const maxY = visibleY.reduce((a, b) => Math.max(a, b), -Infinity);
+        const minY = visibleY.reduce((a, b) => Math.min(a, b), Infinity);
+        layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
+      }
     }
 
     Plotly.react(container, traces, layout, CONFIG);

@@ -218,7 +218,7 @@ export const REPORT_TEMPLATE = `
                 if (!data.snapshots || data.snapshots.length === 0) {
                     main.innerHTML = '<div style="padding: 40px; text-align: center; opacity: 0.5;">No analysis snapshots captured. Add analysis blocks to your portfolio to see them here.</div>';
                 }
-                data.snapshots.forEach((snap, idx) => {
+                data.snapshots.forEach((snap) => {
                     const block = document.createElement('section');
                     block.className = 'snapshot-block';
                     
