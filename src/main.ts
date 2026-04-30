@@ -775,6 +775,10 @@ function renderPeakTable() {
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
     if (title) title.textContent = "Statistical Peak Analysis (Mean ± SD)";
     warning?.classList.add('hidden');
+    UI.text('th-peak-1', 'Shift (±SD)');
+    UI.text('th-peak-2', 'Int (±SD)');
+    UI.text('th-peak-3', 'FWHM (±SD)');
+    UI.text('th-peak-4', '');
     
     state.replicateGroup.peakStats.forEach(p => {
       const isSelected = state.replicateGroup!.selectedPeakX.has(p.xMean);
@@ -802,6 +806,34 @@ function renderPeakTable() {
     });
     return;
   }
+
+  if (state.fittingMode && state.fitResult) {
+    if (title) title.textContent = "Deconvolution Parameters";
+    warning?.classList.add('hidden');
+    UI.text('th-peak-1', 'Center');
+    UI.text('th-peak-2', 'Amplitude');
+    UI.text('th-peak-3', 'FWHM');
+    UI.text('th-peak-4', 'Shape (η)');
+
+    state.fitResult.peaks.forEach((p) => {
+      const tr = document.createElement('tr');
+      const shapeVal = p.type === 'voigt' ? p.shape?.value.toFixed(2) : '---';
+      
+      tr.innerHTML = `
+        <td>${p.center.value.toFixed(1)}</td>
+        <td>${p.amplitude.value.toFixed(3)}</td>
+        <td>${p.fwhm.value.toFixed(1)}</td>
+        <td>${shapeVal}</td>
+      `;
+      body.appendChild(tr);
+    });
+    return;
+  }
+
+  UI.text('th-peak-1', 'Shift (cm⁻¹)');
+  UI.text('th-peak-2', 'Int (Abs)');
+  UI.text('th-peak-3', 'FWHM');
+  UI.text('th-peak-4', '');
 
   if (title) title.textContent = "Peak Analysis";
   if (!active || active.peaks.length === 0) {
