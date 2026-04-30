@@ -136,6 +136,8 @@ function initViewControls() {
   UI.get('btn-undo-view')?.addEventListener('click', () => {
     if (state.viewHistory.length > 0) {
       state.viewRange = state.viewHistory.pop() || null;
+      // Also clear ratio selection when undoing view
+      state.ratioSelection = { p1: null, p2: null };
       updateUI();
     }
   });
@@ -145,6 +147,8 @@ function initViewControls() {
       state.viewHistory.push([...state.viewRange]);
     }
     state.viewRange = null;
+    // Also clear ratio selection when resetting view
+    state.ratioSelection = { p1: null, p2: null };
     updateUI();
   });
 }
