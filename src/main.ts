@@ -1501,22 +1501,31 @@ async function saveSnapshot(title: string) {
   let tableType: 'peaks' | 'fit' | 'replicate' = 'peaks';
   let type: 'general' | 'fitting' | 'replicate' = 'general';
 
-  // 1. Direct Plot State Capture (The Source of Truth)
-  const plotEl = document.querySelector('.js-plotly-plot') as any;
-  if (plotEl && plotEl.data) {
-    traces = plotEl.data.map((d: any) => ({
-      x: Array.isArray(d.x) ? [...d.x] : d.x,
-      y: Array.isArray(d.y) ? [...d.y] : d.y,
-      mode: d.mode,
-      name: d.name,
-      type: d.type,
-      fill: d.fill,
-      fillcolor: d.fillcolor,
-      line: d.line ? { ...d.line } : undefined,
-      opacity: d.opacity,
-      marker: d.marker ? { ...d.marker } : undefined
-    }));
-  }
+  // 1. Plot State Capture (Grid-Aware)
+  const plotEls = document.querySelectorAll('.plot-container');
+  const snapshotTraces: any[][] = [];
+  
+  plotEls.forEach(el => {
+    const plotlyEl = el as any;
+    if (plotlyEl && plotlyEl.data) {
+      const plotData = plotlyEl.data.map((d: any) => ({
+        x: Array.isArray(d.x) ? [...d.x] : d.x,
+        y: Array.isArray(d.y) ? [...d.y] : d.y,
+        mode: d.mode,
+        name: d.name,
+        type: d.type,
+        fill: d.fill,
+        fillcolor: d.fillcolor,
+        line: d.line ? { ...d.line } : undefined,
+        opacity: d.opacity,
+        marker: d.marker ? { ...d.marker } : undefined
+      }));
+      snapshotTraces.push(plotData);
+    }
+  });
+
+  // For backward compatibility and single-plot cases, we keep 'traces' as the first set
+  traces = snapshotTraces.length > 0 ? snapshotTraces[0] : [];
 
   // 2. Coordinate Table Metadata with State
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -1546,8 +1555,10 @@ async function saveSnapshot(title: string) {
     }));
   }
 
-  const snapshot: import('./ui/reportGenerator.ts').Snapshot = {
-    id, title, type, timestamp, traces, tableData, tableType,
+  const snapshot: any = {
+    id, title, type, timestamp, traces, 
+    gridTraces: snapshotTraces, // Store all plots if in grid mode
+    tableData, tableType,
     layout: {
       xaxis: { title: 'Raman Shift (cm⁻¹)', range: state.viewRange || undefined },
       yaxis: { title: 'Intensity (a.u.)' }
@@ -1556,7 +1567,8 @@ async function saveSnapshot(title: string) {
       snip: parseInt(UI.val('slider-snip') || '25'),
       norm: state.normalizationMode,
       range: state.viewRange,
-      isWaterfall: false, // Already baked into DOM data
+      layoutMode: state.layoutMode, // CRITICAL: Save the layout context
+      isWaterfall: false,
       stackOffset: 0
     }
   };

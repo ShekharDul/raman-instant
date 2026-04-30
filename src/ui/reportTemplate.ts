@@ -245,9 +245,9 @@ export const REPORT_TEMPLATE = `
                     
                     main.appendChild(block);
 
-                    // 3. Render Plot
+                    // 3. Render Plot(s)
                     if (typeof Plotly !== 'undefined') {
-                        const layout = {
+                        const baseLayout = {
                             ...snap.layout,
                             paper_bgcolor: '#ffffff',
                             plot_bgcolor: '#ffffff',
@@ -258,20 +258,49 @@ export const REPORT_TEMPLATE = `
                             legend: { x: 1.02, y: 1 },
                             hovermode: 'x unified'
                         };
-                        
-                        // Handle multi-axis for fitting residuals if present
-                        if (snap.type === 'fitting') {
-                            layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
-                            layout.yaxis.domain = [0.3, 1];
-                            layout.yaxis2 = { domain: [0, 0.2], title: 'Δ', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' };
-                            layout.xaxis.anchor = 'y2';
-                            
-                            // Check for residual trace
-                            const resTrace = snap.traces.find(t => t.name === 'Residual');
-                            if (resTrace) resTrace.yaxis = 'y2';
-                        }
 
-                        Plotly.newPlot(plotId, snap.traces, layout, { responsive: true, displaylogo: false });
+                        const layoutMode = snap.settings.layoutMode || 'single';
+                        
+                        if (layoutMode.startsWith('grid') && snap.gridTraces && snap.gridTraces.length > 1) {
+                            // Grid Rendering
+                            const container = document.getElementById(plotId);
+                            container.style.display = 'grid';
+                            container.style.gap = '20px';
+                            container.style.height = 'auto';
+                            container.style.minHeight = '400px';
+                            
+                            if (layoutMode === 'grid2x1') {
+                                container.style.gridTemplateColumns = '1fr';
+                            } else {
+                                container.style.gridTemplateColumns = '1fr 1fr';
+                            }
+
+                            snap.gridTraces.forEach((gTraces, gIdx) => {
+                                const subPlotId = \`\${plotId}-grid-\${gIdx}\`;
+                                const subDiv = document.createElement('div');
+                                subDiv.id = subPlotId;
+                                subDiv.style.minHeight = '400px';
+                                container.appendChild(subDiv);
+                                
+                                const subLayout = { ...baseLayout };
+                                // If multiple grid plots, we might want to shrink labels or adjust margins
+                                Plotly.newPlot(subPlotId, gTraces, subLayout, { responsive: true, displaylogo: false });
+                            });
+                        } else {
+                            // Single/Stacked/Replicate Rendering
+                            const layout = { ...baseLayout };
+                            
+                            if (snap.type === 'fitting') {
+                                layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
+                                layout.yaxis.domain = [0.3, 1];
+                                layout.yaxis2 = { domain: [0, 0.2], title: 'Δ', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' };
+                                layout.xaxis.anchor = 'y2';
+                                const resTrace = snap.traces.find(t => t.name === 'Residual');
+                                if (resTrace) resTrace.yaxis = 'y2';
+                            }
+
+                            Plotly.newPlot(plotId, snap.traces, layout, { responsive: true, displaylogo: false });
+                        }
                     }
 
                     // 4. Render Table
