@@ -1303,74 +1303,35 @@
     </footer>
   </div>
 
-  <div id="modal-about" class="modal-overlay">
-    <div class="modal-content">
+     <div id="modal-about" class="modal-overlay">
+    <div class="modal-content" style="padding: 40px; max-width: 500px;">
       <button class="modal-close" id="btn-close-about">✕</button>
       
       <div class="docs-section">
-        <h1 style="font-size: 24px; margin-bottom: 8px;">Instant Raman Guide</h1>
-        <p style="color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 32px;">Protocol & Technical Specifications</p>
+        <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.01em;">About Instant Raman</h1>
+        
+        <p style="margin-bottom: 16px;">I built this because I spent too much time as a research assistant doing the same repetitive tasks after every Raman session. Getting from raw instrument data to a figure that actually looks good in a paper took much longer than it should. I wanted something that just worked.</p>
+        
+        <p style="margin-bottom: 16px;">You can drop your spectra in and get your baseline corrected, peaks detected, and figures generated immediately. You get PNG and SVG files for your paper, an Excel file with the processed data, and an interactive report you can send to your supervisor. They can open it in any browser without needing special software.</p>
       </div>
 
       <div class="docs-section">
-        <h2>01. Universal File Ingest</h2>
-        <p>Instant Raman features an intelligent ingest engine that automatically detects and normalizes professional spectral formats, ensuring you can drop files directly from your spectrometer.</p>
-        <ul style="font-size: 11px; color: var(--text-muted);">
-          <li><strong>JCAMP-DX:</strong> .dx and .jdx standards.</li>
-          <li><strong>Bruker:</strong> .dpt native exports.</li>
-          <li><strong>Horiba:</strong> LabSpec .xml and .txt exports.</li>
-          <li><strong>Generic:</strong> Column-based CSV, TXT, and ASC.</li>
-        </ul>
+        <h2>What it handles</h2>
+        <p>It reads files directly from Renishaw, Horiba, WITec, and Bruker instruments, or standard CSV and TXT files. It uses SNIP for baseline correction and finds peak centers with sub-pixel accuracy. If you have overlapping peaks, you can use the LM fitting tool with Lorentzian, Gaussian, or Voigt profiles. If you have multiple samples of the same thing, it can average them and show you the standard deviation.</p>
       </div>
 
       <div class="docs-section">
-        <h2>02. Baseline Correction</h2>
-        <p>We use the <strong>SNIP algorithm</strong> (Statistics-sensitive Non-linear Iterative Peak-clipping) to estimate the background signal (fluorescence, etc.) without distorting Raman peaks.</p>
-        <div class="docs-info-box">
-          <strong>Iterations:</strong> More iterations remove more background. Use the slider in the sidebar to fine-tune the removal depth for your specific sample.
-        </div>
+        <h2>The limits</h2>
+        <p>This tool is honest about what it sees. If your peaks overlap too much for the simple detector to be accurate, it will show you a warning rather than giving you a number it isn't sure about. In those cases, you should use the fitting tool for a better result.</p>
       </div>
 
       <div class="docs-section">
-        <h2>03. Peak Analysis & Metrology</h2>
-        <p>Center positions are calculated using <strong>parabolic interpolation</strong> for sub-pixel precision. Use the <strong>Si Calibration Check</strong> tool to verify instrument accuracy against the standard 520.7 cm⁻¹ Silicon peak.</p>
-        <div class="docs-info-box" style="border-left: 4px solid #f59e0b;">
-          <strong>Note on Overlaps:</strong> If peaks are blended (e.g., D and G bands in carbon), the software reports the envelope centroid. Use specialized fitting for deconvolution.
-        </div>
+        <h2>The basics</h2>
+        <p>Instant Raman is free and runs entirely in your browser. Your data stays on your computer and never gets uploaded to a server.</p>
       </div>
 
-      <div class="docs-section">
-        <h2>05. Advanced Deconvolution</h2>
-        <p>Instant Raman features a professional <strong>Levenberg-Marquardt (LM) non-linear fitting engine</strong>. This enables simultaneous multi-peak optimization using Lorentzian, Gaussian, and <strong>Pseudo-Voigt</strong> profiles. The system provides rigorous residual analysis and dynamic metrology tables that reveal precise mathematical parameters including <strong>Amplitude, FWHM, and the η (mixing ratio)</strong>.</p>
-      </div>
-  
-      <div class="docs-section">
-        <h2>06. Analysis Portfolio</h2>
-        <p>Capture your analytical workflow step-by-step. The <strong>Milestone System</strong> allows you to save discrete "snapshots" of your view—complete with specific zooms, deconvolutions, and replicate stats—into a single, publication-ready <strong>Interactive HTML Portfolio</strong>.</p>
-      </div>
-
-      <div class="docs-section">
-        <h2>07. Dynamic Metrology & Annotations</h2>
-        <p>Our peak table is context-aware, automatically switching between standard metrology and deconvolution parameters. Additionally, use the <strong>Custom Annotation</strong> tool to add high-fidelity text labels directly to your plots for publication-ready visual storytelling.</p>
-      </div>
-  
-      <div class="docs-section">
-        <h2>08. Cosmic Ray Rejection</h2>
-        <p>Protect your data from unphysical spikes. We implement a non-destructive <strong>MAD Z-score</strong> algorithm that identifies and heals cosmic rays without affecting your real Raman signal.</p>
-      </div>
-  
-      <div class="docs-section">
-        <h2>09. Collective Analysis</h2>
-        <p>Select multiple files using the <strong>COMP</strong> button, then use the <strong>Statistical Average</strong> tool to generate a mean trace with shaded standard deviation (±1 SD) bands for group-wise comparison.</p>
-      </div>
-
-      <div class="docs-section">
-        <h2>10. Visual Accessibility</h2>
-        <p>Our plotting engine utilizes high-contrast, <strong>color-blind safe palettes</strong> (Paul Tol muted schemes) to ensure that overlapping spectral traces remain distinguishable for all researchers.</p>
-      </div>
-
-      <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: center; letter-spacing: 0.1em;">
-        <span>INSTANT RAMAN — OPEN RESEARCH</span>
+      <div class="docs-section" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+        <p style="font-style: italic; color: var(--text-dim);">If something isn't working for you or you need a feature that's missing, let me know. Feedback from people actually using this in the lab is how it gets better.</p>
       </div>
     </div>
   </div>
