@@ -754,55 +754,15 @@
     #mobile-landing {
       display: none;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       min-height: 100vh;
       width: 100%;
-      padding: 60px 24px;
-      background: var(--bg-body);
-      color: var(--text-main);
+      padding: 40px 24px;
+      background: #ffffff;
+      color: #0f172a;
       overflow-y: auto;
+      scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
-    }
-
-    .mobile-brand {
-      margin-bottom: 32px;
-    }
-
-    .mobile-brand h1 {
-      font-size: 24px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-      color: #475569;
-    }
-
-    .mobile-brand span {
-      opacity: 0.3;
-      font-weight: 300;
-      margin: 0 8px;
-    }
-
-    .mobile-description {
-      font-size: 14px;
-      color: var(--text-muted);
-      max-width: 320px;
-      line-height: 1.6;
-      margin-bottom: 48px;
-    }
-
-    .mobile-message-box {
-      padding: 24px;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      max-width: 300px;
-    }
-
-    .mobile-message {
-      font-size: 11px;
-      font-family: var(--font-mono);
-      color: var(--text-main);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      line-height: 1.8;
     }
 
     /* ── RESPONSIVE SWITCH ── */
@@ -817,7 +777,6 @@
 
       body {
         overflow: auto;
-        /* Allow scrolling on landing page if needed */
       }
     }
 
@@ -918,78 +877,78 @@
   <script>document.getElementById('heartbeat').style.background = '#00ff00';</script>
 
   <div id="mobile-landing">
-    <div class="mobile-brand"
-      style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 40px;">
-      <img src="/Instant Raman Logo.jpeg" alt="Instant Raman Logo" style="height: 64px; width: auto;">
-      <h1 style="font-size: 28px; font-weight: 500; letter-spacing: -0.01em; color: #475569; margin: 0;">Instant Raman
-      </h1>
-    </div>
+    <!-- Header -->
+    <header style="width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 60px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="/Instant Raman Logo.jpeg" alt="Instant Raman Logo" style="height: 32px; width: auto;">
+        <h1 style="font-size: 16px; font-weight: 700; letter-spacing: 0.1em; color: #0f172a; margin: 0; text-transform: uppercase;">Instant Raman</h1>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);">v2.1.0 [STABLE]</div>
+    </header>
 
-    <div style="max-width: 480px; text-align: left; margin-bottom: 60px;">
-      <p style="font-size: 15px; line-height: 1.6; color: #1e293b; font-weight: 500; margin-bottom: 24px;">
-        I built this because I spent too much time as a research assistant doing the same repetitive tasks after every
-        Raman session. Instant Raman is a browser-based workstation designed to get you from raw data to
-        publication-ready figures in minutes.
+    <!-- Intro -->
+    <section style="margin-bottom: 80px;">
+      <h2 style="font-size: 28px; font-weight: 400; line-height: 1.2; color: #0f172a; margin-bottom: 24px; letter-spacing: -0.02em;">
+        Spectral analysis for researchers, <span style="color: #64748b;">built by researchers.</span>
+      </h2>
+      <p style="font-size: 15px; line-height: 1.6; color: #475569; max-width: 90%;">
+        A high-performance workstation for automated baseline correction, peak deconvolution, and journal-ready plotting. Designed to eliminate repetitive data processing tasks directly in your browser.
       </p>
+    </section>
 
-      <div style="margin-bottom: 40px;">
-        <h2
-          style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 16px;">
-          Analytical Capabilities</h2>
-
-        <div style="display: flex; flex-direction: column; gap: 24px;">
-          <div>
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #000;">Interactive Analytical
-              Portfolios</div>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Capture multi-plot snapshots of
-              your analysis and export them as professional HTML portfolios with full data traceability.</div>
-          </div>
-
-          <div>
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #000;">Professional Peak
-              Deconvolution</div>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Simultaneous multi-peak fitting
-              using the Levenberg-Marquardt algorithm. Support for Lorentzian, Gaussian, and 4-parameter Voigt profiles.
-            </div>
-          </div>
-
-          <div>
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #000;">Statistical Metrology
-              Engine</div>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Automated averaging for
-              experimental replicates. Generate Mean ± SD traces with shaded error bands and statistical peak tables.
-            </div>
-          </div>
-
-          <div>
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #000;">Universal File Architecture
-            </div>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Seamless ingestion for Renishaw,
-              Horiba, WITec, and Bruker formats, alongside JCAMP-DX and high-precision CSV/TXT parsing.</div>
-          </div>
-
-          <div>
-            <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #000;">Advanced Layout Control
-            </div>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Work with 2x1/2x2 grids, waterfall
-              overlays, and stacked views. Optimized for comparative spectral exploration.</div>
-          </div>
+    <!-- Features -->
+    <div style="display: flex; flex-direction: column; gap: 80px; width: 100%;">
+      
+      <!-- Feature 1 -->
+      <section>
+        <div style="margin-bottom: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
+          <img src="/Lorentzian.png" alt="Journal-Grade Export" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
         </div>
-      </div>
+        <h3 style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #332288; margin-bottom: 12px;">01. Journal-Grade Export Fidelity</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+          Every plot is a draft for your next submission. Export high-DPI SVGs and PNGs that adhere to strict academic standards, including bold 2.5pt axis lines and standard 16pt+ typography for maximum legibility in print.
+        </p>
+      </section>
 
-      <div style="padding: 24px; background: #f8fafc; border: 1px solid var(--border); border-radius: 2px;">
-        <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #000;">Research-First Privacy</div>
-        <div style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">Your spectra stay on your machine. All
-          processing happens locally in your browser, ensuring absolute security for unpublished results.</div>
-      </div>
+      <!-- Feature 2 -->
+      <section>
+        <div style="margin-bottom: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
+          <img src="/Waterfall.png" alt="Accessible Metrology" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
+        </div>
+        <h3 style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #117733; margin-bottom: 12px;">02. Accessible Spectral Metrology</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+          Utilizing the Paul Tol color-blind-safe schema. Our engine implements high-contrast, technically validated palettes (Indigo, Teal, Sand, Rose) to ensure that complex comparative waterfall plots are accessible and clear to all readers.
+        </p>
+      </section>
+
+      <!-- Feature 3 -->
+      <section>
+        <div style="margin-bottom: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
+          <img src="/Peak Fitting Modes.png" alt="Real-Time Processing" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
+        </div>
+        <h3 style="font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #882255; margin-bottom: 12px;">03. Real-Time Browser Processing</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+          Processing happens entirely on your machine. From raw JCAMP-DX, Renishaw, or Horiba files to a fully deconvoluted spectrum in seconds. No server latency, and absolute privacy for your unpublished experimental results.
+        </p>
+      </section>
+
     </div>
 
-    <div class="mobile-message-box" style="margin-top: auto;">
-      <p class="mobile-message">
-        Instant Raman is designed for desktop.<br>
-        Open it on your PC or laptop to begin analysis.
-      </p>
-    </div>
+    <!-- Footer -->
+    <footer style="margin-top: 100px; padding: 40px 0; border-top: 1px solid #e2e8f0; width: 100%;">
+      <div style="background: #0f172a; color: #fff; padding: 24px; border-radius: 4px; text-align: center;">
+        <p style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;">
+          Optimized for Desktop Workflow
+        </p>
+        <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
+          Instant Raman requires the precision of a desktop environment.<br>
+          Open this link on your workstation to begin your analysis.
+        </p>
+      </div>
+      <div style="margin-top: 32px; text-align: center; font-size: 10px; color: #cbd5e1; font-family: var(--font-mono);">
+        &copy; 2026 INSTANT RAMAN RESEARCH GROUP
+      </div>
+    </footer>
   </div>
 
   <div id="app">
