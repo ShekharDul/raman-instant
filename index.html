@@ -824,22 +824,32 @@
     /* ── Premium Instrument Toggle (Swiss Modernist) ── */
     .instrument-overlay {
       position: absolute;
-      top: 20px;
-      left: 20px;
+      top: 12px;
+      left: 12px;
       z-index: 1000;
       pointer-events: none;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .instrument-control {
       pointer-events: auto;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
       border: 1px solid var(--border);
-      padding: 6px 12px;
+      padding: 4px 10px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      border-radius: 2px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      gap: 10px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease;
+    }
+
+    .instrument-control:hover {
+      border-color: #000;
+      background: #fff;
     }
 
     .control-label {
