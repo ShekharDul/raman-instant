@@ -485,7 +485,6 @@ export class ChartRenderer {
       }
     ];
 
-    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     layout.shapes = [];
     layout.annotations = [];
     if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
@@ -623,7 +622,6 @@ export class ChartRenderer {
       });
     });
 
-    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     layout.margin = { l: 80, r: 40, t: 30, b: showXLabels ? 50 : 5 };
     layout.showlegend = true;
     layout.legend = { ...PAPER_LAYOUT.legend, x: 1, y: 1, xanchor: 'right', bgcolor: 'rgba(255,255,255,0.8)' };
