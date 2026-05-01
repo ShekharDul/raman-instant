@@ -441,22 +441,33 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Instrument Floating Controls ── */
 .instrument-overlay {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 12px;
+  left: 12px;
   z-index: 1000;
   pointer-events: none;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .instrument-control {
   pointer-events: auto;
-  background: var(--bg-surface);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-strong);
-  padding: 6px 10px;
+  padding: 4px 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-radius: 2px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  gap: 10px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.instrument-control:hover {
+  border-color: var(--laser);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
 
 .control-label {
