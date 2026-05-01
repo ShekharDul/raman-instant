@@ -1020,7 +1020,9 @@ export class ChartRenderer {
       bgcolor: 'rgba(255,255,255,0.95)',
       bordercolor: '#3b82f6',
       borderwidth: 1.5,
-      borderpad: 4
+      borderpad: 4,
+      captureevents: true,
+      name: `customlabel:${l.id}`
     }));
   }
 

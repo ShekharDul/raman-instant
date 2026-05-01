@@ -133,6 +133,7 @@ initRatioCalculator();
 initCalibration();
 initViewControls();
 initLabelControls();
+initLabelPopover();
 initReportControls();
 initSnapshotModal();
 setTimeout(() => updateUI(), 150);
@@ -513,6 +514,7 @@ function deleteFile(id: string) {
 }
 
 function renderPlots() {
+  hideLabelPopover();
   const container = UI.get('workspace-container');
   if (!container) return;
   container.innerHTML = '';
@@ -611,6 +613,7 @@ function renderPlots() {
     requestAnimationFrame(() => {
       ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed, state.showBaseline, state.showGrid);
       attachManualBaselineListener(div);
+      attachLabelClickListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
     const div = document.createElement('div');
@@ -646,6 +649,7 @@ function renderPlots() {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
         ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
         attachManualBaselineListener(plotEl);
+        attachLabelClickListener(plotEl);
         // Systematic Fix: Ensure grid plots also get the fit listener if in selection mode
         if (state.fittingMode || state.selectingROI) attachFitListener(plotEl);
       });
@@ -665,6 +669,7 @@ function renderPlots() {
       requestAnimationFrame(() => {
         ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
         attachManualBaselineListener(div);
+        attachLabelClickListener(div);
       });
     } else {
       const f = filesToRender[0];
@@ -676,6 +681,7 @@ function renderPlots() {
         const filteredPeaks = activeFile?.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) || [];
         ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, activeFile!.labels);
         attachManualBaselineListener(div);
+        attachLabelClickListener(div);
         if (state.fittingMode || state.selectingROI) attachFitListener(div);
       });
     }
@@ -1315,6 +1321,122 @@ function closeLabelModal() {
   const modal = UI.get('modal-label');
   if (modal) modal.classList.remove('active');
   state.pendingLabel = null;
+}
+
+// ── Label Edit Popover ──
+let popoverLabelId: string | null = null;
+
+function initLabelPopover() {
+  UI.get('btn-popover-close')?.addEventListener('click', hideLabelPopover);
+  UI.get('btn-popover-delete')?.addEventListener('click', () => {
+    if (!popoverLabelId) return;
+    const active = state.files.get(state.activeFileId || '');
+    if (active) {
+      active.labels = active.labels.filter(l => l.id !== popoverLabelId);
+      hideLabelPopover();
+      updateUI();
+    }
+  });
+
+  UI.get('btn-popover-save')?.addEventListener('click', saveLabelPopover);
+
+  UI.get('input-popover-label')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveLabelPopover();
+    if (e.key === 'Escape') hideLabelPopover();
+  });
+
+  // Close popover when clicking outside it
+  document.addEventListener('mousedown', (e) => {
+    const popover = UI.get('label-edit-popover');
+    if (popover?.classList.contains('visible') && !popover.contains(e.target as Node)) {
+      hideLabelPopover();
+    }
+  });
+}
+
+function saveLabelPopover() {
+  if (!popoverLabelId) return;
+  const input = UI.get('input-popover-label') as HTMLInputElement;
+  const newText = input?.value.trim();
+  if (!newText) return;
+
+  const active = state.files.get(state.activeFileId || '');
+  if (active) {
+    const label = active.labels.find(l => l.id === popoverLabelId);
+    if (label) {
+      label.text = newText;
+      hideLabelPopover();
+      updateUI();
+    }
+  }
+}
+
+function showLabelPopover(labelId: string, screenX: number, screenY: number) {
+  const active = state.files.get(state.activeFileId || '');
+  if (!active) return;
+  const label = active.labels.find(l => l.id === labelId);
+  if (!label) return;
+
+  popoverLabelId = labelId;
+  const popover = UI.get('label-edit-popover');
+  const input = UI.get('input-popover-label') as HTMLInputElement;
+  if (!popover || !input) return;
+
+  input.value = label.text;
+
+  // Position relative to workspace (parent)
+  const workspace = popover.parentElement;
+  if (!workspace) return;
+  const wRect = workspace.getBoundingClientRect();
+
+  let left = screenX - wRect.left + 12;
+  let top = screenY - wRect.top - 10;
+
+  // Clamp to stay within workspace bounds
+  const popW = 250; // approximate
+  const popH = 130;
+  if (left + popW > wRect.width) left = wRect.width - popW - 8;
+  if (left < 8) left = 8;
+  if (top + popH > wRect.height) top = screenY - wRect.top - popH - 10;
+  if (top < 8) top = 8;
+
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+  popover.classList.add('visible');
+
+  // Auto-focus and select input
+  requestAnimationFrame(() => {
+    input.focus();
+    input.select();
+  });
+}
+
+function hideLabelPopover() {
+  const popover = UI.get('label-edit-popover');
+  if (popover) popover.classList.remove('visible');
+  popoverLabelId = null;
+}
+
+function attachLabelClickListener(el: HTMLElement) {
+  const plotEl = el as any;
+  if (!plotEl) return;
+
+  plotEl.on('plotly_clickannotation', (eventData: any) => {
+    const ann = eventData.annotation;
+    if (!ann || !ann.name || !ann.name.startsWith('customlabel:')) return;
+
+    const labelId = ann.name.replace('customlabel:', '');
+    
+    // Get screen position from the click event
+    const event = eventData.event || window.event;
+    if (event) {
+      showLabelPopover(labelId, event.clientX, event.clientY);
+    } else {
+      // Fallback: position near the annotation using Plotly's coordinate system
+      const plotRect = el.getBoundingClientRect();
+      showLabelPopover(labelId, plotRect.left + plotRect.width / 2, plotRect.top + plotRect.height / 2);
+    }
+  });
 }
 
 function reprocessActive() {
