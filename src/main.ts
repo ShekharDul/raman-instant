@@ -61,6 +61,7 @@ interface AppState {
   fittingMode: boolean;
   selectingROI: boolean;
   labelMode: boolean;
+  freeLabelMode: boolean;
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
 }
@@ -95,6 +96,7 @@ const state: AppState = {
   fittingMode: false,
   selectingROI: false,
   labelMode: false,
+  freeLabelMode: false,
   pendingLabel: null,
   snapshots: []
 };
@@ -628,6 +630,7 @@ function renderPlots() {
       ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed, state.showBaseline, state.showGrid);
       attachManualBaselineListener(div);
       attachLabelClickListener(div);
+      attachFreeLabelListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
     const div = document.createElement('div');
@@ -664,6 +667,7 @@ function renderPlots() {
         ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
         attachManualBaselineListener(plotEl);
         attachLabelClickListener(plotEl);
+        attachFreeLabelListener(plotEl);
         // Systematic Fix: Ensure grid plots also get the fit listener if in selection mode
         if (state.fittingMode || state.selectingROI) attachFitListener(plotEl);
       });
@@ -684,6 +688,7 @@ function renderPlots() {
         ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
         attachManualBaselineListener(div);
         attachLabelClickListener(div);
+        attachFreeLabelListener(div);
       });
     } else {
       const f = filesToRender[0];
@@ -696,6 +701,7 @@ function renderPlots() {
         ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, activeFile!.labels);
         attachManualBaselineListener(div);
         attachLabelClickListener(div);
+        attachFreeLabelListener(div);
         if (state.fittingMode || state.selectingROI) attachFitListener(div);
       });
     }
@@ -1283,17 +1289,39 @@ function initSliders() {
   });
 }
 
+function exitAllLabelModes() {
+  state.labelMode = false;
+  state.freeLabelMode = false;
+  const btnSnap = UI.get('btn-label-mode') as HTMLButtonElement;
+  const btnFree = UI.get('btn-free-label-mode') as HTMLButtonElement;
+  if (btnSnap) { btnSnap.innerText = 'Label peak'; btnSnap.classList.remove('active-compare'); }
+  if (btnFree) { btnFree.innerText = 'Free annotation'; btnFree.classList.remove('active-compare'); }
+}
+
 function initLabelControls() {
   UI.get('btn-label-mode')?.addEventListener('click', () => {
-    state.labelMode = !state.labelMode;
-    const btn = UI.get('btn-label-mode') as HTMLButtonElement;
     if (state.labelMode) {
-      btn.innerText = 'Click plot to place';
-      btn.classList.add('active-compare');
-      showToast("Label Mode: Click any point on the spectrum to add a label.");
+      exitAllLabelModes();
     } else {
-      btn.innerText = 'Add custom label';
-      btn.classList.remove('active-compare');
+      exitAllLabelModes();
+      state.labelMode = true;
+      const btn = UI.get('btn-label-mode') as HTMLButtonElement;
+      btn.innerText = 'Click a peak...';
+      btn.classList.add('active-compare');
+      showToast("Label Peak: Click any point on the spectrum to label it.");
+    }
+  });
+
+  UI.get('btn-free-label-mode')?.addEventListener('click', () => {
+    if (state.freeLabelMode) {
+      exitAllLabelModes();
+    } else {
+      exitAllLabelModes();
+      state.freeLabelMode = true;
+      const btn = UI.get('btn-free-label-mode') as HTMLButtonElement;
+      btn.innerText = 'Click anywhere...';
+      btn.classList.add('active-compare');
+      showToast("Free Annotation: Click anywhere on the plot to place a label.");
     }
   });
 
@@ -1319,13 +1347,7 @@ function saveLabel() {
       text
     });
     
-    state.labelMode = false;
-    const btn = UI.get('btn-label-mode') as HTMLButtonElement;
-    if (btn) {
-      btn.innerText = 'Add custom label';
-      btn.classList.remove('active-compare');
-    }
-    
+    exitAllLabelModes();
     closeLabelModal();
     updateUI();
   }
@@ -1449,6 +1471,46 @@ function attachLabelClickListener(el: HTMLElement) {
       // Fallback: position near the annotation using Plotly's coordinate system
       const plotRect = el.getBoundingClientRect();
       showLabelPopover(labelId, plotRect.left + plotRect.width / 2, plotRect.top + plotRect.height / 2);
+    }
+  });
+}
+
+function attachFreeLabelListener(el: HTMLElement) {
+  const plotEl = el as any;
+  if (!plotEl) return;
+
+  plotEl.addEventListener('click', (e: MouseEvent) => {
+    if (!state.freeLabelMode) return;
+    
+    // Ignore clicks on popovers or buttons
+    if ((e.target as HTMLElement).closest('.label-popover')) return;
+
+    const xaxis = plotEl._fullLayout?.xaxis;
+    const yaxis = plotEl._fullLayout?.yaxis;
+    const margin = plotEl._fullLayout?.margin;
+    if (!xaxis || !yaxis || !margin) return;
+
+    const rect = plotEl.getBoundingClientRect();
+    
+    // Calculate pixel coordinates relative to the plot drawing area
+    const px = e.clientX - rect.left - margin.l;
+    const py = e.clientY - rect.top - margin.t;
+    
+    // Ensure click is within the actual plot area
+    if (px < 0 || px > plotEl._fullLayout.width - margin.l - margin.r) return;
+    if (py < 0 || py > plotEl._fullLayout.height - margin.t - margin.b) return;
+
+    const x = xaxis.p2d(px);
+    const y = yaxis.p2d(py);
+
+    state.pendingLabel = { x, y };
+    
+    const modal = UI.get('modal-label');
+    const input = UI.get('input-label-text') as HTMLInputElement;
+    if (modal && input) {
+      modal.classList.add('active');
+      input.value = '';
+      input.focus();
     }
   });
 }
