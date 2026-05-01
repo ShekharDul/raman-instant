@@ -451,7 +451,7 @@ function renderFileList() {
     const item = document.createElement('div');
     item.className = `file-item ${isActive ? 'active' : ''}`;
     item.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px; flex:1;">
+      <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0; overflow:hidden;">
         <div class="compare-checkbox ${state.comparisonIds.has(id) ? 'checked' : ''}" title="Compare this file">
           <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none" class="check-icon" style="opacity: ${state.comparisonIds.has(id) ? '1' : '0'};">
             <polyline points="20 6 9 17 4 12"></polyline>
