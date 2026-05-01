@@ -465,6 +465,9 @@ function renderFileList() {
         </div>
       </div>
       <div class="file-actions">
+        <button class="btn-edit-name" title="Rename file" style="background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+        </button>
         <button class="btn-del-file" title="Remove file" style="background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         </button>
@@ -482,9 +485,20 @@ function renderFileList() {
       if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
+    item.querySelector('.btn-edit-name')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      nameEl?.focus();
+      // Select all text in the contenteditable
+      const range = document.createRange();
+      range.selectNodeContents(nameEl);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    });
+
     item.addEventListener('click', (e) => { 
-      // Don't trigger active file change if clicking the checkbox or delete button
-      if ((e.target as HTMLElement).closest('.compare-checkbox') || (e.target as HTMLElement).closest('.btn-del-file')) {
+      // Don't trigger active file change if clicking the checkbox, delete, or edit button
+      if ((e.target as HTMLElement).closest('.compare-checkbox') || (e.target as HTMLElement).closest('.btn-del-file') || (e.target as HTMLElement).closest('.btn-edit-name')) {
         return;
       }
       state.activeFileId = id; 
