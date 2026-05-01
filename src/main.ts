@@ -123,6 +123,7 @@ function trackEvent(name: string, params: object = {}) {
 // ── Initialization ──
 initAboutModal();
 initSupportModal();
+initDrawerToggle();
 initUpload();
 initSliders();
 initBaselineControls();
@@ -449,17 +450,23 @@ function renderFileList() {
     const item = document.createElement('div');
     item.className = `file-item ${isActive ? 'active' : ''}`;
     item.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px; flex:1;">
-        <div style="width:3px; height:24px; background:${file.color}; border-radius:1px;"></div>
-        <div style="flex:1;">
+      <div style="display:flex; align-items:center; gap:12px; flex:1;">
+        <div class="compare-checkbox ${state.comparisonIds.has(id) ? 'checked' : ''}" title="Compare this file">
+          <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none" class="check-icon" style="opacity: ${state.comparisonIds.has(id) ? '1' : '0'};">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div style="width:3px; height:24px; background:${file.color}; border-radius:2px;"></div>
+        <div style="flex:1; min-width:0;">
           <div class="file-name-edit" contenteditable="true" spellcheck="false" 
-               style="font-weight:700; font-size:11px; outline:none;">${file.name}</div>
-          <div style="font-size: 8px; opacity: 0.6;">${file.raw.metadata.pointCount} pts</div>
+               style="font-weight:600; font-size:12px; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${file.name}</div>
+          <div style="font-size: 10px; color: var(--text-dim); margin-top:2px;">${file.raw.metadata.pointCount} pts</div>
         </div>
       </div>
       <div class="file-actions">
-        <button class="btn-small btn-comp ${state.comparisonIds.has(id) ? 'active-compare' : ''}">COMP</button>
-        <button class="btn-small btn-del" style="border:none; color:#be123c;">✕</button>
+        <button class="btn-del-file" title="Remove file" style="background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
       </div>
     `;
     const nameEl = item.querySelector('.file-name-edit') as HTMLElement;
@@ -474,13 +481,17 @@ function renderFileList() {
       if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
     });
 
-    item.addEventListener('click', () => { 
+    item.addEventListener('click', (e) => { 
+      // Don't trigger active file change if clicking the checkbox or delete button
+      if ((e.target as HTMLElement).closest('.compare-checkbox') || (e.target as HTMLElement).closest('.btn-del-file')) {
+        return;
+      }
       state.activeFileId = id; 
       UI.get('cal-status-container')?.classList.add('hidden');
       updateUI(); 
     });
-    item.querySelector('.btn-comp')?.addEventListener('click', (e) => { e.stopPropagation(); toggleComp(id); });
-    item.querySelector('.btn-del')?.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(id); });
+    item.querySelector('.compare-checkbox')?.addEventListener('click', (e) => { e.stopPropagation(); toggleComp(id); });
+    item.querySelector('.btn-del-file')?.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(id); });
     container.appendChild(item);
   });
 }
@@ -1007,6 +1018,33 @@ function initSupportModal() {
   });
 }
 
+function initDrawerToggle() {
+  const toggleBtn = UI.get('btn-toggle-drawer');
+  const panel = document.querySelector('.data-panel') as HTMLElement;
+  if (!toggleBtn || !panel) return;
+
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('drawer-open');
+    const isOpen = panel.classList.contains('drawer-open');
+    toggleBtn.querySelector('span:first-child')!.textContent = isOpen ? 'Close' : 'Analysis';
+    toggleBtn.querySelector('.toggle-icon')!.textContent = isOpen ? '✕' : '▸';
+
+    // Resize Plotly plots after transition completes
+    panel.addEventListener('transitionend', () => {
+      const plotEl = document.getElementById('plot-main');
+      if (plotEl && (window as any).Plotly) {
+        (window as any).Plotly.Plots.resize(plotEl);
+      }
+      // Also resize any grid plots
+      document.querySelectorAll('.plot-item').forEach((el) => {
+        if ((window as any).Plotly) {
+          (window as any).Plotly.Plots.resize(el);
+        }
+      });
+    }, { once: true });
+  });
+}
+
 function initLayoutControls() {
   UI.get('select-layout')?.addEventListener('change', (e) => {
     state.layoutMode = (e.target as HTMLSelectElement).value as any;
@@ -1076,12 +1114,12 @@ function initRatioCalculator() {
     state.ratioMode = !state.ratioMode;
     const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
     if (state.ratioMode) {
-      btn.innerText = 'RATIO MODE: ACTIVE (PICK 2 PEAKS)';
+      btn.innerText = 'Ratio mode: active (pick 2 peaks)';
       btn.classList.add('active-compare');
       state.ratioSelection = { p1: null, p2: null };
       UI.get('ratio-results')?.classList.remove('hidden');
     } else {
-      btn.innerText = 'ENABLE RATIO SELECTION';
+      btn.innerText = 'Enable ratio selection';
       btn.classList.remove('active-compare');
     }
     updateUI();
@@ -1158,8 +1196,8 @@ function initSliders() {
     const text = (UI.get('text-caption') as HTMLTextAreaElement).value;
     navigator.clipboard.writeText(text);
     const btn = UI.get('btn-copy-caption') as HTMLButtonElement;
-    btn.innerText = 'COPIED!';
-    setTimeout(() => btn.innerText = 'COPY TO CLIPBOARD', 2000);
+    btn.innerText = 'Copied!';
+    setTimeout(() => btn.innerText = 'Copy to clipboard', 2000);
   });
 
   // Feature 6 - Axis Customization
@@ -1230,11 +1268,11 @@ function initLabelControls() {
     state.labelMode = !state.labelMode;
     const btn = UI.get('btn-label-mode') as HTMLButtonElement;
     if (state.labelMode) {
-      btn.innerText = 'CLICK PLOT TO PLACE';
+      btn.innerText = 'Click plot to place';
       btn.classList.add('active-compare');
       showToast("Label Mode: Click any point on the spectrum to add a label.");
     } else {
-      btn.innerText = 'ADD CUSTOM LABEL';
+      btn.innerText = 'Add custom label';
       btn.classList.remove('active-compare');
     }
   });
@@ -1264,7 +1302,7 @@ function saveLabel() {
     state.labelMode = false;
     const btn = UI.get('btn-label-mode') as HTMLButtonElement;
     if (btn) {
-      btn.innerText = 'ADD CUSTOM LABEL';
+      btn.innerText = 'Add custom label';
       btn.classList.remove('active-compare');
     }
     
@@ -1718,7 +1756,7 @@ async function runFitting(minX: number, maxX: number) {
   const type = (UI.get('select-fit-type') as HTMLSelectElement).value as any;
   const initial = FittingEngine.estimateInitial(roiX, roiY, type);
   
-  UI.text('system-status', 'FITTING...');
+  UI.text('system-status', 'Fitting...');
   
   // Run fit in microtask to not block UI immediately
   setTimeout(() => {
@@ -1726,7 +1764,7 @@ async function runFitting(minX: number, maxX: number) {
     state.fitResult = result;
     state.fittingMode = true;
     UI.get('btn-exit-fit')?.classList.remove('hidden');
-    UI.text('system-status', 'READY');
+    UI.text('system-status', 'Ready');
     updateUI();
   }, 10);
 }
@@ -1799,16 +1837,16 @@ function showToast(message: string) {
   toast.style.bottom = '40px';
   toast.style.left = '50%';
   toast.style.transform = 'translateX(-50%)';
-  toast.style.background = 'var(--laser)';
-  toast.style.color = '#000';
-  toast.style.padding = '8px 16px';
-  toast.style.fontSize = '10px';
-  toast.style.fontWeight = '700';
-  toast.style.textTransform = 'uppercase';
-  toast.style.letterSpacing = '0.1em';
-  toast.style.borderRadius = '2px';
+  toast.style.background = '#0d9488';
+  toast.style.color = '#fff';
+  toast.style.padding = '10px 20px';
+  toast.style.fontSize = '12px';
+  toast.style.fontWeight = '500';
+  toast.style.textTransform = 'none';
+  toast.style.letterSpacing = '0';
+  toast.style.borderRadius = '6px';
   toast.style.zIndex = '99999';
-  toast.style.boxShadow = '0 8px 32px rgba(0,0,0,0.5)';
+  toast.style.boxShadow = '0 4px 16px rgba(13,148,136,0.3)';
   toast.textContent = message;
   
   document.body.appendChild(toast);
