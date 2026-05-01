@@ -379,6 +379,20 @@ function updateUI() {
   UI.get('file-list')?.classList.toggle('hidden', !hasFiles);
 
   renderLabelList();
+
+  // Systematic Fix: Update Fit/ROI button state
+  const btnFit = UI.get('btn-start-fit-mode') as HTMLButtonElement;
+  if (btnFit) {
+    if (state.selectingROI) {
+      btnFit.innerText = 'SELECT ROI ON PLOT...';
+      btnFit.style.background = 'var(--laser)';
+      btnFit.style.color = '#000';
+    } else {
+      btnFit.innerText = 'START PEAK FITTING (ROI)';
+      btnFit.style.background = '';
+      btnFit.style.color = '';
+    }
+  }
 }
 
 function renderLabelList() {
@@ -488,6 +502,11 @@ function renderPlots() {
   if (!container) return;
   container.innerHTML = '';
 
+  // Systematic Fix: Reset inline styles that may have been set during Fit Mode
+  container.style.display = '';
+  container.style.flexDirection = '';
+  container.style.gap = '';
+  
   let gridClass = 'grid-single';
   if (state.layoutMode === 'grid2x1') gridClass = 'grid-2x1';
   if (state.layoutMode === 'grid2x2') gridClass = 'grid-2x2';
@@ -612,6 +631,8 @@ function renderPlots() {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
         ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, f.labels);
         attachManualBaselineListener(plotEl);
+        // Systematic Fix: Ensure grid plots also get the fit listener if in selection mode
+        if (state.fittingMode || state.selectingROI) attachFitListener(plotEl);
       });
     });
   } else {
@@ -652,7 +673,15 @@ function attachFitListener(el: HTMLElement) {
   if (!plotEl || !Plotly) return;
   
   // Force box selection mode
-  Plotly.relayout(plotEl, { dragmode: 'select' });
+  // Force box selection mode (with safety timeout to ensure Plotly is ready)
+  const setDragMode = () => {
+    if (plotEl._fullLayout) {
+      Plotly.relayout(plotEl, { dragmode: 'select' });
+    } else {
+      setTimeout(setDragMode, 50);
+    }
+  };
+  setDragMode();
 
   plotEl.on('plotly_selected', (data: any) => {
     if (!data) return;
@@ -1010,13 +1039,11 @@ function initLayoutControls() {
   });
 
   UI.get('btn-start-fit-mode')?.addEventListener('click', () => {
-    state.selectingROI = true;
-    showToast("Drag on the plot to select your fitting region.");
-    
-    // Find all active plot containers and attach the selection mode immediately
-    // This avoids a full re-render that would reset the current zoom view
-    const plots = document.querySelectorAll('.plot-container');
-    plots.forEach(p => attachFitListener(p as HTMLElement));
+    state.selectingROI = !state.selectingROI;
+    if (state.selectingROI) {
+        showToast("Drag on the plot to select your fitting region.");
+    }
+    updateUI();
   });
 
   UI.get('btn-undo-replicates')?.addEventListener('click', () => {
