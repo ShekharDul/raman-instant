@@ -54,6 +54,8 @@ interface AppState {
   viewHistory: ([number, number] | null)[];
   maxXData: number;
   showUnprocessed: boolean;
+  showBaseline: boolean;
+  showGrid: boolean;
   cosmicRayRemoval: boolean;
   fitResult: FitResult | null;
   fittingMode: boolean;
@@ -86,6 +88,8 @@ const state: AppState = {
   viewHistory: [],
   maxXData: 4000,
   showUnprocessed: false,
+  showBaseline: false,
+  showGrid: true,
   cosmicRayRemoval: true,
   fitResult: null,
   fittingMode: false,
@@ -594,7 +598,7 @@ function renderPlots() {
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed);
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed, state.showBaseline, state.showGrid);
       attachManualBaselineListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
@@ -611,7 +615,7 @@ function renderPlots() {
           relIntensity: 0,
           area: 0
         })) || [];
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks, activeFile?.labels || []);
+      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks, state.showGrid, activeFile?.labels || []);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
@@ -629,7 +633,7 @@ function renderPlots() {
 
       requestAnimationFrame(() => {
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, f.labels);
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
         attachManualBaselineListener(plotEl);
         // Systematic Fix: Ensure grid plots also get the fit listener if in selection mode
         if (state.fittingMode || state.selectingROI) attachFitListener(plotEl);
@@ -648,7 +652,7 @@ function renderPlots() {
         }
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed);
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
         attachManualBaselineListener(div);
       });
     } else {
@@ -659,7 +663,7 @@ function renderPlots() {
       };
       requestAnimationFrame(() => {
         const filteredPeaks = activeFile?.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) || [];
-        ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, activeFile!.labels);
+        ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, activeFile!.labels);
         attachManualBaselineListener(div);
         if (state.fittingMode || state.selectingROI) attachFitListener(div);
       });
@@ -1132,6 +1136,17 @@ function initSliders() {
     renderPlots();
   });
 
+  UI.get('check-show-baseline')?.addEventListener('change', (e) => {
+    state.showBaseline = (e.target as HTMLInputElement).checked;
+    renderPlots();
+  });
+
+  UI.get('check-hide-grid')?.addEventListener('change', (e) => {
+    // Note: Variable is 'showGrid', but checkbox is 'hide-grid' (inverted logic)
+    state.showGrid = !(e.target as HTMLInputElement).checked;
+    renderPlots();
+  });
+
   UI.get('check-cosmic-ray')?.addEventListener('change', (e) => {
     state.cosmicRayRemoval = (e.target as HTMLInputElement).checked;
     reprocessAll();
@@ -1431,7 +1446,7 @@ async function exportFigure(format: 'png' | 'svg') {
                     state.normalizationMode === 'max' ? 'Max Intensity' :
                     state.normalizationMode === 'area' ? 'Total Area' :
                     `Point (${state.normTargetX?.toFixed(0)})`;
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels);
+    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
   }
@@ -1751,8 +1766,8 @@ function renderFitResults() {
 
   requestAnimationFrame(() => {
     // Render with identical left margins (80px) and shared X-range
-    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false);
-    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals });
+    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false, state.showGrid);
+    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
 
     // Sync X-axis zoom between the two
     const Plotly = (window as any).Plotly;

@@ -104,7 +104,7 @@ import { FittingEngine, type PeakFit } from '../engine/fitting.ts';
 
 export class ChartRenderer {
 
-  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showUnprocessed = true, customLabels: CustomLabel[] = []) {
+  static renderSingle(container: HTMLElement | string, raw: SpectralData, processed: SpectralData, _baseline: SpectralData, peaks: Peak[], color?: string, range?: [number, number], isGrid = false, hideY = false, normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showUnprocessed = true, showBaseline = false, showGrid = true, customLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -117,9 +117,17 @@ export class ChartRenderer {
     if (showUnprocessed) {
       traces.push({ x: raw.wavenumberData, y: raw.intensityData, mode: 'lines', name: 'Raw Input', line: { color: '#94a3b8', width: 1 }, opacity: 0.4, hoverinfo: 'skip' });
     }
+    
+    // Systematic Fix: Render baseline if requested
+    if (showBaseline && _baseline) {
+      traces.push({ x: _baseline.wavenumberData, y: _baseline.intensityData, mode: 'lines', name: 'Baseline (Est)', line: { color: '#94a3b8', width: 1.5, dash: 'dot' }, opacity: 0.8, hoverinfo: 'skip' });
+    }
+
     traces.push({ x: processed.wavenumberData, y: processed.intensityData, mode: 'lines', name: 'Processed', line: { color: color || COLORS.main, width: 2.5 }, hoverinfo: 'x+y' });
     
     // Apply Axis Styling
+    layout.xaxis.showgrid = showGrid;
+    layout.yaxis.showgrid = showGrid;
     layout.font.size = fontSize;
     layout.xaxis.title.font.size = fontSize + 2;
     layout.xaxis.tickfont = { size: fontSize - 2 };
@@ -228,18 +236,24 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderOverlay(container: HTMLElement | string, datasets: { name: string; data: SpectralData; color?: string; raw?: SpectralData; labels?: CustomLabel[] }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true, globalLabels: CustomLabel[] = []) {
+  static renderOverlay(container: HTMLElement | string, datasets: { name: string, data: SpectralData, color: string, raw?: SpectralData, baseline?: SpectralData, labels?: CustomLabel[] }[], range?: [number, number], isWaterfall = false, hideY = false, normLabel?: string, peaksToShow: Peak[] = [], ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true, showBaseline = false, showGrid = true, globalLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
-
+    
     const traces: any[] = [];
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    
+    // Systematic Fix: Grid visibility
+    layout.xaxis.showgrid = showGrid;
+    layout.yaxis.showgrid = showGrid;
     
     datasets.forEach((d, i) => {
-      // Add raw data trace if available and toggled on
+      const offset = isWaterfall ? (i * ((window as any).state?.stackOffset || 0)) : 0;
+      
       if (showUnprocessed && d.raw) {
         traces.push({
           x: d.raw.wavenumberData, 
-          y: isWaterfall ? d.raw.intensityData.map((v) => v + (i * ((window as any).state?.stackOffset || 0))) : d.raw.intensityData,
+          y: d.raw.intensityData.map((v) => v + offset),
           mode: 'lines', 
           name: `Raw (${d.name})`,
           line: { color: '#94a3b8', width: 1 },
@@ -249,15 +263,28 @@ export class ChartRenderer {
         });
       }
 
+      if (showBaseline && d.baseline) {
+        traces.push({
+          x: d.baseline.wavenumberData, 
+          y: d.baseline.intensityData.map((v) => v + offset),
+          mode: 'lines', 
+          name: `Baseline (${d.name})`,
+          line: { color: '#94a3b8', width: 1, dash: 'dot' },
+          opacity: 0.5, 
+          hoverinfo: 'skip',
+          showlegend: false
+        });
+      }
+
       traces.push({
         x: d.data.wavenumberData, 
-        y: isWaterfall ? d.data.intensityData.map((v) => v + (i * ((window as any).state?.stackOffset || 0))) : d.data.intensityData,
+        y: d.data.intensityData.map((v) => v + offset),
         mode: 'lines', name: d.name, 
         line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
         hoverinfo: 'x+y+name'
       });
     });
-    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+
     layout.shapes = [];
     layout.annotations = [];
     if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
@@ -428,9 +455,13 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number], peaksToShow: Peak[] = [], customLabels: CustomLabel[] = []) {
+  static renderReplicate(container: HTMLElement | string, mean: SpectralData, sdY: number[], name: string, color: string, range?: [number, number], peaksToShow: Peak[] = [], showGrid = true, customLabels: CustomLabel[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
+
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.xaxis.showgrid = showGrid;
+    layout.yaxis.showgrid = showGrid;
 
     const x = mean.wavenumberData;
     const meanY = mean.intensityData;
@@ -552,9 +583,13 @@ export class ChartRenderer {
     }
   }
 
-  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false) {
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false, showGrid = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
+
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.xaxis.showgrid = showGrid;
+    layout.yaxis.showgrid = showGrid;
 
     const traces: any[] = [
       {
@@ -599,11 +634,13 @@ export class ChartRenderer {
     Plotly.react(container, traces, layout, CONFIG);
   }
 
-  static renderResidual(container: HTMLElement | string, data: SpectralData, range?: [number, number]) {
+  static renderResidual(container: HTMLElement | string, data: SpectralData, range?: [number, number], showGrid = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.xaxis.showgrid = showGrid;
+    layout.yaxis.showgrid = showGrid;
     layout.margin = { l: 80, r: 40, t: 5, b: 60 };
     layout.showlegend = false;
     layout.yaxis.title.text = 'Δ (a.u.)';
@@ -621,7 +658,7 @@ export class ChartRenderer {
     }], layout, { ...CONFIG, displayModeBar: false });
   }
 
-  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false) {
+  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true, showBaseline = false, showGrid = true) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
     
@@ -760,7 +797,7 @@ export class ChartRenderer {
           intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
         };
         const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
-        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, (state as any).viewRange || undefined, false, (state as any).hideYAxis, normLabel, ratio, fontSize, showBox, true, f.labels);
+        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, (state as any).viewRange || undefined, false, (state as any).hideYAxis, normLabel, ratio, fontSize, showBox, showUnprocessed, showBaseline, showGrid, f.labels);
         
         // Apply sizing and transparency after plot creation
         await Plotly.relayout(tempDiv, { 
@@ -795,7 +832,7 @@ export class ChartRenderer {
         const activeFile = files.find((f: any) => f.id === state.activeFileId) || files[0];
         const filteredPeaks = activeFile.peaks.filter((p: any) => activeFile.selectedPeakX.has(p.x));
         
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels, true);
+        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels, showUnprocessed, showBaseline, showGrid);
         
         await Plotly.relayout(tempDiv, { 
           width: exportW, 
@@ -820,6 +857,10 @@ export class ChartRenderer {
         layout.annotations = [];
         layout.grid = { rows, columns: cols, pattern: 'independent' };
         layout.showlegend = false;
+        
+        // Systematic Fix: Grid visibility for grid exports
+        layout.xaxis.showgrid = showGrid;
+        layout.yaxis.showgrid = showGrid;
         
         // Adjust for journal sizing if needed
         layout.width = exportW;
