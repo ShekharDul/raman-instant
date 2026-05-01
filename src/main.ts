@@ -1577,19 +1577,21 @@ async function saveSnapshot(title: string) {
   // 3. Robust Y-Scaling for Snapshot (Avoid Flattening)
   let yRange: [number, number] | undefined = undefined;
   if (snapshotTraces.length > 0 && state.viewRange) {
-    const firstTraceSet = snapshotTraces[0].traces;
     const [xMin, xMax] = state.viewRange;
     let globalMinY = Infinity;
     let globalMaxY = -Infinity;
 
-    firstTraceSet.forEach((t: any) => {
-      if (!t.x || !t.y) return;
-      for (let i = 0; i < t.x.length; i++) {
-        if (t.x[i] >= xMin && t.x[i] <= xMax) {
-          if (t.y[i] < globalMinY) globalMinY = t.y[i];
-          if (t.y[i] > globalMaxY) globalMaxY = t.y[i];
+    // Systematic Fix: Iterate over ALL plot trace sets in the grid to find global min/max
+    snapshotTraces.forEach(ts => {
+      ts.traces.forEach((t: any) => {
+        if (!t.x || !t.y) return;
+        for (let i = 0; i < t.x.length; i++) {
+          if (t.x[i] >= xMin && t.x[i] <= xMax) {
+            if (t.y[i] < globalMinY) globalMinY = t.y[i];
+            if (t.y[i] > globalMaxY) globalMaxY = t.y[i];
+          }
         }
-      }
+      });
     });
 
     if (globalMaxY !== -Infinity) {
@@ -1619,7 +1621,9 @@ async function saveSnapshot(title: string) {
     },
     yaxis: { 
       title: 'Intensity (a.u.)', 
-      range: liveLayout.yaxis?.range || yRange 
+      // Systematic Fix: For grid layouts, we prefer independent scaling to avoid capping peaks.
+      // We set range to undefined for grids, letting Plotly autoscale each subplot.
+      range: (state.layoutMode.startsWith('grid')) ? undefined : (liveLayout.yaxis?.range || yRange)
     },
     shapes: liveLayout.shapes || [],
     annotations: liveLayout.annotations || []

@@ -299,7 +299,11 @@ export const REPORT_TEMPLATE = `
                                 
                                 container.appendChild(wrapper);
                                 
-                                const subLayout = { ...layout };
+                                const subLayout = { ...layout, yaxis: { ...layout.yaxis } };
+                                if (layoutMode.startsWith('grid')) {
+                                    delete subLayout.yaxis.range;
+                                    subLayout.yaxis.autorange = true;
+                                }
                                 Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
                             });
                         } else {
