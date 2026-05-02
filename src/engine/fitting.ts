@@ -93,6 +93,8 @@ export interface EpistemicResult {
   all_model_results: any[];
   isDegenerateRange: boolean;
   epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT';
+  ensembleModelCounts: { lorentzian: number; gaussian: number; voigt: number };
+  ensembleN: number;
 }
 
 export class FittingEngine {
@@ -387,6 +389,8 @@ export class FittingEngine {
 
     const r2Sums: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
     const r2Counts: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
+    const ensembleModelCounts = { lorentzian: 0, gaussian: 0, voigt: 0 };
+    let ensembleN = 0;
 
     for (const step of steps) {
       const shift = (baseFwhm * (step / 100));
@@ -460,18 +464,18 @@ export class FittingEngine {
         // Converged - Apply Sanity Check (Outlier Detection)
         const peak = res.peaks[0];
         const centerVal = peak.center.value as number;
+        const statErr = peak.center.error;
+
+        const isFiniteCenter = isFinite(centerVal);
+        const isFiniteCov = statErr !== null && isFinite(statErr);
+
+        if (isFiniteCenter && isFiniteCov) {
+          ensembleModelCounts[model]++;
+          ensembleN++;
+        }
+
         const centerShift = Math.abs(centerVal - nominalCenter);
         const isOutlier = centerShift > (3 * baseFwhm);
-
-        console.log({
-          peakId: peakId,
-          model: model,
-          center: centerVal,
-          nominalCenter: nominalCenter,
-          deviation: centerShift,
-          threshold: 3 * baseFwhm,
-          isOutlier: isOutlier
-        });
 
         if (!isOutlier) {
           validCenters.push(centerVal);
@@ -597,7 +601,9 @@ export class FittingEngine {
         convergence_status: 'converged',
         all_model_results,
         isDegenerateRange,
-        epistemic_classification: classification
+        epistemic_classification: classification,
+        ensembleModelCounts,
+        ensembleN
       };
     }
 
@@ -621,7 +627,9 @@ export class FittingEngine {
       convergence_status: 'failed',
       all_model_results,
       isDegenerateRange: false,
-      epistemic_classification: 'STABLE_CONVERGENCE'
+      epistemic_classification: 'STABLE_CONVERGENCE',
+      ensembleModelCounts: { lorentzian: 0, gaussian: 0, voigt: 0 },
+      ensembleN: 0
     };
   }
 }

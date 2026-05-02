@@ -2469,6 +2469,29 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
   }
 
+  // Append failure note if any model type has zero successful fits
+  const counts = (epi.ensembleModelCounts || { lorentzian: 0, gaussian: 0, voigt: 0 }) as { lorentzian: number; gaussian: number; voigt: number };
+  const failedModels: string[] = [];
+  if (counts.lorentzian === 0) failedModels.push('Lorentzian');
+  if (counts.gaussian === 0) failedModels.push('Gaussian');
+  if (counts.voigt === 0) failedModels.push('Voigt');
+
+  if (failedModels.length > 0 && failedModels.length < 3 && !isInvalidFit) {
+    const failedStr = failedModels.length === 2 
+      ? `${failedModels[0]} and ${failedModels[1]}` 
+      : failedModels[0];
+    
+    const successfulModels = Object.entries(counts)
+      .filter(([_, n]) => n > 0)
+      .map(([m, _]) => m.charAt(0).toUpperCase() + m.slice(1));
+    
+    const successStr = successfulModels.length === 2 
+      ? `${successfulModels[0]} and ${successfulModels[1]}` 
+      : successfulModels[0];
+
+    part1 += ` <br><span style="font-size: 13px; color: #64748b; font-style: italic;">Note: ${failedStr} fits did not converge in this region — ensemble results reflect ${successStr} fits only.</span>`;
+  }
+
   // 2. Meaning & Confidence (Part 2) - INVALID_FIT and POOR_FIT take absolute precedence
   if (isInvalidFit) {
     part2 = `<div style="color: #b45309; font-weight: 600;">Invalid fit.</div> The fitting window likely contains multiple overlapping peaks, a steeply sloped background, or a feature that no single line-shape profile can describe. Try splitting this region into two narrower windows, or adjust the baseline before fitting.`;

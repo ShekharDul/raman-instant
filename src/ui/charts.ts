@@ -1155,18 +1155,23 @@ export class ChartRenderer {
     const epiRange = (epiMin !== null && epiMax !== null) ? Math.abs(epiMax - epiMin) : 0;
     const isSuppressedBimodal = epiResult.epistemic_classification === 'STABLE_CONVERGENCE' && epiRange < BIMODAL_SUPPRESSION_EPISTEMIC_THRESHOLD_CM;
 
+    const ensembleN = epiResult.ensembleN || 0;
+    const modelCounts = epiResult.ensembleModelCounts || { lorentzian: 0, gaussian: 0, voigt: 0 };
+    const distinctModelTypes = Object.values(modelCounts).filter(n => (n as number) > 0).length;
+
     // 1. KDE Curve (Background)
     const validCenters = validResults.map((r: any) => r.center || r.fitted_center);
-    const n = validCenters.length;
     let bimodalAnnotation = null;
 
-    if (n >= 4) {
-      const mean = validCenters.reduce((a: number, b: number) => a + b, 0) / n;
-      const sd = Math.sqrt(validCenters.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / n) || 0.001;
+    if (ensembleN >= 4) {
+      const mean = validCenters.reduce((a: number, b: number) => a + b, 0) / ensembleN;
+      const sd = Math.sqrt(validCenters.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / ensembleN) || 0.001;
       
+      const skipBimodalDetection = ensembleN < 4 || distinctModelTypes === 1;
+
       if (sd < 0.005) {
         // Sigma guard — skip KDE
-      } else if ((this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) && !isSuppressedBimodal) {
+      } else if (!skipBimodalDetection && (this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) && !isSuppressedBimodal) {
         // Bimodality guard — skip KDE, show annotation
         const nominalFWHM = epiResult.fitted_fwhm || 20; // Default fallback if missing
         const clusterCount = this.countDistinctClusters(validCenters, nominalFWHM);
@@ -1188,7 +1193,7 @@ export class ChartRenderer {
           borderpad: 2
         };
       } else {
-        const h = 1.06 * sd * Math.pow(n, -0.2);
+        const h = 1.06 * sd * Math.pow(ensembleN, -0.2);
         const xMin = Math.min(...validCenters);
         const xMax = Math.max(...validCenters);
         const span = xMax - xMin;
@@ -1204,11 +1209,10 @@ export class ChartRenderer {
           const xi = start + (i / steps) * (end - start);
           let val = 0;
           for (const c of validCenters) {
-            const u = (xi - c) / h;
-            val += (1 / (h * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * u * u);
+            val += Math.exp(-0.5 * Math.pow((xi - c) / h, 2)) / (Math.sqrt(2 * Math.PI) * h);
           }
           kdeX.push(xi);
-          kdeY.push(val / n);
+          kdeY.push(val / ensembleN);
         }
         
         // Scale KDE height to look natural in the jitter space [-0.4, 0.4]
@@ -1367,6 +1371,19 @@ export class ChartRenderer {
         }
       ]
     };
+
+    if (ensembleN < 4 && epiResult.epistemic_classification !== 'INVALID_FIT') {
+      layout.annotations.push({
+        text: "Fewer than 4 ensemble fits completed. Uncertainty estimates may be unreliable.",
+        xref: 'paper',
+        yref: 'paper',
+        x: 0.5,
+        y: -0.25,
+        showarrow: false,
+        font: { size: 10, color: '#94a3b8' }
+      });
+      layout.margin.b = 80;
+    }
 
     // Epistemic Boundary Lines (Dashed)
     if (epiMin !== null && epiMax !== null && epiMin !== epiMax && !isSuppressedBimodal) {
