@@ -414,7 +414,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: flex 0.3s ease;
+  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: flex;
   background: var(--bg-app);
 }
 
@@ -422,7 +423,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .data-grid {
   flex: 0 0 0%;
   overflow: hidden;
-  transition: flex 0.3s ease;
+  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: flex;
   background: var(--bg-surface);
   border-left: 0.5px solid var(--border);
   display: flex;
@@ -443,7 +445,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  transition: flex 0.3s ease;
+  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: flex;
 }
 
 .analysis-drawer.drawer-open {
