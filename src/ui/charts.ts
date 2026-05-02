@@ -1058,10 +1058,8 @@ export class ChartRenderer {
     const Plotly = (window as any).Plotly;
 
     const allResults = epiResult.all_model_results || [];
-    const validResults = allResults.filter((r: any) => 
-      r.convergence_status === 'converged' && !r.outlier_excluded
-    );
-
+    const validResults = allResults.filter((r: any) => r.status === 'valid');
+    
     // Edge Case: No converged fits or invalid result
     const hasConverged = allResults.some((r: any) => r.convergence_status === 'converged');
     if (!hasConverged) {
@@ -1087,7 +1085,7 @@ export class ChartRenderer {
     const traces: any[] = [];
 
     // 1. KDE Curve (Background)
-    const validCenters = validResults.map((r: any) => r.fitted_center);
+    const validCenters = validResults.map((r: any) => r.center || r.fitted_center);
     const n = validCenters.length;
     
     if (n >= 4) {

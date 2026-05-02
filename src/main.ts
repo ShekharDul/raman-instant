@@ -2276,7 +2276,9 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
     
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
 
-    if (epi.epistemic_classification === 'MODEL_SENSITIVE') {
+    if (epi.epistemic_classification === 'POOR_FIT') {
+      part2 = `<div style="color: #d97706; font-weight: 600;">Poor fit quality.</div> The best model explains less than 95% of the variance in this region. This may indicate overlapping peaks, an asymmetric feature, or incorrect region boundaries. Interpret the center position with caution.`;
+    } else if (epi.epistemic_classification === 'HIGH_SENSITIVITY') {
       part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
     } else {
       part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;

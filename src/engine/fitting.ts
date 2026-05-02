@@ -93,7 +93,7 @@ export interface EpistemicResult {
   convergence_status: 'converged' | 'failed';
   all_model_results: any[];
   isDegenerateRange: boolean;
-  epistemic_classification: 'STABLE' | 'MODEL_SENSITIVE';
+  epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT';
 }
 
 export class FittingEngine {
@@ -452,6 +452,7 @@ export class FittingEngine {
             r_squared: null,
             reduced_chi_squared: null,
             convergence_status: "failed",
+            status: "failed",
             outlier_excluded: false
           });
           continue;
@@ -488,6 +489,8 @@ export class FittingEngine {
           r_squared: res.r2,
           reduced_chi_squared: res.reducedChi2,
           convergence_status: "converged",
+          status: isOutlier ? "outlier" : "valid",
+          center: centerVal, // Alias for KDE strictly matching requested filter
           outlier_excluded: isOutlier,
           exclusion_reason: isOutlier ? `Center shift (${centerShift.toFixed(2)} cm-1) exceeds 3x FWHM (${(3 * baseFwhm).toFixed(2)} cm-1)` : null
         };
@@ -543,9 +546,22 @@ export class FittingEngine {
         combined_uncertainty = epistemic_standard_deviation;
       }
 
-      const classification = (statErr && statErr > 0 && validCenters.length > 1) 
-        ? ((Math.max(...validCenters) - Math.min(...validCenters)) / (statErr * 2) > 5 ? 'MODEL_SENSITIVE' : 'STABLE')
-        : 'STABLE';
+      const POOR_FIT_R2_THRESHOLD = 0.95;
+      let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' = 'STABLE_CONVERGENCE';
+
+      if (isDegenerateRange) {
+        classification = 'STABLE_CONVERGENCE';
+      } else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
+        classification = 'POOR_FIT';
+      } else if (statErr && statErr > 0) {
+        const epistemicSpread = Math.max(...validCenters) - Math.min(...validCenters);
+        const ratio = epistemicSpread / (2 * statErr);
+        if (ratio > 3) {
+          classification = 'HIGH_SENSITIVITY';
+        } else {
+          classification = 'STABLE_CONVERGENCE';
+        }
+      }
 
       return {
         peak_id: peakId,
@@ -591,7 +607,7 @@ export class FittingEngine {
       convergence_status: 'failed',
       all_model_results,
       isDegenerateRange: false,
-      epistemic_classification: 'STABLE'
+      epistemic_classification: 'STABLE_CONVERGENCE'
     };
   }
 }
