@@ -2382,8 +2382,8 @@ function formatEpistemicRange(min: number | undefined | null, max: number | unde
 }
 
 function formatReportAs(center: number, statisticalError: number | null, _isDegenerateRange: boolean): string {
-  if (statisticalError === null) {
-    return `${center.toFixed(1)} ± ill-conditioned`;
+  if (statisticalError === null || isNaN(statisticalError) || !isFinite(statisticalError) || statisticalError === 0) {
+    return `${center.toFixed(1)} ± —`;
   }
 
   if (statisticalError < 0.001) {
@@ -2451,18 +2451,28 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
   let part3 = '';
 
   const r2Threshold = 0.95;
-  const isPoorFit = r2 < r2Threshold;
+  const isInvalidFit = r2 < 0 || epi.epistemic_classification === 'INVALID_FIT';
+  const isPoorFit = r2 < r2Threshold && !isInvalidFit;
   const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
 
   // 1. Core Findings (Part 1)
-  if (epi.isDegenerateRange) {
+  if (isInvalidFit) {
+    const epistemicSpread = (epi.epistemic_center_max !== null && epi.epistemic_center_min !== null) 
+      ? (epi.epistemic_center_max - epi.epistemic_center_min) 
+      : 100;
+    const isTightConvergence = epistemicSpread < 0.5;
+    
+    part1 = `The fit failed — R² is negative, meaning the model performs worse than a flat mean line.${isTightConvergence ? ' All ensemble fits converged to the same center, but this agreement is unreliable when the underlying fit is invalid.' : ''}`;
+  } else if (epi.isDegenerateRange) {
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
   } else {
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
   }
 
-  // 2. Meaning & Confidence (Part 2) - POOR_FIT takes absolute precedence
-  if (isPoorFit || epi.epistemic_classification === 'POOR_FIT') {
+  // 2. Meaning & Confidence (Part 2) - INVALID_FIT and POOR_FIT take absolute precedence
+  if (isInvalidFit) {
+    part2 = `<div style="color: #b45309; font-weight: 600;">Invalid fit.</div> The fitting window likely contains multiple overlapping peaks, a steeply sloped background, or a feature that no single line-shape profile can describe. Try splitting this region into two narrower windows, or adjust the baseline before fitting.`;
+  } else if (isPoorFit || epi.epistemic_classification === 'POOR_FIT') {
     part2 = `<div style="color: #d97706; font-weight: 600;">Poor fit quality.</div> The best model explains less than 95% of the variance in this region. This may indicate overlapping peaks, an asymmetric feature, or incorrect region boundaries. Interpret the center position with caution.`;
   } else if (epi.isDegenerateRange) {
     part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All three model types and all boundary perturbations converged to the same center. The result is stable and model-insensitive.`;
@@ -2477,7 +2487,11 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
   const reportAs = formatReportAs(center, combined, epi.isDegenerateRange);
   const rangeClause = (rangeStr && !epi.isDegenerateRange) ? `. Epistemic range: ${rangeStr}` : '';
 
-  if (isPoorFit) {
+  if (isInvalidFit) {
+    part3 = `<div style="padding: 12px; background: #fff7ed; border-left: 4px solid #f97316; color: #9a3412; font-weight: 400; font-size: 13px; line-height: 1.5;">
+      <b>This fit is invalid (R² < 0).</b> Do not report this value. Redefine the fitting window to isolate a single peak before refitting.
+    </div>`;
+  } else if (isPoorFit) {
     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. <span style="color: #d97706;">Caution: Low variance explained.</span>`;
   } else {
     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;

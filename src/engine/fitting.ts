@@ -12,8 +12,7 @@ import { SingularValueDecomposition, Matrix } from 'ml-matrix';
 export const DEGENERATE_RANGE_THRESHOLD_CM = 0.01;
 
 export function formatStatisticalError(value: number | null): string {
-  if (value === null) return "ill-conditioned";
-  if (value === 0) return "0 cm⁻¹";
+  if (value === null || isNaN(value) || !isFinite(value) || value === 0) return "—";
   
   if (value < 0.001) {
     const exponent = Math.floor(Math.log10(value));
@@ -93,7 +92,7 @@ export interface EpistemicResult {
   convergence_status: 'converged' | 'failed';
   all_model_results: any[];
   isDegenerateRange: boolean;
-  epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT';
+  epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT';
 }
 
 export class FittingEngine {
@@ -557,21 +556,24 @@ export class FittingEngine {
       }
 
       const POOR_FIT_R2_THRESHOLD = 0.95;
-      let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' = 'STABLE_CONVERGENCE';
+      const INVALID_FIT_R2_THRESHOLD = 0;
+      let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT' = 'STABLE_CONVERGENCE';
 
-      if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
+      if (isDegenerateRange) {
+        classification = 'STABLE_CONVERGENCE';
+      } else if (maxMeanR2 < INVALID_FIT_R2_THRESHOLD) {
+        classification = 'INVALID_FIT';
+      } else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
         classification = 'POOR_FIT';
-      } else if (statErr && statErr > 0) {
+      } else if (statErr && statErr > 0 && !isNaN(statErr) && isFinite(statErr)) {
         const epistemicSpread = Math.max(...validCenters) - Math.min(...validCenters);
         const ratio = epistemicSpread / (2 * statErr);
         if (ratio > 3) {
           classification = 'HIGH_SENSITIVITY';
-        } else if (isDegenerateRange) {
-          classification = 'STABLE_CONVERGENCE';
         } else {
           classification = 'STABLE_CONVERGENCE';
         }
-      } else if (isDegenerateRange) {
+      } else {
         classification = 'STABLE_CONVERGENCE';
       }
 
