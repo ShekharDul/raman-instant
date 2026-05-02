@@ -914,119 +914,185 @@ function renderAnchorList() {
 }
 
 function renderPeakTable() {
-  const active = state.files.get(state.activeFileId || '');
-  const body = UI.get('peaks-list-body');
+  const container = UI.get('analysis-tables-container');
   const warning = UI.get('proximity-warning');
-  const title = UI.get('peak-panel-title');
-  if (!body) return;
-  body.innerHTML = '';
+  if (!container) return;
+  container.innerHTML = '';
 
+  // 1. Handle Replicate Mode (Special top-level card)
   if (state.layoutMode === 'replicate' && state.replicateGroup) {
-    if (title) title.textContent = "Statistical Peak Analysis (Mean ± SD)";
     warning?.classList.add('hidden');
-    UI.text('th-peak-1', 'Shift (±SD)');
-    UI.text('th-peak-2', 'Int (±SD)');
-    UI.text('th-peak-3', 'FWHM (±SD)');
-    UI.text('th-peak-4', '');
+    const card = createAnalysisCard("Statistical Average (Mean ± SD)", "Collective Analysis", "var(--laser)", true);
+    const table = createPeakTable(['Shift (±SD)', 'Int (±SD)', 'FWHM (±SD)', '']);
+    const tbody = table.querySelector('tbody')!;
 
     state.replicateGroup.peakStats.forEach(p => {
       const isSelected = state.replicateGroup!.selectedPeakX.has(p.xMean);
-      const tr = document.createElement('tr');
-      if (isSelected) tr.classList.add('selected');
-
-      tr.innerHTML = `
-        <td>${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}</td>
-        <td>${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}</td>
-        <td>${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}</td>
-        <td></td>
-      `;
-
+      const tr = createTableRow([
+        `${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}`,
+        `${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}`,
+        `${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}`,
+        ''
+      ], isSelected);
       tr.addEventListener('click', () => {
-        if (state.replicateGroup!.selectedPeakX.has(p.xMean)) {
-          state.replicateGroup!.selectedPeakX.delete(p.xMean);
-        } else {
-          state.replicateGroup!.selectedPeakX.add(p.xMean);
-        }
+        if (state.replicateGroup!.selectedPeakX.has(p.xMean)) state.replicateGroup!.selectedPeakX.delete(p.xMean);
+        else state.replicateGroup!.selectedPeakX.add(p.xMean);
         renderPeakTable();
         renderPlots();
       });
-
-      body.appendChild(tr);
+      tbody.appendChild(tr);
     });
+    card.querySelector('.analysis-card-content')?.appendChild(table);
+    container.appendChild(card);
     return;
   }
 
+  // 2. Handle Fitting Mode (Special top-level card)
   if (state.fittingMode && state.fitResult) {
-    if (title) title.textContent = "Deconvolution Parameters";
     warning?.classList.add('hidden');
-    UI.text('th-peak-1', 'Center');
-    UI.text('th-peak-2', 'Amplitude');
-    UI.text('th-peak-3', 'FWHM');
-    UI.text('th-peak-4', 'Shape (η)');
+    const activeFile = state.files.get(state.activeFileId || '');
+    const card = createAnalysisCard("Deconvolution Parameters", "Multi-Model Fit", activeFile?.color || "var(--accent)", true);
+    const table = createPeakTable(['Center', 'Amplitude', 'FWHM', 'Shape (η)']);
+    const tbody = table.querySelector('tbody')!;
 
     state.fitResult.peaks.forEach((p) => {
-      const tr = document.createElement('tr');
       const shapeVal = p.type === 'voigt' ? p.shape?.value?.toFixed(2) || '---' : '---';
-
-      tr.innerHTML = `
-        <td>${(p.center.value || 0).toFixed(1)}</td>
-        <td>${(p.amplitude.value || 0).toFixed(3)}</td>
-        <td>${(p.fwhm.value || 0).toFixed(1)}</td>
-        <td>${shapeVal}</td>
-      `;
-      body.appendChild(tr);
+      const tr = createTableRow([
+        (p.center.value || 0).toFixed(1),
+        (p.amplitude.value || 0).toFixed(3),
+        (p.fwhm.value || 0).toFixed(1),
+        shapeVal
+      ], false);
+      tbody.appendChild(tr);
     });
+    card.querySelector('.analysis-card-content')?.appendChild(table);
+    container.appendChild(card);
     return;
   }
 
-  UI.text('th-peak-1', 'Shift (cm⁻¹)');
-  UI.text('th-peak-2', 'Int (Abs)');
-  UI.text('th-peak-3', 'FWHM');
-  UI.text('th-peak-4', '');
+  // 3. Handle Regular Files (Active + Comparisons)
+  const fileIds = new Set(state.comparisonIds);
+  if (state.activeFileId) fileIds.add(state.activeFileId);
 
-  if (title) title.textContent = "Peak Analysis";
-  if (!active || active.peaks.length === 0) {
+  const files = Array.from(fileIds)
+    .map(id => state.files.get(id))
+    .filter(f => !!f) as ProcessedFile[];
+
+  if (files.length === 0) {
     warning?.classList.add('hidden');
     return;
   }
 
-  // Smart Proximity Check
-  const sortedPeaks = [...active.peaks].sort((a, b) => a.x - b.x);
-  let hasProximityIssue = false;
-  for (let i = 0; i < sortedPeaks.length - 1; i++) {
-    if (Math.abs(sortedPeaks[i].x - sortedPeaks[i + 1].x) < 30) {
-      hasProximityIssue = true;
-      break;
-    }
-  }
+  let globalProximityIssue = false;
 
-  if (hasProximityIssue) warning?.classList.remove('hidden');
-  else warning?.classList.add('hidden');
+  files.forEach(file => {
+    const isActive = file.id === state.activeFileId;
+    const card = createAnalysisCard(file.name, `Spectral Peaks (${file.peaks.length})`, file.color, isActive);
 
-  sortedPeaks.forEach(p => {
-    const isSelected = active.selectedPeakX.has(p.x);
-    const tr = document.createElement('tr');
-    if (isSelected) tr.classList.add('selected');
+    if (file.peaks.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.padding = '16px';
+      emptyMsg.style.fontSize = '11px';
+      emptyMsg.style.color = 'var(--text-dim)';
+      emptyMsg.style.textAlign = 'center';
+      emptyMsg.textContent = "No peaks detected. Adjust sensitivity or ROI.";
+      card.querySelector('.analysis-card-content')?.appendChild(emptyMsg);
+    } else {
+      const table = createPeakTable(['Shift (cm⁻¹)', 'Int (Abs)', 'FWHM', '']);
+      const tbody = table.querySelector('tbody')!;
+      const sortedPeaks = [...file.peaks].sort((a, b) => a.x - b.x);
 
-    tr.innerHTML = `
-      <td>${p.x.toFixed(1)}</td>
-      <td>${p.y.toFixed(2)}</td>
-      <td>${p.fwhm.toFixed(1)}</td>
-      <td></td>
-    `;
+      sortedPeaks.forEach(p => {
+        const isSelected = file.selectedPeakX.has(p.x);
+        const tr = createTableRow([
+          p.x.toFixed(1),
+          p.y.toFixed(2),
+          p.fwhm.toFixed(1),
+          ''
+        ], isSelected);
 
-    tr.addEventListener('click', () => {
-      if (active.selectedPeakX.has(p.x)) {
-        active.selectedPeakX.delete(p.x);
-      } else {
-        active.selectedPeakX.add(p.x);
+        tr.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (file.selectedPeakX.has(p.x)) {
+            file.selectedPeakX.delete(p.x);
+          } else {
+            file.selectedPeakX.add(p.x);
+          }
+          renderPeakTable();
+          renderPlots();
+        });
+        tbody.appendChild(tr);
+      });
+
+      card.querySelector('.analysis-card-content')?.appendChild(table);
+
+      // Proximity Check
+      let hasProximityIssue = false;
+      for (let i = 0; i < sortedPeaks.length - 1; i++) {
+        if (Math.abs(sortedPeaks[i].x - sortedPeaks[i + 1].x) < 30) {
+          hasProximityIssue = true;
+          break;
+        }
       }
-      renderPeakTable();
-      renderPlots();
+      if (hasProximityIssue && isActive) globalProximityIssue = true;
+    }
+
+    // Toggle logic
+    card.querySelector('.analysis-card-header')?.addEventListener('click', () => {
+      if (!isActive) {
+        state.activeFileId = file.id;
+        updateUI();
+      } else {
+        card.classList.toggle('expanded');
+      }
     });
 
-    body.appendChild(tr);
+    container.appendChild(card);
   });
+
+  if (globalProximityIssue) warning?.classList.remove('hidden');
+  else warning?.classList.add('hidden');
+}
+
+// ── UI Helper Functions ──
+
+function createAnalysisCard(title: string, subtitle: string, color: string, isExpanded: boolean) {
+  const card = document.createElement('div');
+  card.className = `analysis-card ${isExpanded ? 'expanded' : ''}`;
+  card.style.setProperty('--active-color', color);
+
+  card.innerHTML = `
+    <div class="analysis-card-header">
+      <div class="analysis-card-title-wrap">
+        <div class="analysis-card-title">${title}</div>
+        <div class="analysis-card-meta">${subtitle}</div>
+      </div>
+      <div class="analysis-card-toggle">▸</div>
+    </div>
+    <div class="analysis-card-content"></div>
+  `;
+  return card;
+}
+
+function createPeakTable(headers: string[]) {
+  const table = document.createElement('table');
+  table.className = 'peak-table';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        ${headers.map(h => `<th>${h}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  return table;
+}
+
+function createTableRow(cells: string[], isSelected: boolean) {
+  const tr = document.createElement('tr');
+  if (isSelected) tr.className = 'selected';
+  tr.innerHTML = cells.map(c => `<td>${c}</td>`).join('');
+  return tr;
 }
 
 function initBaselineControls() {

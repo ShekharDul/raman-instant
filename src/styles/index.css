@@ -579,51 +579,142 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-dim);
 }
 
-/* ── Peak Table ── */
-.peak-table-wrap {
+/* ── Analysis Tables Container ── */
+.analysis-tables-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0 18px;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-height: 0;
-  border-top: 2px solid var(--active-color, transparent);
-  transition: all 0.3s ease;
 }
 
+/* ── Analysis Card ── */
+.analysis-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+}
+
+.analysis-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.analysis-card.active {
+  border-color: var(--active-color, var(--accent));
+  box-shadow: 0 0 0 1px var(--active-color, var(--accent)), var(--shadow-md);
+}
+
+.analysis-card-header {
+  padding: 10px 12px;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.analysis-card.active .analysis-card-header {
+  background: var(--accent-light);
+}
+
+.analysis-card-header:hover {
+  background: var(--bg-active);
+}
+
+.analysis-card-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analysis-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analysis-card-meta {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.analysis-card-toggle {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+.analysis-card.expanded .analysis-card-toggle {
+  transform: rotate(90deg);
+}
+
+.analysis-card.expanded .analysis-card-header {
+  border-bottom-color: var(--border);
+}
+
+.analysis-card-content {
+  display: none;
+  background: var(--bg-surface);
+}
+
+.analysis-card.expanded .analysis-card-content {
+  display: block;
+}
+
+/* ── Refined Peak Table ── */
 .peak-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 18px;
 }
 
 .peak-table th {
   text-align: left;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-strong);
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: var(--bg-surface);
+  z-index: 5;
 }
 
 .peak-table td {
-  padding: 10px 0;
+  padding: 8px 12px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
 }
 
 .peak-table tbody tr {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s;
 }
 
 .peak-table tbody tr:hover {
-  background: var(--accent-light);
+  background: var(--bg-panel);
 }
 
 .peak-table tbody tr:hover td {
@@ -631,15 +722,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .peak-table tbody tr.selected {
-  background: rgba(var(--active-color-rgb, 13, 148, 136), 0.1);
-  border-left: 3px solid var(--active-color, var(--accent));
+  background: var(--accent-light);
 }
 
 .peak-table tbody tr.selected td {
   color: var(--active-color, var(--accent));
   font-weight: 600;
-  padding-left: 10px;
 }
+
+.peak-table tbody tr.selected td:first-child::before {
+  content: '●';
+  margin-right: 6px;
+  font-size: 8px;
+}
+
 
 /* ── Export Section ── */
 .export-section {
