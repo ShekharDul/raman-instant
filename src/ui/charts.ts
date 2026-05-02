@@ -1056,65 +1056,198 @@ export class ChartRenderer {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
-    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-    layout.xaxis.showgrid = true;
-    layout.yaxis.showgrid = false;
-    layout.margin = { l: 180, r: 40, t: 20, b: 60 };
-    layout.showlegend = false;
-    layout.yaxis.showticklabels = true;
-    
-    const categories = ['Statistical Uncertainty', 'Model Sensitivity', 'Total Reported Uncertainty'];
-    layout.yaxis.ticktext = categories.map(c => `<b>${c.toUpperCase()}</b>`);
-    layout.yaxis.tickvals = [0, 1, 2];
-    layout.yaxis.range = [-0.6, 2.6];
-    layout.yaxis.tickfont = { size: 10, color: '#475569' };
+    const allResults = epiResult.all_model_results || [];
+    const validResults = allResults.filter((r: any) => 
+      r.convergence_status === 'converged' && !r.outlier_excluded
+    );
 
-    const statErr = epiResult.fitted_center_statistical_error || 0;
-    const epiRange = (epiResult.epistemic_center_max !== null && epiResult.epistemic_center_min !== null) 
-      ? (epiResult.epistemic_center_max - epiResult.epistemic_center_min) : 0;
-    const combined = epiResult.combined_uncertainty || 0;
+    // Edge Case: No converged fits
+    if (allResults.filter((r: any) => r.convergence_status === 'converged').length === 0) {
+      Plotly.newPlot(container, [], {
+        paper_bgcolor: 'white',
+        plot_bgcolor: 'white',
+        annotations: [{
+          text: "Insufficient valid fits to display ensemble.",
+          showarrow: false,
+          font: { size: 14, family: 'Arial', color: '#64748b' }
+        }],
+        xaxis: { visible: false },
+        yaxis: { visible: false }
+      }, { displayModeBar: false });
+      return;
+    }
 
-    const traces = [
-      {
-        type: 'bar',
-        orientation: 'h',
-        x: [statErr * 2, epiRange, combined * 2],
-        y: [0, 1, 2],
-        base: [baseCenter - statErr, baseCenter - (epiRange / 2), baseCenter - combined],
-        marker: {
-          color: ['#88CCEE', '#CC6677', '#332288'],
-          line: { color: '#0f172a', width: 1 }
-        },
-        width: 0.4,
-        hoverinfo: 'skip'
+    const lCol = COLORS.trace[0];
+    const gCol = COLORS.trace[1];
+    const vCol = COLORS.trace[2]; // Paul Tol 3rd color
+    const primaryBlue = COLORS.trace[0];
+
+    const traces: any[] = [];
+
+    // 1. KDE Curve (Background)
+    const validCenters = validResults.map((r: any) => r.fitted_center);
+    const n = validCenters.length;
+    if (n >= 4) {
+      const mean = validCenters.reduce((a: number, b: number) => a + b, 0) / n;
+      const sd = Math.sqrt(validCenters.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / n) || 0.001;
+      const h = 1.06 * sd * Math.pow(n, -0.2);
+      
+      const xMin = Math.min(...validCenters);
+      const xMax = Math.max(...validCenters);
+      const span = xMax - xMin;
+      const pad = Math.max(1, span * 0.5);
+      
+      const kdeX = [];
+      const kdeY = [];
+      const steps = 200;
+      const start = xMin - pad;
+      const end = xMax + pad;
+      
+      for (let i = 0; i <= steps; i++) {
+        const xi = start + (i / steps) * (end - start);
+        let val = 0;
+        for (const c of validCenters) {
+          const u = (xi - c) / h;
+          val += (1 / (h * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * u * u);
+        }
+        kdeX.push(xi);
+        kdeY.push(val / n);
       }
-    ];
+      
+      // Scale KDE height to look natural in the jitter space [-0.4, 0.4]
+      const maxKDE = Math.max(...kdeY);
+      const scaledKDEY = kdeY.map(v => (v / maxKDE) * 0.8 - 0.4);
 
-    layout.xaxis.title.text = 'Wavenumber (cm⁻¹)';
-    layout.xaxis.tickfont = { size: 11 };
+      traces.push({
+        x: kdeX,
+        y: scaledKDEY,
+        fill: 'tozeroy',
+        type: 'scatter',
+        mode: 'lines',
+        fillcolor: 'rgba(51, 34, 136, 0.1)', // Paul Tol Indigo (10% opacity)
+        line: { color: 'rgba(51, 34, 136, 0.2)', width: 1 },
+        hoverinfo: 'skip',
+        showlegend: false
+      });
+    }
 
-    // Reference Line
-    layout.shapes = [{
-      type: 'line', x0: baseCenter, x1: baseCenter, y0: -1, y1: 3,
-      line: { color: '#0f172a', width: 1, dash: 'dash' }
-    }];
+    // 2. Scatter Points (with Jitter)
+    allResults.forEach((r: any) => {
+      if (r.convergence_status !== 'converged') return;
+      
+      const jitter = r.model_type === 'lorentzian' ? 0.3 : (r.model_type === 'gaussian' ? 0 : -0.3);
+      const baseColor = r.model_type === 'lorentzian' ? lCol : (r.model_type === 'gaussian' ? gCol : vCol);
+      const isOutlier = r.outlier_excluded;
+      
+      traces.push({
+        x: [r.fitted_center],
+        y: [jitter],
+        mode: 'markers',
+        type: 'scatter',
+        marker: {
+          symbol: isOutlier ? 'x' : 'circle',
+          size: 8,
+          color: baseColor,
+          opacity: isOutlier ? 0.3 : 0.7,
+          line: { width: isOutlier ? 0 : 0.5, color: '#fff' }
+        },
+        name: r.model_type,
+        hoverlabel: { bgcolor: '#fff', font: { family: 'monospace', size: 11 } },
+        hovertemplate: 
+          `<b>Model:</b> ${r.model_type.toUpperCase()}<br>` +
+          `<b>Center:</b> ${r.fitted_center.toFixed(4)} cm⁻¹<br>` +
+          `<b>Statistical error:</b> ${r.fitted_center_statistical_error ? r.fitted_center_statistical_error.toFixed(6) : 'ill-conditioned'}<br>` +
+          `<b>Status:</b> ${isOutlier ? 'Outlier excluded — ' + (r.exclusion_reason || 'Range violation') : 'Valid'}<extra></extra>`
+      });
+    });
 
-    const fmt = (v: number) => {
-      if (v === 0) return '0.0000';
-      if (v < 0.001) return v.toExponential(2).replace('e', 'x10');
-      return v.toFixed(4);
+    // 3. Rug Plot
+    validResults.forEach((r: any) => {
+      const color = r.model_type === 'lorentzian' ? lCol : (r.model_type === 'gaussian' ? gCol : vCol);
+      traces.push({
+        x: [r.fitted_center, r.fitted_center],
+        y: [-0.6 - 0.075, -0.6 + 0.075],
+        mode: 'lines',
+        type: 'scatter',
+        line: { color: color, width: 1 },
+        hoverinfo: 'skip',
+        showlegend: false
+      });
+    });
+
+    // Axis and Range Logic
+    const epiMin = epiResult.epistemic_center_min;
+    const epiMax = epiResult.epistemic_center_max;
+    
+    let xRange;
+    if (epiMin === null || epiMax === null || epiMin === epiMax) {
+      xRange = [baseCenter - 2, baseCenter + 2];
+    } else {
+      const range = epiMax - epiMin;
+      if (range < 4) {
+        xRange = [baseCenter - 2, baseCenter + 2];
+      } else {
+        xRange = [epiMin - 0.5, epiMax + 0.5];
+      }
+    }
+
+    const layout: any = {
+      paper_bgcolor: 'white',
+      plot_bgcolor: 'white',
+      xaxis: {
+        title: { text: 'Wavenumber (cm⁻¹)', font: { size: 12, family: 'Arial' } },
+        range: xRange,
+        gridcolor: '#f0f0f0',
+        dtick: 0.5,
+        linecolor: '#000',
+        linewidth: 1,
+        showgrid: true,
+        zeroline: false,
+        tickfont: { size: 10 }
+      },
+      yaxis: {
+        range: [-0.9, 0.7],
+        visible: false,
+        zeroline: true,
+        zerolinecolor: '#f8fafc',
+        zerolinewidth: 1
+      },
+      margin: { l: 20, r: 20, t: 40, b: 50 },
+      showlegend: false,
+      shapes: [
+        // Best fit center (Solid)
+        {
+          type: 'line', xref: 'x', yref: 'paper',
+          x0: baseCenter, x1: baseCenter, y0: 0, y1: 1,
+          line: { color: primaryBlue, width: 2 }
+        }
+      ],
+      annotations: [
+        // Inline Legend
+        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${lCol}">■</span> LOR`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' }, xshift: -110 },
+        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${gCol}">■</span> GAU`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' }, xshift: -55 },
+        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${vCol}">■</span> VOI`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' } }
+      ]
     };
 
-    // Numerical annotations below bars
-    layout.annotations = [
-      { x: baseCenter, y: 0, text: (epiResult.statistical_uncertainty_status === 'ill_conditioned') ? 'Ill-conditioned' : `± ${fmt(statErr)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
-      { x: baseCenter, y: 1, text: `${fmt(epiRange)} range`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
-      { x: baseCenter, y: 2, text: (epiResult.statistical_uncertainty_status === 'ill_conditioned') ? 'Stat. N/A' : `± ${fmt(combined)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } }
-    ];
+    // Epistemic Boundary Lines (Dashed)
+    if (epiMin !== null && epiMax !== null && epiMin !== epiMax) {
+      layout.shapes.push(
+        {
+          type: 'line', xref: 'x', yref: 'paper',
+          x0: epiMin, x1: epiMin, y0: 0, y1: 1,
+          line: { color: primaryBlue, width: 1, dash: 'dash' },
+          opacity: 0.5
+        },
+        {
+          type: 'line', xref: 'x', yref: 'paper',
+          x0: epiMax, x1: epiMax, y0: 0, y1: 1,
+          line: { color: primaryBlue, width: 1, dash: 'dash' },
+          opacity: 0.5
+        }
+      );
+    }
 
-    const rangeMax = Math.max(combined * 3, epiRange * 2, 0.2);
-    layout.xaxis.range = [baseCenter - rangeMax, baseCenter + rangeMax];
-
-    Plotly.react(container, traces, layout, { ...CONFIG, displayModeBar: false });
+    Plotly.react(container, traces, layout, { displayModeBar: false, responsive: true });
   }
 }
