@@ -889,6 +889,24 @@ function attachManualBaselineListener(el: HTMLElement) {
           input.focus();
         }
       }
+      else {
+        // Standard Peak Selection from Plot
+        const { x } = data.points[0];
+        const activeFile = state.files.get(state.activeFileId || '');
+        if (activeFile && activeFile.peaks.length > 0) {
+          const nearest = activeFile.peaks.reduce((prev, curr) =>
+            Math.abs(curr.x - x) < Math.abs(prev.x - x) ? curr : prev
+          );
+          if (Math.abs(nearest.x - x) < 15) { // snapped range
+            if (activeFile.selectedPeakX.has(nearest.x)) {
+              activeFile.selectedPeakX.delete(nearest.x);
+            } else {
+              activeFile.selectedPeakX.add(nearest.x);
+            }
+            updateUI();
+          }
+        }
+      }
     });
   }
 }
@@ -1068,18 +1086,36 @@ function renderDataGrid() {
           </tr>
         </thead>
         <tbody>
-          ${file.peaks.map(p => `
-            <tr>
-              <td>${p.x.toFixed(1)}</td>
-              <td>${p.y.toFixed(0)}</td>
-              <td>${p.fwhm.toFixed(1)}</td>
-              <td style="font-size: 10px; color: var(--text-dim);">${p.relIntensity.toFixed(1)}%</td>
-            </tr>
-          `).join('')}
+          ${file.peaks.map(p => {
+            const isSelected = file.selectedPeakX.has(p.x);
+            return `
+              <tr class="peak-row ${isSelected ? 'selected' : ''}" data-x="${p.x}" style="cursor: pointer;">
+                <td>${p.x.toFixed(1)}</td>
+                <td>${p.y.toFixed(0)}</td>
+                <td>${p.fwhm.toFixed(1)}</td>
+                <td style="font-size: 10px; color: var(--text-dim);">${p.relIntensity.toFixed(1)}%</td>
+              </tr>
+            `;
+          }).join('')}
         </tbody>
       </table>
     </div>
   `;
+
+  // Attach row click listeners for selection
+  container.querySelectorAll('.peak-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const x = parseFloat(row.getAttribute('data-x') || '0');
+      if (file.selectedPeakX.has(x)) {
+        file.selectedPeakX.delete(x);
+      } else {
+        file.selectedPeakX.add(x);
+      }
+      // Re-render only the data grid and plots to keep scroll position
+      renderDataGrid();
+      renderPlots();
+    });
+  });
 
   UI.get('btn-close-data-grid')?.addEventListener('click', () => {
     state.visibleTableFileId = null;
