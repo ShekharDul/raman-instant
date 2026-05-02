@@ -1139,11 +1139,24 @@ export class ChartRenderer {
 
     const addedLegends = new Set<string>();
 
+    const modelGroupIndex: Record<string, number> = {
+      'lorentzian': 0, 'gaussian': 0, 'voigt': 0
+    };
+    const BASE_Y: Record<string, number> = {
+      'lorentzian': 0.3,
+      'gaussian': 0.0,
+      'voigt': -0.3
+    };
+    const SUB_JITTER = [-0.08, -0.04, 0.0, 0.04, 0.08];
+
     // 2. Scatter Points (with Jitter)
     allResults.forEach((r: any) => {
       if (r.convergence_status !== 'converged') return;
       
-      const jitter = r.model_type === 'lorentzian' ? 0.3 : (r.model_type === 'gaussian' ? 0 : -0.3);
+      const stepIndex = modelGroupIndex[r.model_type] || 0;
+      modelGroupIndex[r.model_type]++;
+      
+      const jitter = BASE_Y[r.model_type] + SUB_JITTER[stepIndex % SUB_JITTER.length];
       const baseColor = r.model_type === 'lorentzian' ? lCol : (r.model_type === 'gaussian' ? gCol : vCol);
       const isOutlier = r.outlier_excluded;
       
@@ -1238,7 +1251,7 @@ export class ChartRenderer {
         tickfont: { size: 11 }
       },
       yaxis: {
-        range: [-0.9, 0.7],
+        range: [-0.75, 0.55],
         visible: false,
         zeroline: true,
         zerolinecolor: '#f8fafc',
