@@ -1132,6 +1132,8 @@ export class ChartRenderer {
       });
     }
 
+    const addedLegends = new Set<string>();
+
     // 2. Scatter Points (with Jitter)
     allResults.forEach((r: any) => {
       if (r.convergence_status !== 'converged') return;
@@ -1140,6 +1142,13 @@ export class ChartRenderer {
       const baseColor = r.model_type === 'lorentzian' ? lCol : (r.model_type === 'gaussian' ? gCol : vCol);
       const isOutlier = r.outlier_excluded;
       
+      let showLegend = false;
+      const modelName = r.model_type.charAt(0).toUpperCase() + r.model_type.slice(1);
+      if (!isOutlier && !addedLegends.has(r.model_type)) {
+        showLegend = true;
+        addedLegends.add(r.model_type);
+      }
+
       traces.push({
         x: [r.fitted_center],
         y: [jitter],
@@ -1147,12 +1156,14 @@ export class ChartRenderer {
         type: 'scatter',
         marker: {
           symbol: isOutlier ? 'x' : 'circle',
-          size: 8,
+          size: isOutlier ? 10 : 8,
           color: baseColor,
           opacity: isOutlier ? 0.3 : 0.7,
           line: { width: isOutlier ? 0 : 0.5, color: '#fff' }
         },
-        name: r.model_type,
+        name: modelName,
+        legendgroup: r.model_type,
+        showlegend: showLegend,
         hoverlabel: { bgcolor: '#fff', font: { family: 'monospace', size: 11 } },
         hovertemplate: 
           `<b>Model:</b> ${r.model_type.toUpperCase()}<br>` +
@@ -1199,12 +1210,14 @@ export class ChartRenderer {
         title: { text: 'Wavenumber (cm⁻¹)', font: { size: 12, family: 'Arial' } },
         range: xRange,
         gridcolor: '#f0f0f0',
-        dtick: 0.5,
+        dtick: 5,
+        nticks: 8,
+        tickangle: -45,
         linecolor: '#000',
         linewidth: 1,
         showgrid: true,
         zeroline: false,
-        tickfont: { size: 10 }
+        tickfont: { size: 11 }
       },
       yaxis: {
         range: [-0.9, 0.7],
@@ -1214,7 +1227,17 @@ export class ChartRenderer {
         zerolinewidth: 1
       },
       margin: { l: 20, r: 20, t: 40, b: 50 },
-      showlegend: false,
+      showlegend: true,
+      legend: {
+        orientation: 'h',
+        yanchor: 'bottom',
+        y: 1.02,
+        xanchor: 'right',
+        x: 1,
+        font: { size: 11 },
+        bgcolor: 'rgba(0,0,0,0)',
+        borderwidth: 0
+      },
       shapes: [
         // Best fit center (Solid)
         {
@@ -1222,12 +1245,6 @@ export class ChartRenderer {
           x0: baseCenter, x1: baseCenter, y0: 0, y1: 1,
           line: { color: primaryBlue, width: 2 }
         }
-      ],
-      annotations: [
-        // Inline Legend
-        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${lCol}">■</span> LOR`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' }, xshift: -110 },
-        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${gCol}">■</span> GAU`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' }, xshift: -55 },
-        { x: 0.98, y: 1.15, xref: 'paper', yref: 'paper', text: `<span style="color:${vCol}">■</span> VOI`, showarrow: false, xanchor: 'right', font: { size: 10, family: 'monospace' } }
       ]
     };
 
