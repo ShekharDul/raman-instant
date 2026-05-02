@@ -1790,7 +1790,7 @@ function initProtocolExport() {
     e.stopPropagation();
     console.log('[Protocol] Export button clicked');
     showToast("Preparing protocol export...");
-    
+
     const active = state.files.get(state.activeFileId || '');
     if (!active) {
       console.warn('[Protocol] No active file found for export');
@@ -1815,7 +1815,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
 
     const protocolId = (activeFile as any).protocolId || generateId();
     if (!(activeFile as any).protocolId) (activeFile as any).protocolId = protocolId;
-    
+
     // 1. Metadata
     const metadata: any = {
       instant_raman_version: APP_VERSION,
@@ -1867,9 +1867,9 @@ async function exportProtocol(activeFile: ProcessedFile) {
         step_name: "Normalization",
         applied: activeFile.params.norm !== 'none',
         parameters: {
-          method: activeFile.params.norm === 'max' ? 'max_intensity' : 
-                  activeFile.params.norm === 'area' ? 'total_area' : 
-                  activeFile.params.norm === 'point' ? 'reference_peak' : 'none',
+          method: activeFile.params.norm === 'max' ? 'max_intensity' :
+            activeFile.params.norm === 'area' ? 'total_area' :
+              activeFile.params.norm === 'point' ? 'reference_peak' : 'none',
           reference_wavenumber: state.normTargetX
         }
       },
@@ -1931,7 +1931,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
     const blob = new Blob([JSON.stringify(protocol, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const filename = `${activeFile.name.replace(/\.[^/.]+$/, "")}_protocol_${protocolId.substring(0, 8)}.irp`;
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
@@ -2459,11 +2459,11 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
   const combined = epi.combined_uncertainty || 0;
   const reportAs = formatReportAs(center, combined, epi.isDegenerateRange);
   const rangeClause = (rangeStr && !epi.isDegenerateRange) ? `. Epistemic range: ${rangeStr}` : '';
-  
+
   if (isPoorFit) {
-     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. <span style="color: #d97706;">Caution: Low variance explained.</span>`;
+    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. <span style="color: #d97706;">Caution: Low variance explained.</span>`;
   } else {
-     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
+    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
   }
 
   return `
@@ -2553,23 +2553,30 @@ async function promptProtocolImport(protocolJson: any) {
 
   summaryContent.innerHTML = summaryHtml;
 
-  // Hash Verification
-  const activeFile = state.files.get(state.activeFileId || '');
-  if (activeFile && activeFile.fileHash) {
-    hashStatus.classList.remove('hidden');
-    if (activeFile.fileHash === source.file_hash) {
-      hashStatus.style.background = '#ecfdf5';
-      hashStatus.style.color = '#059669';
-      hashStatus.style.border = '1px solid #10b981';
-      hashStatus.textContent = "Source file verified. This protocol will reproduce the original analysis exactly.";
-    } else {
-      hashStatus.style.background = '#fffbeb';
-      hashStatus.style.color = '#d97706';
-      hashStatus.style.border = '1px solid #f59e0b';
-      hashStatus.textContent = "Source file hash does not match the recorded protocol. Results may differ from the original analysis. Proceed with caution.";
+  // Hash Verification (Global Search)
+  const sourceHash = protocol.source_data_record.file_hash;
+  let matchedFile = null;
+  
+  // Search all loaded files for a match
+  for (const f of state.files.values()) {
+    if ((f as any).fileHash === sourceHash) {
+      matchedFile = f;
+      break;
     }
+  }
+
+  if (matchedFile) {
+    hashStatus.classList.remove('hidden');
+    hashStatus.style.background = '#ecfdf5';
+    hashStatus.style.color = '#059669';
+    hashStatus.style.border = '1px solid #10b981';
+    hashStatus.textContent = `Matched with loaded file: "${matchedFile.name}". This protocol will reproduce the original analysis exactly.`;
   } else {
-    hashStatus.classList.add('hidden');
+    hashStatus.classList.remove('hidden');
+    hashStatus.style.background = '#fffbeb';
+    hashStatus.style.color = '#d97706';
+    hashStatus.style.border = '1px solid #f59e0b';
+    hashStatus.textContent = `No matching file found for hash: ${sourceHash.substring(0, 8)}... Please load the original data file first.`;
   }
 
   // Action Listeners
