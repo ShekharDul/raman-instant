@@ -1779,9 +1779,21 @@ function initReportControls() {
 }
 
 function initProtocolExport() {
-  UI.get('btn-export-protocol')?.addEventListener('click', () => {
+  const btn = UI.get('btn-export-protocol');
+  if (!btn) {
+    console.warn('[Protocol] Export button not found in DOM during init.');
+    return;
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[Protocol] Export button clicked');
+    showToast("Preparing protocol export...");
+    
     const active = state.files.get(state.activeFileId || '');
     if (!active) {
+      console.warn('[Protocol] No active file found for export');
       showToast("Select a file to export its protocol.");
       return;
     }
@@ -1790,8 +1802,19 @@ function initProtocolExport() {
 }
 
 async function exportProtocol(activeFile: ProcessedFile) {
+  console.log('[Protocol] Starting export for:', activeFile.name);
   try {
-    const protocolId = (activeFile as any).protocolId || (window as any).crypto.randomUUID();
+    // Fail-safe UUID generation
+    const generateId = () => {
+      try {
+        return (window as any).crypto.randomUUID();
+      } catch (e) {
+        return 'irp-' + Math.random().toString(36).substring(2, 11);
+      }
+    };
+
+    const protocolId = (activeFile as any).protocolId || generateId();
+    if (!(activeFile as any).protocolId) (activeFile as any).protocolId = protocolId;
     
     // 1. Metadata
     const metadata: any = {
