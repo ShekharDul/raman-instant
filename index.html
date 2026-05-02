@@ -464,9 +464,10 @@
 
       <!-- Analysis Drawer (the 360px displacer) -->
       <aside id="analysis-drawer" class="analysis-drawer">
-        <div class="tab-header">
-          <button id="btn-tab-analysis" class="tab-btn active">Analysis</button>
-          <button id="btn-tab-export" class="tab-btn">Export & style</button>
+        <div class="tab-header" style="display: flex; align-items: center; padding-right: 8px; background: var(--bg-panel); border-bottom: 1px solid var(--border);">
+          <button id="btn-tab-analysis" class="tab-btn active" style="flex: 1;">Analysis</button>
+          <button id="btn-tab-export" class="tab-btn" style="flex: 1;">Export & style</button>
+          <button id="btn-close-analysis-drawer" class="btn-icon" style="border:none; background:none; opacity:0.6;" title="Close drawer">✕</button>
         </div>
 
         <div id="pane-analysis" class="tab-pane active">

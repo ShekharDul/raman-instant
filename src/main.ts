@@ -1004,6 +1004,13 @@ function initDrawerToggle() {
     updateUI();
   });
 
+  UI.get('btn-close-analysis-drawer')?.addEventListener('click', () => {
+    panel.classList.remove('drawer-open');
+    toggleBtn.querySelector('span:first-child')!.textContent = 'Analysis';
+    toggleBtn.querySelector('.toggle-icon')!.textContent = '▸';
+    updateUI();
+  });
+
   // Global listener for flex transitions to ensure Plotly resizes
   workspace.addEventListener('transitionend', (e) => {
     if ((e.target as HTMLElement).classList.contains('plot-area') || 
@@ -1057,7 +1064,7 @@ function renderDataGrid() {
             <th>Shift</th>
             <th>Int.</th>
             <th>FWHM</th>
-            <th>Type</th>
+            <th>Rel. %</th>
           </tr>
         </thead>
         <tbody>
@@ -1066,11 +1073,7 @@ function renderDataGrid() {
               <td>${p.x.toFixed(1)}</td>
               <td>${p.y.toFixed(0)}</td>
               <td>${p.fwhm.toFixed(1)}</td>
-              <td>
-                <span class="badge" style="background: ${getConvergenceColor(p.type)}; color: #fff; padding: 1px 6px; border-radius: 8px; font-size: 9px; text-transform: uppercase;">
-                  ${p.type.charAt(0)}
-                </span>
-              </td>
+              <td style="font-size: 10px; color: var(--text-dim);">${p.relIntensity.toFixed(1)}%</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1084,12 +1087,7 @@ function renderDataGrid() {
   });
 }
 
-function getConvergenceColor(type: string) {
-  if (type === 'gaussian') return '#0d9488';
-  if (type === 'lorentzian') return '#8b5cf6';
-  if (type === 'voigt') return '#f59e0b';
-  return '#64748b';
-}
+
 
 function initLayoutControls() {
   UI.get('select-layout')?.addEventListener('change', (e) => {
