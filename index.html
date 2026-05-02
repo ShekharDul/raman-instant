@@ -488,7 +488,12 @@
           style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
           <div class="panel-header"
             style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
-            <div class="panel-title">Peak Analysis</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button id="btn-expand-drawer" class="btn-icon" title="Toggle Focus Mode (Expands Panel Width)">
+                <span id="expand-icon">⤢</span>
+              </button>
+              <div class="panel-title">Peak Analysis</div>
+            </div>
             <span class="peak-info-icon"
               title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below."
               style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>

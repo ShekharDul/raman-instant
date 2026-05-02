@@ -39,6 +39,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  --drawer-width: 360px;
+  --drawer-width-expanded: 650px;
 }
 
 /* ── Reset ── */
@@ -400,6 +403,15 @@ input[type="range"]::-webkit-slider-thumb:hover {
   padding: 16px;
   gap: 16px;
   overflow: hidden;
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#app:has(.data-panel.drawer-open) .workspace {
+  margin-right: var(--drawer-width);
+}
+
+#app:has(.data-panel.drawer-open.expanded) .workspace {
+  margin-right: var(--drawer-width-expanded);
 }
 
 .workspace-grid {
@@ -454,6 +466,34 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 52px;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  padding: 0;
+}
+
+.btn-icon:hover {
+  background: var(--bg-panel);
+  color: var(--accent);
+  border-color: var(--border-strong);
+}
+
+.btn-icon.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .panel-title {
@@ -468,7 +508,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   top: 48px;
   right: 0;
   bottom: 28px;
-  width: 360px;
+  width: var(--drawer-width);
   background: var(--bg-surface);
   border-left: 1px solid var(--border);
   display: flex;
@@ -476,9 +516,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   overflow: hidden;
   min-height: 0;
   transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10001;
   box-shadow: none;
+}
+
+.data-panel.expanded {
+  width: var(--drawer-width-expanded);
 }
 
 .data-panel.drawer-open {
@@ -521,7 +565,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 #app:has(.data-panel.drawer-open) .drawer-toggle {
-  right: calc(360px + 12px);
+  right: calc(var(--drawer-width) + 12px);
+}
+
+#app:has(.data-panel.drawer-open.expanded) .drawer-toggle {
+  right: calc(var(--drawer-width-expanded) + 12px);
 }
 
 #app:has(.data-panel.drawer-open) .drawer-toggle .toggle-icon {

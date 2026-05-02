@@ -70,6 +70,8 @@ interface AppState {
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
   epiResult: import('./engine/fitting').EpistemicResult | null;
+  drawerExpanded: boolean;
+  expandedCardIds: Set<string>;
 }
 
 // ── State ──
@@ -105,7 +107,9 @@ const state: AppState = {
   freeLabelMode: false,
   pendingLabel: null,
   snapshots: [],
-  epiResult: null
+  epiResult: null,
+  drawerExpanded: false,
+  expandedCardIds: new Set(),
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -147,6 +151,7 @@ initLabelPopover();
 initReportControls();
 initProtocolExport();
 initSnapshotModal();
+initDrawerExpansion();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -366,6 +371,11 @@ function updateUI() {
   renderAnchorList();
   renderPeakTable();
   renderTimeline();
+
+  const panel = UI.get('data-panel');
+  if (panel) panel.classList.toggle('expanded', state.drawerExpanded);
+  const expandIcon = UI.get('expand-icon');
+  if (expandIcon) expandIcon.textContent = state.drawerExpanded ? '⤓' : '⤢';
 
   const active = state.files.get(state.activeFileId || '');
   const app = document.getElementById('app');
@@ -987,7 +997,13 @@ function renderPeakTable() {
 
   files.forEach(file => {
     const isActive = file.id === state.activeFileId;
-    const card = createAnalysisCard(file.name, `Spectral Peaks (${file.peaks.length})`, file.color, isActive);
+    // Auto-expand active file if not explicitly collapsed
+    if (isActive && state.expandedCardIds.size === 0) {
+      state.expandedCardIds.add(file.id);
+    }
+
+    const isExpanded = state.expandedCardIds.has(file.id);
+    const card = createAnalysisCard(file.name, `Spectral Peaks (${file.peaks.length})`, file.color, isExpanded);
     if (isActive) card.classList.add('active');
 
     if (file.peaks.length === 0) {
@@ -1043,9 +1059,15 @@ function renderPeakTable() {
     card.querySelector('.analysis-card-header')?.addEventListener('click', () => {
       if (!isActive) {
         state.activeFileId = file.id;
+        state.expandedCardIds.add(file.id); // Expand when making active
         updateUI();
       } else {
-        card.classList.toggle('expanded');
+        if (state.expandedCardIds.has(file.id)) {
+          state.expandedCardIds.delete(file.id);
+        } else {
+          state.expandedCardIds.add(file.id);
+        }
+        renderPeakTable();
       }
     });
 
@@ -1095,6 +1117,17 @@ function createTableRow(cells: string[], isSelected: boolean) {
   if (isSelected) tr.className = 'selected';
   tr.innerHTML = cells.map(c => `<td>${c}</td>`).join('');
   return tr;
+}
+
+function initDrawerExpansion() {
+  UI.get('btn-expand-drawer')?.addEventListener('click', () => {
+    state.drawerExpanded = !state.drawerExpanded;
+    updateUI();
+    // Plotly needs time for the CSS transition to complete before resizing
+    setTimeout(() => {
+      renderPlots();
+    }, 310);
+  });
 }
 
 function initBaselineControls() {
