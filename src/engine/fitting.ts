@@ -464,6 +464,16 @@ export class FittingEngine {
         const centerShift = Math.abs(centerVal - nominalCenter);
         const isOutlier = centerShift > (3 * baseFwhm);
 
+        console.log({
+          peakId: peakId,
+          model: model,
+          center: centerVal,
+          nominalCenter: nominalCenter,
+          deviation: centerShift,
+          threshold: 3 * baseFwhm,
+          isOutlier: isOutlier
+        });
+
         if (!isOutlier) {
           validCenters.push(centerVal);
           

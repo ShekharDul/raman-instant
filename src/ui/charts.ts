@@ -1083,6 +1083,14 @@ export class ChartRenderer {
     return maxGap > 2 * medianGap;
   }
 
+  private static median(arr: number[]): number {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+
 
   static renderUncertaintyPanel(container: HTMLElement | string, epiResult: any, baseCenter: number) {
     if (typeof (window as any).Plotly === 'undefined') return;
@@ -1128,13 +1136,23 @@ export class ChartRenderer {
         // Sigma guard — skip KDE
       } else if (this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) {
         // Bimodality guard — skip KDE, show annotation
+        const sortedCenters = [...validCenters].sort((a, b) => a - b);
+        const tercileSize = Math.max(1, Math.floor(sortedCenters.length / 3));
+        const leftClusterMedian = this.median(sortedCenters.slice(0, tercileSize));
+        const rightClusterMedian = this.median(sortedCenters.slice(-tercileSize));
+        const annotationX = (leftClusterMedian + rightClusterMedian) / 2;
+
         bimodalAnnotation = {
-          text: 'Bimodal distribution — models diverged to separate peaks',
-          xref: 'paper', yref: 'paper',
-          x: 0.5, y: 0.85,
+          text: 'Bimodal — models diverged to separate peaks',
+          x: annotationX,
+          y: 0, // Center of y-axis (Gaussian row space)
+          xref: 'x',
+          yref: 'y',
           showarrow: false,
           font: { size: 10, color: '#888888' },
-          align: 'center'
+          align: 'center',
+          bgcolor: 'rgba(255,255,255,0.8)', // Readable over rug marks
+          borderpad: 2
         };
       } else {
         const h = 1.06 * sd * Math.pow(n, -0.2);
