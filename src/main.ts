@@ -203,6 +203,14 @@ function initUpload() {
 function handleFiles(fileList: FileList) {
   const files = Array.from(fileList);
   UI.text('system-status', `INGESTING ${files.length}...`);
+  
+  const irpCount = files.filter(f => f.name.toLowerCase().endsWith('.irp')).length;
+  trackEvent('files_ingested', { 
+    total_count: files.length, 
+    protocol_files: irpCount,
+    contains_protocol: irpCount > 0 
+  });
+
   files.forEach(async file => {
     try {
       if (file.name.toLowerCase().endsWith('.irp') || file.name.toLowerCase().endsWith('.json')) {
@@ -2183,6 +2191,11 @@ async function saveSnapshot(title: string) {
   if (countEl) countEl.innerText = state.snapshots.length.toString();
 
   showToast(`Snapshot captured: "${title}"`);
+  trackEvent('snapshot_captured', { 
+    snapshot_type: type, 
+    layout_mode: state.layoutMode,
+    has_uncertainty: !!snapshot.uncertaintyData
+  });
   updateUI();
 }
 
@@ -2556,7 +2569,7 @@ async function promptProtocolImport(protocolJson: any) {
   // Hash Verification (Global Search)
   const sourceHash = protocol.source_data_record.file_hash;
   let matchedFile = null;
-  
+
   // Search all loaded files for a match
   for (const f of state.files.values()) {
     if ((f as any).fileHash === sourceHash) {
@@ -2684,6 +2697,10 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   updateUI();
   UI.text('system-status', 'REPRODUCED');
   showToast("Protocol applied successfully.");
+  trackEvent('protocol_applied_success', { 
+    protocol_id: protocol.protocol_metadata.protocol_id,
+    has_fitting: (protocol.fitting_record?.length || 0) > 0
+  });
 }
 
 function generateVerificationReport(protocol: InstantRamanProtocol, file: ProcessedFile) {
@@ -2711,9 +2728,9 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
   origFits.forEach(of => {
     const origVal = of.fitted_center || 0;
     // Use the reproduced fit center if available, otherwise fallback to peak detection
-    const reproVal = reproducedFit ? (reproducedFit.fitted_center || 0) : 
-                     (file.peaks.find(p => Math.abs(p.x - of.nominal_center) < 5)?.x || 0);
-    
+    const reproVal = reproducedFit ? (reproducedFit.fitted_center || 0) :
+      (file.peaks.find(p => Math.abs(p.x - of.nominal_center) < 5)?.x || 0);
+
     const diff = Math.abs(origVal - reproVal);
     if (diff > maxDiff) maxDiff = diff;
 
@@ -2732,6 +2749,18 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
 
   const precisionClass = maxDiff > 1e-6 ? 'style="color: #be123c; margin-top: 16px; font-weight: 700;"' : 'style="color: #059669; margin-top: 16px; font-weight: 700;"';
   reportHtml += `<div ${precisionClass}>Maximum numerical deviation from original: ${maxDiff.toExponential(4)} cm⁻¹</div>`;
+
+  if (maxDiff > 1e-6) {
+    trackEvent('numerical_verification_failed', { 
+      max_deviation: maxDiff,
+      file_name: file.name
+    });
+  } else {
+    trackEvent('numerical_verification_success', { 
+      max_deviation: maxDiff,
+      file_name: file.name
+    });
+  }
 
   content.innerHTML = reportHtml;
   modal.classList.add('active');
