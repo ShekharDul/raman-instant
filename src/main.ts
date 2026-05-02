@@ -2601,10 +2601,24 @@ async function promptProtocolImport(protocolJson: any) {
 }
 
 async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
-  const activeId = state.activeFileId;
-  const file = state.files.get(activeId || '');
+  const sourceHash = protocol.source_data_record.file_hash;
+  let targetFileId = state.activeFileId;
+  let file = state.files.get(targetFileId || '');
+
+  // 1. Try to find the correct file by hash across all loaded files
+  if (!file || (file as any).fileHash !== sourceHash) {
+    for (const [id, f] of state.files.entries()) {
+      if ((f as any).fileHash === sourceHash) {
+        targetFileId = id;
+        file = f;
+        state.activeFileId = id; // Auto-activate the matching file
+        break;
+      }
+    }
+  }
+
   if (!file) {
-    alert("No active file to apply protocol to.");
+    alert(`Protocol Mismatch:\n\nThis protocol belongs to the file "${protocol.source_data_record.original_filename}".\n\nPlease load that file first to apply these analytical parameters.`);
     return;
   }
 
@@ -2616,7 +2630,6 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   // Cosmic Ray
   const cosmicStep = steps[0];
   state.cosmicRayRemoval = cosmicStep.applied;
-  // (Parameters are used in reprocessActive)
 
   // Baseline
   const baselineStep = steps[1];
@@ -2646,10 +2659,19 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
 
   if (protocol.fitting_record && protocol.fitting_record.length > 0) {
     const record = protocol.fitting_record[0];
+    // Use the exact 11-argument signature for bit-for-bit reproduction
     const epiResult = FittingEngine.evaluateEpistemicUncertainty(
-      reproducedFile.processed,
+      reproducedFile.processed.x,
+      reproducedFile.processed.y,
+      record.peak_id,
       record.nominal_center,
-      [record.boundary_left, record.boundary_right]
+      record.fitted_fwhm || 20,
+      record.fitted_amplitude || 100,
+      record.boundary_left,
+      record.boundary_right,
+      record.boundary_perturbation_range || 10,
+      2, // stepsPerSide
+      ['lorentzian', 'gaussian', 'voigt']
     );
     (reproducedFile as any).reproducedFit = epiResult;
     (state as any).epiResult = epiResult; // Update state for UI rendering
