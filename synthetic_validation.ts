@@ -1,4 +1,4 @@
-import { FittingEngine } from './src/engine/fitting';
+import { FittingEngine } from './src/engine/fitting.ts';
 
 function generateSyntheticVoigt(points: number = 200) {
   const x: number[] = [];
@@ -31,7 +31,7 @@ function runValidation() {
   // Peak ID: 1, Nominal Center: 1000, FWHM: 20
   // Base boundary: 950 to 1050 (+/- 2.5 * FWHM roughly)
   const result = FittingEngine.evaluateEpistemicUncertainty(
-    x, y, 1, 1000, 20, 950, 1050, 10, 5
+    x, y, 1, 1000, 20, 100, 950, 1050, 10, 5
   );
 
   console.log(`\n| Model Type | Step (%) | Fitted Center (cm⁻¹) | Stat Error (cm⁻¹) | R²     | Status |`);

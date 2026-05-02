@@ -2049,7 +2049,7 @@ async function runFitting(minX: number, maxX: number) {
       // Generate the rigor matrix
       epiResult = FittingEngine.evaluateEpistemicUncertainty(
         data.wavenumberData, data.intensityData,
-        1, p.center.value || 0, p.fwhm.value || 0,
+        1, p.center.value || 0, p.fwhm.value || 0, p.amplitude.value || 0,
         minX, maxX,
         10, 5
       );

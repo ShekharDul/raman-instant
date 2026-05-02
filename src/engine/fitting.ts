@@ -369,6 +369,7 @@ export class FittingEngine {
     peakId: number,
     nominalCenter: number,
     baseFwhm: number,
+    nominalAmplitude: number,
     baseBoundaryLeft: number,
     baseBoundaryRight: number,
     perturbationRangePct: number = 10, // e.g. 10 means +/- 10%
@@ -425,7 +426,11 @@ export class FittingEngine {
           continue;
         }
 
-        const initialParams = this.estimateInitial(roiX, roiY, model);
+        // Warm-start from best fit parameters instead of cold-start estimation
+        const initialParams = model === 'voigt' 
+          ? [nominalAmplitude, nominalCenter, baseFwhm, 0.5] 
+          : [nominalAmplitude, nominalCenter, baseFwhm];
+        
         const res = this.fit(roiX, roiY, initialParams, model);
 
         const shiftVal = shift; // Absolute shift in cm-1
@@ -486,6 +491,7 @@ export class FittingEngine {
           outlier_excluded: isOutlier,
           exclusion_reason: isOutlier ? `Center shift (${centerShift.toFixed(2)} cm-1) exceeds 3x FWHM (${(3 * baseFwhm).toFixed(2)} cm-1)` : null
         };
+
         all_model_results.push(modelResult);
       }
     }
