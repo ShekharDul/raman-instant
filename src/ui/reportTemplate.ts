@@ -11,6 +11,8 @@ export const REPORT_TEMPLATE = `
         :root {
             --bg: #ffffff;
             --text-main: #0f172a;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
             --text-muted: #64748b;
             --border: #e2e8f0;
             --accent: #2dd4bf;
@@ -165,9 +167,40 @@ export const REPORT_TEMPLATE = `
             font-family: var(--font-mono);
         }
 
+        .unc-report-layout {
+            display: grid;
+            grid-template-columns: 60% 40%;
+            gap: 24px;
+            margin-bottom: 32px;
+            min-height: 600px;
+        }
+        .unc-report-left {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .unc-report-right {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .unc-report-text {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 4px;
+            font-size: 13px;
+            overflow-y: auto;
+        }
+        .unc-report-plot {
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
         @media print {
             body { padding: 20px; }
             .snapshot-block { page-break-before: always; border-top: none; padding-top: 0; }
+            .unc-report-layout { grid-template-columns: 1fr; }
             footer { display: none; }
         }
     </style>
@@ -228,26 +261,51 @@ export const REPORT_TEMPLATE = `
                     const block = document.createElement('section');
                     block.className = 'snapshot-block';
                     
-                    const plotId = \`plot-\${snap.id}\`;
+                    const plotId = `plot-${snap.id}`;
                     
-                    block.innerHTML = \`
-                        <div class="snapshot-header">
-                            <h2 class="snapshot-title">\${snap.title}</h2>
-                            <div class="snapshot-meta">
-                                <span>TYPE: \${snap.type.toUpperCase()}</span>
-                                <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
-                                <span>SNIP: \${snap.settings.snip}</span>
-                                <span>NORM: \${snap.settings.norm.toUpperCase()}</span>
+                    if (snap.uncertaintyData) {
+                        // SPECIAL UNCERTAINTY LAYOUT (60/40)
+                        block.innerHTML = `
+                            <div class="snapshot-header">
+                                <h2 class="snapshot-title">${snap.title}</h2>
+                                <div class="snapshot-meta">
+                                    <span>TYPE: MODEL UNCERTAINTY ANALYSIS</span>
+                                    <span>TIME: ${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                    <span>BEST MODEL: ${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div id="\${plotId}" class="plot-container"></div>
-                        <div class="snapshot-table-wrap">
-                            <table id="table-\${snap.id}">
-                                <thead id="thead-\${snap.id}"></thead>
-                                <tbody id="tbody-\${snap.id}"></tbody>
-                            </table>
-                        </div>
-                    \`;
+                            <div class="unc-report-layout">
+                                <div class="unc-report-left">
+                                    <div id="${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
+                                    <div id="${plotId}-residual" class="unc-report-plot" style="height: 150px;"></div>
+                                </div>
+                                <div class="unc-report-right">
+                                    <div id="${plotId}-uncertainty" class="unc-report-plot" style="height: 300px;"></div>
+                                    <div class="unc-report-text">${snap.uncertaintyData.interpretationHtml}</div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // STANDARD LAYOUT
+                        block.innerHTML = `
+                            <div class="snapshot-header">
+                                <h2 class="snapshot-title">${snap.title}</h2>
+                                <div class="snapshot-meta">
+                                    <span>TYPE: ${snap.type.toUpperCase()}</span>
+                                    <span>TIME: ${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                    <span>SNIP: ${snap.settings.snip}</span>
+                                    <span>NORM: ${snap.settings.norm.toUpperCase()}</span>
+                                </div>
+                            </div>
+                            <div id="${plotId}" class="plot-container"></div>
+                            <div class="snapshot-table-wrap">
+                                <table id="table-${snap.id}">
+                                    <thead id="thead-${snap.id}"></thead>
+                                    <tbody id="tbody-${snap.id}"></tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
                     
                     main.appendChild(block);
 
@@ -265,59 +323,73 @@ export const REPORT_TEMPLATE = `
                             hovermode: 'x unified'
                         };
 
-                        const layoutMode = snap.settings.layoutMode || 'single';
-                        
-                        if (layoutMode.startsWith('grid') && snap.gridTraces && snap.gridTraces.length > 1) {
-                            // Grid Rendering
-                            const container = document.getElementById(plotId);
-                            container.style.display = 'grid';
-                            container.style.gap = '32px'; 
-                            container.style.height = 'auto';
-                            container.style.minHeight = '400px';
+                        if (snap.uncertaintyData) {
+                            // RENDER UNCERTAINTY TRIO
+                            const u = snap.uncertaintyData;
                             
-                            if (layoutMode === 'grid2x1') {
-                                container.style.gridTemplateColumns = '1fr';
-                            } else {
-                                container.style.gridTemplateColumns = '1fr 1fr';
-                            }
+                            const fitLayout = { ...layout, ...u.plots.fit.layout, height: 450, margin: { l: 80, r: 40, t: 40, b: 40 } };
+                            const resLayout = { ...layout, ...u.plots.residual.layout, height: 150, margin: { l: 80, r: 40, t: 20, b: 40 } };
+                            const uncLayout = { ...layout, ...u.plots.uncertainty.layout, height: 300, margin: { l: 40, r: 40, t: 40, b: 60 } };
 
-                            snap.gridTraces.forEach((gridItem, gIdx) => {
-                                const subPlotId = \`\${plotId}-grid-\${gIdx}\`;
-                                const wrapper = document.createElement('div');
-                                wrapper.style.display = 'flex';
-                                wrapper.style.flexDirection = 'column';
-                                
-                                const subTitle = document.createElement('div');
-                                subTitle.style.cssText = 'font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;';
-                                subTitle.textContent = \`Plot \${gIdx + 1}: \${gridItem.name}\`;
-                                wrapper.appendChild(subTitle);
-
-                                const subDiv = document.createElement('div');
-                                subDiv.id = subPlotId;
-                                subDiv.style.minHeight = '400px';
-                                wrapper.appendChild(subDiv);
-                                
-                                container.appendChild(wrapper);
-                                
-                                const subLayout = { ...layout, yaxis: { ...layout.yaxis } };
-                                if (layoutMode.startsWith('grid')) {
-                                    delete subLayout.yaxis.range;
-                                    subLayout.yaxis.autorange = true;
-                                }
-                                Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
-                            });
+                            Plotly.newPlot(`${plotId}-fit`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
+                            Plotly.newPlot(`${plotId}-residual`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
+                            Plotly.newPlot(`${plotId}-uncertainty`, u.plots.uncertainty.traces, uncLayout, { responsive: true, displaylogo: false });
                         } else {
-                            // Single/Stacked/Replicate Rendering
-                            if (snap.type === 'fitting') {
-                                layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
-                                layout.yaxis.domain = [0.3, 1];
-                                layout.yaxis2 = { domain: [0, 0.2], title: 'Δ', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' };
-                                layout.xaxis.anchor = 'y2';
-                                const resTrace = snap.traces.find(t => t.name === 'Residual');
-                                if (resTrace) resTrace.yaxis = 'y2';
-                            }
+                            // STANDARD RENDERING
+                            const layoutMode = snap.settings.layoutMode || 'single';
+                            
+                            if (layoutMode.startsWith('grid') && snap.gridTraces && snap.gridTraces.length > 1) {
+                                // Grid Rendering
+                                const container = document.getElementById(plotId);
+                                container.style.display = 'grid';
+                                container.style.gap = '32px'; 
+                                container.style.height = 'auto';
+                                container.style.minHeight = '400px';
+                                
+                                if (layoutMode === 'grid2x1') {
+                                    container.style.gridTemplateColumns = '1fr';
+                                } else {
+                                    container.style.gridTemplateColumns = '1fr 1fr';
+                                }
 
-                            Plotly.newPlot(plotId, snap.traces, layout, { responsive: true, displaylogo: false });
+                                snap.gridTraces.forEach((gridItem, gIdx) => {
+                                    const subPlotId = `${plotId}-grid-${gIdx}`;
+                                    const wrapper = document.createElement('div');
+                                    wrapper.style.display = 'flex';
+                                    wrapper.style.flexDirection = 'column';
+                                    
+                                    const subTitle = document.createElement('div');
+                                    subTitle.style.cssText = 'font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;';
+                                    subTitle.textContent = `Plot ${gIdx + 1}: ${gridItem.name}`;
+                                    wrapper.appendChild(subTitle);
+
+                                    const subDiv = document.createElement('div');
+                                    subDiv.id = subPlotId;
+                                    subDiv.style.minHeight = '400px';
+                                    wrapper.appendChild(subDiv);
+                                    
+                                    container.appendChild(wrapper);
+                                    
+                                    const subLayout = { ...layout, yaxis: { ...layout.yaxis } };
+                                    if (layoutMode.startsWith('grid')) {
+                                        delete subLayout.yaxis.range;
+                                        subLayout.yaxis.autorange = true;
+                                    }
+                                    Plotly.newPlot(subPlotId, gridItem.traces, subLayout, { responsive: true, displaylogo: false });
+                                });
+                            } else {
+                                // Single/Stacked/Replicate Rendering
+                                if (snap.type === 'fitting') {
+                                    layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
+                                    layout.yaxis.domain = [0.3, 1];
+                                    layout.yaxis2 = { domain: [0, 0.2], title: 'Δ', linecolor: '#0f172a', linewidth: 2, mirror: true, ticks: 'outside' };
+                                    layout.xaxis.anchor = 'y2';
+                                    const resTrace = snap.traces.find(t => t.name === 'Residual');
+                                    if (resTrace) resTrace.yaxis = 'y2';
+                                }
+
+                                Plotly.newPlot(plotId, snap.traces, layout, { responsive: true, displaylogo: false });
+                            }
                         }
                     }
 

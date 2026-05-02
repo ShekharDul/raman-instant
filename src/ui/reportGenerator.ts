@@ -19,6 +19,15 @@ export interface Snapshot {
     stackOffset: number;
   };
   ratio?: { p1: any, p2: any, intRatio: string, areaRatio: string };
+  uncertaintyData?: {
+    epiResult: any;
+    interpretationHtml: string;
+    plots: {
+      fit: { traces: any[], layout: any },
+      residual: { traces: any[], layout: any },
+      uncertainty: { traces: any[], layout: any }
+    }
+  };
 }
 
 export interface ReportData {

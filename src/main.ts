@@ -69,6 +69,7 @@ interface AppState {
   freeLabelMode: boolean;
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
+  epiResult: import('./engine/fitting').EpistemicResult | null;
 }
 
 // ── State ──
@@ -103,7 +104,8 @@ const state: AppState = {
   labelMode: false,
   freeLabelMode: false,
   pendingLabel: null,
-  snapshots: []
+  snapshots: [],
+  epiResult: null
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -1929,6 +1931,45 @@ async function saveSnapshot(title: string) {
     };
   }
 
+  // 4.5 Capture Uncertainty Metadata
+  let uncertaintyData = undefined;
+  if (state.fittingMode && (state as any).epiResult) {
+    const fitEl = document.getElementById('plot-fit-large') as any;
+    const resEl = document.getElementById('plot-residual-small') as any;
+    const uncEl = document.getElementById('plot-uncertainty-bars') as any;
+    const interpEl = document.querySelector('.unc-right-bottom');
+
+    const clonePlot = (el: any) => {
+      if (!el || !el.data) return { traces: [], layout: {} };
+      return {
+        traces: el.data.map((d: any) => ({
+          ...d,
+          x: Array.isArray(d.x) ? [...d.x] : d.x,
+          y: Array.isArray(d.y) ? [...d.y] : d.y
+        })),
+        layout: { 
+          xaxis: { range: el._fullLayout?.xaxis?.range },
+          yaxis: { range: el._fullLayout?.yaxis?.range },
+          shapes: el._fullLayout?.shapes || [],
+          annotations: el._fullLayout?.annotations || [],
+          title: el._fullLayout?.title?.text
+        }
+      };
+    };
+
+    if (fitEl && resEl && uncEl) {
+      uncertaintyData = {
+        epiResult: (state as any).epiResult,
+        interpretationHtml: interpEl ? interpEl.innerHTML : '',
+        plots: {
+          fit: clonePlot(fitEl),
+          residual: clonePlot(resEl),
+          uncertainty: clonePlot(uncEl)
+        }
+      };
+    }
+  }
+
   // 5. Build Robust Layout from Live Plot
   const firstPlotEl = plotEls[0] as any;
   const liveLayout = firstPlotEl?._fullLayout || {};
@@ -1953,6 +1994,7 @@ async function saveSnapshot(title: string) {
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
     ratio: ratioData,
+    uncertaintyData,
     layout: finalLayout,
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
@@ -2047,8 +2089,8 @@ function renderFitResults() {
       <div class="unc-title">Model Uncertainty Analysis</div>
       <div class="unc-badge">${epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN'} — R² = ${epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A'}</div>
     </div>
-    <div id="plot-fit-large" style="flex: 1; min-height: 0;"></div>
-    <div id="plot-residual-small" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
+    <div id="plot-fit-large" class="plot-container" style="flex: 1; min-height: 0;"></div>
+    <div id="plot-residual-small" class="plot-container" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
   `;
   root.appendChild(leftPane);
 
@@ -2060,7 +2102,7 @@ function renderFitResults() {
   rightTop.className = 'unc-right-top';
   rightTop.innerHTML = `
     <div class="unc-small-caps">Uncertainty Decomposition</div>
-    <div id="plot-uncertainty-bars" style="flex: 1; min-height: 0;"></div>
+    <div id="plot-uncertainty-bars" class="plot-container" style="flex: 1; min-height: 0;"></div>
   `;
   rightPane.appendChild(rightTop);
 
