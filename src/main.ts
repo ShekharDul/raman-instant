@@ -1019,21 +1019,28 @@ function initDrawerToggle() {
     const isOpen = panel.classList.contains('drawer-open');
     toggleBtn.querySelector('span:first-child')!.textContent = isOpen ? 'Close' : 'Analysis';
     toggleBtn.querySelector('.toggle-icon')!.textContent = isOpen ? '✕' : '▸';
-    updateUI();
+    
+    // Do NOT call updateUI() here as it triggers expensive Plotly renders
+    // which block the main thread and cause jitter. 
+    // The transitionend listener below handles the final render.
   });
 
   UI.get('btn-close-analysis-drawer')?.addEventListener('click', () => {
     panel.classList.remove('drawer-open');
     toggleBtn.querySelector('span:first-child')!.textContent = 'Analysis';
     toggleBtn.querySelector('.toggle-icon')!.textContent = '▸';
-    updateUI();
+    // Same here, let transitionend handle the cleanup.
   });
 
   // Global listener for flex transitions to ensure Plotly resizes
   workspace.addEventListener('transitionend', (e) => {
-    if ((e.target as HTMLElement).classList.contains('plot-area') || 
-        (e.target as HTMLElement).classList.contains('data-grid') || 
-        (e.target as HTMLElement).classList.contains('analysis-drawer')) {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('plot-area') || 
+        target.classList.contains('data-grid') || 
+        target.classList.contains('analysis-drawer')) {
+      // Trigger the expensive renders only AFTER the smooth transition is complete
+      updateUI();
+      // Ensure Plotly specifically handles the new container size
       renderPlots();
     }
   });

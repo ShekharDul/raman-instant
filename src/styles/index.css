@@ -414,19 +414,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: flex;
   background: var(--bg-app);
+  /* Remove transition here — plot area should naturally follow the drawer's displacement */
 }
 
 /* ── Peak Data Grid (Docked Panel) ── */
 .data-grid {
-  flex: 0 0 0%;
+  flex: 0 0 0px;
+  width: 0;
   overflow: hidden;
-  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: flex;
+  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: flex, width;
   background: var(--bg-surface);
-  border-left: 0.5px solid var(--border);
+  border-left: 0.5px solid transparent;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -434,23 +435,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .data-grid.open {
   flex: 0 0 30%;
+  width: 30%;
+  border-left-color: var(--border);
 }
 
 /* ── Analysis Drawer (Flex Row) ── */
 .analysis-drawer {
-  flex: 0 0 0%;
+  flex: 0 0 0px;
+  width: 0;
   background: var(--bg-surface);
-  border-left: 1px solid var(--border);
+  border-left: 1px solid transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: flex;
+  transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.4s ease;
+  will-change: flex, width;
+  contain: layout paint;
+  z-index: 10;
 }
 
 .analysis-drawer.drawer-open {
   flex: 0 0 360px;
+  width: 360px;
+  border-left-color: var(--border);
 }
 
 .workspace-grid {
