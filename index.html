@@ -108,33 +108,30 @@
         <div style="margin-bottom: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
           <img src="./Waterfall.png" alt="Publication Ready Plots" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
         </div>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">01. Publication-ready plots</h3>
+      <!-- Feature 1: Uncertainty -->
+      <section>
+        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">01. Multi-Model Uncertainty</h3>
+        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">Standard fitting often hides ambiguity by forcing a single "correct" result.</p>
         <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Generate high-fidelity spectral visualizations designed for academic submission. We utilize the Paul Tol color-blind-safe schema to ensure maximum clarity in complex comparative datasets. Export options include 600 DPI PNGs and vector SVGs with bold 2.5pt axis lines and standard 16pt+ typography.
+          We re-run every fit 15 times using three different mathematical models (Lorentzian, Gaussian, Voigt) and perturbed boundaries. If the models diverge, the tool labels the result as Bimodal or Multimodal, ensuring you don't report false certainty in complex spectra.
         </p>
       </section>
 
-      <!-- Feature 2 -->
+      <!-- Feature 2: Reproducibility -->
       <section>
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
-            <img src="./Lorentzian.png" alt="Peak Fitting" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
-          </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
-            <img src="./Peak%20Fitting%20Modes.png" alt="Fitting Modes" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
-          </div>
-        </div>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">02. Peak fitting</h3>
+        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">02. Reproducibility Protocols</h3>
+        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">Sharing results usually means losing the processing history of how you got there.</p>
         <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Perform simultaneous multi-peak deconvolution using the Levenberg-Marquardt algorithm. Our engine supports Lorentzian, Gaussian, and Voigt profiles, allowing you to model diverse spectroscopic signals with high precision. All fitting residuals are calculated in real-time, providing immediate feedback on the quality of your model.
+          Export a lightweight .irp file that stores the SHA-256 hash of your raw data and every processing parameter. A colleague can drag this file in to reproduce your exact baseline, normalization, and fitting results bit-for-bit.
         </p>
       </section>
 
-      <!-- Feature 3 -->
+      <!-- Feature 3: Verification -->
       <section>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">03. Efficient collaboration</h3>
+        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">03. Numerical Verification</h3>
+        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">It is difficult to prove that re-processed data matches your original ground truth.</p>
         <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Sharing your work shouldn't be a headache. Instead of just sending a screenshot, you can save your whole analysis as an interactive file. This lets others zoom in on the plots and see the actual peak values for themselves. It’s a much better way to show your findings to your team or include in a paper.
+          The app compares re-calculated peak positions against original stored values and reports any deviation down to 10⁻⁶ cm⁻¹. This provides a mathematical guarantee that your analysis remains consistent across different versions or machines.
         </p>
       </section>
 
