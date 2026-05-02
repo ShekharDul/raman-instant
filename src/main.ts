@@ -2031,19 +2031,18 @@ function renderFitResults() {
 
   const epi = (state as any).epiResult;
 
-  // 1. Quadrant Layout
   container.innerHTML = '';
   container.className = 'workspace-grid';
-  container.style.display = 'block'; // Use custom grid class
+  container.style.display = 'block';
   
   const root = document.createElement('div');
   root.className = 'unc-quadrant-container';
   container.appendChild(root);
 
-  // TOP SECTION (50%)
-  const topSec = document.createElement('div');
-  topSec.className = 'unc-top-section';
-  topSec.innerHTML = `
+  // LEFT PANE (60%)
+  const leftPane = document.createElement('div');
+  leftPane.className = 'unc-left-pane';
+  leftPane.innerHTML = `
     <div class="unc-header">
       <div class="unc-title">Model Uncertainty Analysis</div>
       <div class="unc-badge">${epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN'} — R² = ${epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A'}</div>
@@ -2051,22 +2050,26 @@ function renderFitResults() {
     <div id="plot-fit-large" style="flex: 1; min-height: 0;"></div>
     <div id="plot-residual-small" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
   `;
-  root.appendChild(topSec);
+  root.appendChild(leftPane);
 
-  // BOTTOM LEFT (25%)
-  const botLeft = document.createElement('div');
-  botLeft.className = 'unc-bottom-left';
-  botLeft.innerHTML = `
+  // RIGHT PANE (40%)
+  const rightPane = document.createElement('div');
+  rightPane.className = 'unc-right-pane';
+  
+  const rightTop = document.createElement('div');
+  rightTop.className = 'unc-right-top';
+  rightTop.innerHTML = `
     <div class="unc-small-caps">Uncertainty Decomposition</div>
     <div id="plot-uncertainty-bars" style="flex: 1; min-height: 0;"></div>
   `;
-  root.appendChild(botLeft);
+  rightPane.appendChild(rightTop);
 
-  // BOTTOM RIGHT (25%)
-  const botRight = document.createElement('div');
-  botRight.className = 'unc-bottom-right';
-  botRight.innerHTML = generateInterpretationHtml(epi, active.protocolId || 'UNSET');
-  root.appendChild(botRight);
+  const rightBottom = document.createElement('div');
+  rightBottom.className = 'unc-right-bottom';
+  rightBottom.innerHTML = generateInterpretationHtml(epi, active.protocolId || 'UNSET');
+  rightPane.appendChild(rightBottom);
+
+  root.appendChild(rightPane);
 
   requestAnimationFrame(() => {
     const fitDiv = document.getElementById('plot-fit-large')!;

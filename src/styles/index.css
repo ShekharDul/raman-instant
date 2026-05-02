@@ -1180,36 +1180,36 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ── Model Uncertainty Quantification Panel ── */
 .unc-quadrant-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 65% 35%;
+  display: flex;
   height: 100%;
   background: #fff;
   overflow: hidden;
 }
 
-.unc-top-section {
-  grid-column: 1 / span 2;
-  border-bottom: 1px solid #eee;
+.unc-left-pane {
+  width: 60%;
+  border-right: 1px solid #eee;
   display: flex;
   flex-direction: column;
   padding: 16px;
-  position: relative;
 }
 
-.unc-bottom-left {
-  border-right: 1px solid #eee;
+.unc-right-pane {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+}
+
+.unc-right-top {
+  height: 50%;
+  border-bottom: 1px solid #eee;
   padding: 24px;
-  display: flex;
-  flex-direction: column;
 }
 
-.unc-bottom-right {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
+.unc-right-bottom {
+  height: 50%;
   overflow-y: auto;
+  background: #fff;
 }
 
 .unc-header {
