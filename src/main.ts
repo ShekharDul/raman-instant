@@ -2140,6 +2140,39 @@ function renderFitResults() {
   });
 }
 
+function formatReportAs(center: number, statisticalError: number | null, _isDegenerateRange: boolean): string {
+  if (statisticalError === null) {
+    return `${center.toFixed(1)} ± ill-conditioned`;
+  }
+
+  if (statisticalError < 0.001) {
+    // For scientific notation, use existing shared formatter and fixed 4 decimal places for center
+    const statStr = formatStatisticalError(statisticalError);
+    return `${center.toFixed(4)} ${statStr}`;
+  }
+
+  // 1. Round uncertainty to 2 significant figures
+  // toPrecision returns a string representation of the number with specified significant digits
+  const roundedErrorStr = statisticalError.toPrecision(2);
+  const roundedError = Number(roundedErrorStr);
+
+  // 2. Count decimal places in the rounded uncertainty string
+  // We use the string from toPrecision to accurately count the displayed decimal places
+  let decimalPlaces = 0;
+  if (roundedErrorStr.includes('.')) {
+    const parts = roundedErrorStr.split('.');
+    // Avoid coordination if it returned scientific notation (e.g. 1.2e+2)
+    if (!parts[1].includes('e')) {
+      decimalPlaces = parts[1].length;
+    }
+  }
+
+  // 3. Display center to that same number of decimal places
+  const centerStr = center.toFixed(decimalPlaces);
+
+  return `${centerStr} ± ${roundedError} cm⁻¹`;
+}
+
 function generateInterpretationHtml(epi: any, protocolId: string) {
   const statStr = formatStatisticalError(epi.fitted_center_statistical_error);
   const bestModel = epi.best_fit_model || 'unknown';
@@ -2154,9 +2187,9 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
     // Branch 1: High Model Agreement (Degenerate case)
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
     
-    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All perturbations converged to a singular result. The fit is exceptionally stable across epistemic boundaries.`;
+    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All three model types and all boundary perturbations converged to the same center. The result is stable and model-insensitive.`;
     
-    part3 = `<b>REPORT AS:</b> ${center.toFixed(1)} ${statStr}`;
+    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, epi.fitted_center_statistical_error, true)}`;
   } else {
     // Branch 2: Normal/Sensitive case
     const epiRangeMin = epi.epistemic_center_min?.toFixed(2) || 'N/A';
@@ -2171,7 +2204,7 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
       part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
     }
 
-    part3 = `Report as <b>${center.toFixed(1)} ± ${combined.toFixed(4)} cm⁻¹</b>. Epistemic range: ${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹. See confidence assessment.`;
+    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, combined, false)}. Epistemic range: ${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹. See confidence assessment.`;
   }
 
   return `
