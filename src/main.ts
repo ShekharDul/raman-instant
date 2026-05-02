@@ -988,6 +988,7 @@ function renderPeakTable() {
   files.forEach(file => {
     const isActive = file.id === state.activeFileId;
     const card = createAnalysisCard(file.name, `Spectral Peaks (${file.peaks.length})`, file.color, isActive);
+    if (isActive) card.classList.add('active');
 
     if (file.peaks.length === 0) {
       const emptyMsg = document.createElement('div');
@@ -1037,7 +1038,8 @@ function renderPeakTable() {
       if (hasProximityIssue && isActive) globalProximityIssue = true;
     }
 
-    // Toggle logic
+    // Toggle logic: Clicking header of inactive card makes it active. 
+    // Clicking active card header toggles expansion.
     card.querySelector('.analysis-card-header')?.addEventListener('click', () => {
       if (!isActive) {
         state.activeFileId = file.id;

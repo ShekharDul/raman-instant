@@ -628,6 +628,15 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--accent-light);
 }
 
+.analysis-card.active .analysis-card-title {
+  color: var(--active-color, var(--accent));
+}
+
+.analysis-card.active .analysis-card-meta {
+  color: var(--active-color, var(--accent));
+  opacity: 0.7;
+}
+
 .analysis-card-header:hover {
   background: var(--bg-active);
 }
