@@ -36,6 +36,44 @@ export interface FitResult {
   errorMsg?: string;
 }
 
+export interface ModelResult {
+  model_type: 'lorentzian' | 'gaussian' | 'voigt';
+  boundary_perturbation_step: number;
+  boundary_left: number;
+  boundary_right: number;
+  fitted_center: number | null;
+  fitted_fwhm: number | null;
+  fitted_amplitude: number | null;
+  fitted_center_statistical_error: number | null;
+  fitted_fwhm_statistical_error: number | null;
+  fitted_amplitude_statistical_error: number | null;
+  statistical_uncertainty_status: 'reliable' | 'ill_conditioned' | null;
+  r_squared: number | null;
+  reduced_chi_squared: number | null;
+  convergence_status: 'converged' | 'failed';
+}
+
+export interface EpistemicResult {
+  peak_id: number;
+  nominal_center: number;
+  boundary_left: number;
+  boundary_right: number;
+  boundary_perturbation_range: number | null;
+  best_fit_model: 'lorentzian' | 'gaussian' | 'voigt' | null;
+  fitted_center: number | null;
+  fitted_center_statistical_error: number | null;
+  fitted_fwhm: number | null;
+  fitted_amplitude: number | null;
+  r_squared: number | null;
+  reduced_chi_squared: number | null;
+  epistemic_center_min: number | null;
+  epistemic_center_max: number | null;
+  epistemic_standard_deviation: number | null;
+  combined_uncertainty: number | null;
+  convergence_status: 'converged' | 'failed' | null;
+  all_model_results: ModelResult[] | null;
+}
+
 export class FittingEngine {
   static lorentzian(x: number, a: number, c: number, w: number): number {
     const gamma = w / 2;
@@ -313,7 +351,7 @@ export class FittingEngine {
     baseBoundaryRight: number,
     perturbationRangePct: number = 10, // e.g. 10 means +/- 10%
     perturbationStepPct: number = 5
-  ): any {
+  ): EpistemicResult {
     const models: ("lorentzian" | "gaussian" | "voigt")[] = ["lorentzian", "gaussian", "voigt"];
     const steps = [];
     for (let s = -perturbationRangePct; s <= perturbationRangePct; s += perturbationStepPct) {

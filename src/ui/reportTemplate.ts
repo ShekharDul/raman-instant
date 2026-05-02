@@ -261,50 +261,50 @@ export const REPORT_TEMPLATE = `
                     const block = document.createElement('section');
                     block.className = 'snapshot-block';
                     
-                    const plotId = `plot-${snap.id}`;
+                    const plotId = \`plot-\${snap.id}\`;
                     
                     if (snap.uncertaintyData) {
                         // SPECIAL UNCERTAINTY LAYOUT (60/40)
-                        block.innerHTML = `
+                        block.innerHTML = \`
                             <div class="snapshot-header">
-                                <h2 class="snapshot-title">${snap.title}</h2>
+                                <h2 class="snapshot-title">\${snap.title}</h2>
                                 <div class="snapshot-meta">
                                     <span>TYPE: MODEL UNCERTAINTY ANALYSIS</span>
-                                    <span>TIME: ${new Date(snap.timestamp).toLocaleTimeString()}</span>
-                                    <span>BEST MODEL: ${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
+                                    <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                    <span>BEST MODEL: \${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
                                 </div>
                             </div>
                             <div class="unc-report-layout">
                                 <div class="unc-report-left">
-                                    <div id="${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
-                                    <div id="${plotId}-residual" class="unc-report-plot" style="height: 150px;"></div>
+                                    <div id="\${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
+                                    <div id="\${plotId}-residual" class="unc-report-plot" style="height: 150px;"></div>
                                 </div>
                                 <div class="unc-report-right">
-                                    <div id="${plotId}-uncertainty" class="unc-report-plot" style="height: 300px;"></div>
-                                    <div class="unc-report-text">${snap.uncertaintyData.interpretationHtml}</div>
+                                    <div id="\${plotId}-uncertainty" class="unc-report-plot" style="height: 300px;"></div>
+                                    <div class="unc-report-text">\${snap.uncertaintyData.interpretationHtml}</div>
                                 </div>
                             </div>
-                        `;
+                        \`;
                     } else {
                         // STANDARD LAYOUT
-                        block.innerHTML = `
+                        block.innerHTML = \`
                             <div class="snapshot-header">
-                                <h2 class="snapshot-title">${snap.title}</h2>
+                                <h2 class="snapshot-title">\${snap.title}</h2>
                                 <div class="snapshot-meta">
-                                    <span>TYPE: ${snap.type.toUpperCase()}</span>
-                                    <span>TIME: ${new Date(snap.timestamp).toLocaleTimeString()}</span>
-                                    <span>SNIP: ${snap.settings.snip}</span>
-                                    <span>NORM: ${snap.settings.norm.toUpperCase()}</span>
+                                    <span>TYPE: \${snap.type.toUpperCase()}</span>
+                                    <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                    <span>SNIP: \${snap.settings.snip}</span>
+                                    <span>NORM: \${snap.settings.norm.toUpperCase()}</span>
                                 </div>
                             </div>
-                            <div id="${plotId}" class="plot-container"></div>
+                            <div id="\${plotId}" class="plot-container"></div>
                             <div class="snapshot-table-wrap">
-                                <table id="table-${snap.id}">
-                                    <thead id="thead-${snap.id}"></thead>
-                                    <tbody id="tbody-${snap.id}"></tbody>
+                                <table id="table-\${snap.id}">
+                                    <thead id="thead-\${snap.id}"></thead>
+                                    <tbody id="tbody-\${snap.id}"></tbody>
                                 </table>
                             </div>
-                        `;
+                        \`;
                     }
                     
                     main.appendChild(block);
@@ -331,9 +331,9 @@ export const REPORT_TEMPLATE = `
                             const resLayout = { ...layout, ...u.plots.residual.layout, height: 150, margin: { l: 80, r: 40, t: 20, b: 40 } };
                             const uncLayout = { ...layout, ...u.plots.uncertainty.layout, height: 300, margin: { l: 40, r: 40, t: 40, b: 60 } };
 
-                            Plotly.newPlot(`${plotId}-fit`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
-                            Plotly.newPlot(`${plotId}-residual`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
-                            Plotly.newPlot(`${plotId}-uncertainty`, u.plots.uncertainty.traces, uncLayout, { responsive: true, displaylogo: false });
+                            Plotly.newPlot(\`\${plotId}-fit\`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
+                            Plotly.newPlot(\`\${plotId}-residual\`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
+                            Plotly.newPlot(\`\${plotId}-uncertainty\`, u.plots.uncertainty.traces, uncLayout, { responsive: true, displaylogo: false });
                         } else {
                             // STANDARD RENDERING
                             const layoutMode = snap.settings.layoutMode || 'single';
@@ -353,14 +353,14 @@ export const REPORT_TEMPLATE = `
                                 }
 
                                 snap.gridTraces.forEach((gridItem, gIdx) => {
-                                    const subPlotId = `${plotId}-grid-${gIdx}`;
+                                    const subPlotId = \`\${plotId}-grid-\${gIdx}\`;
                                     const wrapper = document.createElement('div');
                                     wrapper.style.display = 'flex';
                                     wrapper.style.flexDirection = 'column';
                                     
                                     const subTitle = document.createElement('div');
                                     subTitle.style.cssText = 'font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;';
-                                    subTitle.textContent = `Plot ${gIdx + 1}: ${gridItem.name}`;
+                                    subTitle.textContent = \`Plot \${gIdx + 1}: \${gridItem.name}\`;
                                     wrapper.appendChild(subTitle);
 
                                     const subDiv = document.createElement('div');
