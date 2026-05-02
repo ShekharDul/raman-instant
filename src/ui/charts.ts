@@ -25,6 +25,9 @@ const COLORS = {
   ]
 };
 
+const BIMODAL_GAP_FWHM_FRACTION = 0.25;
+
+
 const PAPER_LAYOUT: any = {
   paper_bgcolor: COLORS.paper,
   plot_bgcolor: COLORS.paper,
@@ -1083,12 +1086,35 @@ export class ChartRenderer {
     return maxGap > 2 * medianGap;
   }
 
-  private static median(arr: number[]): number {
-    if (arr.length === 0) return 0;
-    const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  private static countDistinctClusters(centers: number[], nominalFWHM: number): number {
+    if (centers.length === 0) return 0;
+    const sorted = [...centers].sort((a, b) => a - b);
+    const clusterGapThreshold = BIMODAL_GAP_FWHM_FRACTION * nominalFWHM;
+    
+    let clusterCount = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] - sorted[i - 1] > clusterGapThreshold) {
+        clusterCount++;
+      }
+    }
+    return clusterCount;
   }
+
+  private static largestGapMidpoint(centers: number[]): number {
+    const sorted = [...centers].sort((a, b) => a - b);
+    let maxGap = 0;
+    let midpoint = sorted[Math.floor(sorted.length / 2)]; // fallback
+    
+    for (let i = 1; i < sorted.length; i++) {
+      const gap = sorted[i] - sorted[i - 1];
+      if (gap > maxGap) {
+        maxGap = gap;
+        midpoint = (sorted[i] + sorted[i - 1]) / 2;
+      }
+    }
+    return midpoint;
+  }
+
 
 
 
@@ -1136,14 +1162,15 @@ export class ChartRenderer {
         // Sigma guard — skip KDE
       } else if (this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) {
         // Bimodality guard — skip KDE, show annotation
-        const sortedCenters = [...validCenters].sort((a, b) => a - b);
-        const tercileSize = Math.max(1, Math.floor(sortedCenters.length / 3));
-        const leftClusterMedian = this.median(sortedCenters.slice(0, tercileSize));
-        const rightClusterMedian = this.median(sortedCenters.slice(-tercileSize));
-        const annotationX = (leftClusterMedian + rightClusterMedian) / 2;
+        const nominalFWHM = epiResult.fitted_fwhm || 20; // Default fallback if missing
+        const clusterCount = this.countDistinctClusters(validCenters, nominalFWHM);
+        const modalityLabel = clusterCount >= 3 ? 'Trimodal' : (clusterCount === 2 ? 'Bimodal' : 'Multimodal');
+        const annotationText = `${modalityLabel} — models diverged to separate peaks`;
+        
+        const annotationX = this.largestGapMidpoint(validCenters);
 
         bimodalAnnotation = {
-          text: 'Bimodal — models diverged to separate peaks',
+          text: annotationText,
           x: annotationX,
           y: 0, // Center of y-axis (Gaussian row space)
           xref: 'x',
