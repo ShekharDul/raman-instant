@@ -1053,6 +1053,37 @@ export class ChartRenderer {
     ctx.stroke();
   }
 
+  private static isBimodal(centers: number[]): boolean {
+    if (centers.length < 6) return false;
+    
+    const n = centers.length;
+    const mean = centers.reduce((a, b) => a + b) / n;
+    
+    // Compute skewness and excess kurtosis
+    const variance = centers.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / (n - 1);
+    const std = Math.sqrt(variance);
+    if (std === 0) return false;
+    
+    const skewness = centers.reduce((sum, x) => sum + Math.pow((x - mean) / std, 3), 0) / n;
+    const kurtosis = centers.reduce((sum, x) => sum + Math.pow((x - mean) / std, 4), 0) / n - 3;
+    
+    // Bimodality coefficient — values above 0.555 suggest bimodality
+    const bc = (skewness * skewness + 1) / (kurtosis + 3 * Math.pow(n - 1, 2) / ((n - 2) * (n - 3)));
+    
+    return bc > 0.555;
+  }
+
+  private static hasLargeGap(centers: number[]): boolean {
+    if (centers.length < 2) return false;
+    const sorted = [...centers].sort((a, b) => a - b);
+    const gaps = sorted.slice(1).map((v, i) => v - sorted[i]);
+    const sortedGaps = [...gaps].sort((a, b) => a - b);
+    const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
+    const maxGap = Math.max(...gaps);
+    return maxGap > 2 * medianGap;
+  }
+
+
   static renderUncertaintyPanel(container: HTMLElement | string, epiResult: any, baseCenter: number) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
@@ -1087,40 +1118,51 @@ export class ChartRenderer {
     // 1. KDE Curve (Background)
     const validCenters = validResults.map((r: any) => r.center || r.fitted_center);
     const n = validCenters.length;
-    
+    let bimodalAnnotation = null;
+
     if (n >= 4) {
       const mean = validCenters.reduce((a: number, b: number) => a + b, 0) / n;
       const sd = Math.sqrt(validCenters.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / n) || 0.001;
       
-      // Fix 2: KDE Sigma Guard
-      if (sd >= 0.005) {
+      if (sd < 0.005) {
+        // Sigma guard — skip KDE
+      } else if (this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) {
+        // Bimodality guard — skip KDE, show annotation
+        bimodalAnnotation = {
+          text: 'Bimodal distribution — models diverged to separate peaks',
+          xref: 'paper', yref: 'paper',
+          x: 0.5, y: 0.85,
+          showarrow: false,
+          font: { size: 10, color: '#888888' },
+          align: 'center'
+        };
+      } else {
         const h = 1.06 * sd * Math.pow(n, -0.2);
-      
-      const xMin = Math.min(...validCenters);
-      const xMax = Math.max(...validCenters);
-      const span = xMax - xMin;
-      const pad = Math.max(1, span * 0.5);
-      
-      const kdeX = [];
-      const kdeY = [];
-      const steps = 200;
-      const start = xMin - pad;
-      const end = xMax + pad;
-      
-      for (let i = 0; i <= steps; i++) {
-        const xi = start + (i / steps) * (end - start);
-        let val = 0;
-        for (const c of validCenters) {
-          const u = (xi - c) / h;
-          val += (1 / (h * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * u * u);
+        const xMin = Math.min(...validCenters);
+        const xMax = Math.max(...validCenters);
+        const span = xMax - xMin;
+        const pad = Math.max(1, span * 0.5);
+        
+        const kdeX = [];
+        const kdeY = [];
+        const steps = 200;
+        const start = xMin - pad;
+        const end = xMax + pad;
+        
+        for (let i = 0; i <= steps; i++) {
+          const xi = start + (i / steps) * (end - start);
+          let val = 0;
+          for (const c of validCenters) {
+            const u = (xi - c) / h;
+            val += (1 / (h * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * u * u);
+          }
+          kdeX.push(xi);
+          kdeY.push(val / n);
         }
-        kdeX.push(xi);
-        kdeY.push(val / n);
-      }
-      
-      // Scale KDE height to look natural in the jitter space [-0.4, 0.4]
-      const maxKDE = Math.max(...kdeY);
-      const scaledKDEY = kdeY.map(v => (v / maxKDE) * 0.8 - 0.4);
+        
+        // Scale KDE height to look natural in the jitter space [-0.4, 0.4]
+        const maxKDE = Math.max(...kdeY);
+        const scaledKDEY = kdeY.map(v => (v / maxKDE) * 0.8 - 0.4);
 
         traces.push({
           x: kdeX,
@@ -1128,7 +1170,7 @@ export class ChartRenderer {
           fill: 'tozeroy',
           type: 'scatter',
           mode: 'lines',
-          fillcolor: 'rgba(51, 34, 136, 0.1)', // Paul Tol Indigo (10% opacity)
+          fillcolor: 'rgba(51, 34, 136, 0.1)',
           line: { color: 'rgba(51, 34, 136, 0.2)', width: 1 },
           hoverinfo: 'skip',
           showlegend: false
@@ -1208,17 +1250,16 @@ export class ChartRenderer {
     const epiMin = epiResult.epistemic_center_min;
     const epiMax = epiResult.epistemic_center_max;
     
-    let xRange;
-    if (epiMin === null || epiMax === null || epiMin === epiMax) {
-      xRange = [baseCenter - 2, baseCenter + 2];
-    } else {
-      const range = epiMax - epiMin;
-      if (range < 4) {
-        xRange = [baseCenter - 2, baseCenter + 2];
-      } else {
-        xRange = [epiMin - 0.5, epiMax + 0.5];
-      }
-    }
+    const allKeyPoints = [baseCenter, epiMin !== null ? epiMin : baseCenter, epiMax !== null ? epiMax : baseCenter];
+    const keyMin = Math.min(...allKeyPoints);
+    const keyMax = Math.max(...allKeyPoints);
+    const keyRange = keyMax - keyMin;
+
+    const padding = Math.max(0.5, keyRange * 0.15); // 15% of range or 0.5 cm⁻¹ minimum
+
+    const xAxisMin = keyMin - padding;
+    const xAxisMax = keyMax + padding;
+    const xRange = [xAxisMin, xAxisMax];
 
     // Fix 3: Adaptive Tick Density
     const computeTickInterval = (min: number, max: number) => {
@@ -1268,6 +1309,7 @@ export class ChartRenderer {
         bgcolor: 'rgba(0,0,0,0)',
         borderwidth: 0
       },
+      annotations: bimodalAnnotation ? [bimodalAnnotation] : [],
       shapes: [
         // Best fit center (Solid)
         {
