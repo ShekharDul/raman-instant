@@ -1198,18 +1198,23 @@ input[type="range"]::-webkit-slider-thumb:hover {
   width: 40%;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .unc-right-top {
   height: 50%;
   border-bottom: 1px solid #eee;
-  padding: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .unc-right-bottom {
   height: 50%;
   overflow-y: auto;
   background: #fff;
+  position: relative; /* For scrollbar positioning */
 }
 
 .unc-header {
@@ -1242,5 +1247,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #64748b;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }

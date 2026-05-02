@@ -2080,9 +2080,15 @@ function renderFitResults() {
     ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
     ChartRenderer.renderUncertaintyPanel(uncDiv, epi, epi.fitted_center || 0);
 
-    // Sync X-axis
+    // Force resize to fix container mismatch
     const Plotly = (window as any).Plotly;
     if (Plotly) {
+      setTimeout(() => {
+        Plotly.Plots.resize(fitDiv);
+        Plotly.Plots.resize(resDiv);
+        Plotly.Plots.resize(uncDiv);
+      }, 50);
+
       (fitDiv as any).on('plotly_relayout', (ed: any) => {
         if (ed['xaxis.range[0]'] !== undefined) {
           Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
