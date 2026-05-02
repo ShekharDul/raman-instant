@@ -2638,11 +2638,24 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   // 2. Reprocess
   reprocessActive();
 
-  // 3. Peak Fitting / Integration (Wait for reprocessActive to finish if it were async, but it's sync)
-  const reproducedFile = state.files.get(activeId || '')!;
+  // 3. Peak Fitting / Integration (Auto-reproduce the specific fit)
+  const reproducedFile = state.files.get(targetFileId || '')!;
   reproducedFile.isReproduced = true;
   reproducedFile.protocolId = protocol.protocol_metadata.protocol_id;
   reproducedFile.reproducedSteps = new Set(['Cosmic Ray', 'Baseline Correction', 'Normalization', 'Peak Detection']);
+
+  if (protocol.fitting_record && protocol.fitting_record.length > 0) {
+    const record = protocol.fitting_record[0];
+    const epiResult = FittingEngine.evaluateEpistemicUncertainty(
+      reproducedFile.processed,
+      record.nominal_center,
+      [record.boundary_left, record.boundary_right]
+    );
+    (reproducedFile as any).reproducedFit = epiResult;
+    (state as any).epiResult = epiResult; // Update state for UI rendering
+    state.fittingMode = true;
+    reproducedFile.reproducedSteps.add('Multi-Model Deconvolution');
+  }
 
   // 4. Verification Report
   generateVerificationReport(protocol, reproducedFile);
@@ -2670,19 +2683,23 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
 
   let maxDiff = 0;
 
-  // Peak Centroids
-  const origPeaks = protocol.fitting_record || [];
-  origPeaks.forEach(op => {
-    const reproduced = file.peaks.find(p => Math.abs(p.x - op.nominal_center) < 5); // Simple matching
-    const origVal = op.fitted_center || 0;
-    const reproVal = reproduced ? reproduced.x : 0;
+  // Peak & Fit Verification
+  const origFits = protocol.fitting_record || [];
+  const reproducedFit = (file as any).reproducedFit;
+
+  origFits.forEach(of => {
+    const origVal = of.fitted_center || 0;
+    // Use the reproduced fit center if available, otherwise fallback to peak detection
+    const reproVal = reproducedFit ? (reproducedFit.fitted_center || 0) : 
+                     (file.peaks.find(p => Math.abs(p.x - of.nominal_center) < 5)?.x || 0);
+    
     const diff = Math.abs(origVal - reproVal);
     if (diff > maxDiff) maxDiff = diff;
 
     const warning = diff > 1e-6 ? 'style="color: #be123c; font-weight: bold;"' : '';
     reportHtml += `
       <tr>
-        <td style="padding: 4px;">Peak ${op.peak_id} Center</td>
+        <td style="padding: 4px;">Peak ${of.peak_id} (${of.best_fit_model})</td>
         <td style="padding: 4px;">${origVal.toFixed(6)}</td>
         <td style="padding: 4px;">${reproVal.toFixed(6)}</td>
         <td style="padding: 4px;" ${warning}>${diff.toExponential(2)}</td>
