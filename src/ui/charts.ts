@@ -1099,11 +1099,17 @@ export class ChartRenderer {
       line: { color: '#0f172a', width: 1, dash: 'dash' }
     }];
 
+    const fmt = (v: number) => {
+      if (v === 0) return '0.0000';
+      if (v < 0.001) return v.toExponential(2).replace('e', 'x10');
+      return v.toFixed(4);
+    };
+
     // Numerical annotations below bars
     layout.annotations = [
-      { x: baseCenter, y: 0, text: `± ${statErr.toFixed(4)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
-      { x: baseCenter, y: 1, text: `${epiRange.toFixed(4)} range`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
-      { x: baseCenter, y: 2, text: `± ${combined.toFixed(4)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } }
+      { x: baseCenter, y: 0, text: (epi.statistical_uncertainty_status === 'ill_conditioned') ? 'Ill-conditioned' : `± ${fmt(statErr)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
+      { x: baseCenter, y: 1, text: `${fmt(epiRange)} range`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
+      { x: baseCenter, y: 2, text: (epi.statistical_uncertainty_status === 'ill_conditioned') ? 'Stat. N/A' : `± ${fmt(combined)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } }
     ];
 
     const rangeMax = Math.max(combined * 3, epiRange * 2, 0.2);

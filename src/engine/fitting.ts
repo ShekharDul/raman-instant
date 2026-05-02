@@ -182,7 +182,9 @@ export class FittingEngine {
     const errors = [];
     for (let i = 0; i < P; i++) {
       const variance = cov.get(i, i);
-      errors.push(variance > 0 ? Math.sqrt(variance) : 0);
+      // Strictly avoid exactly 0.0 unless the variance is truly non-positive
+      // If it's a tiny positive number, keep it for scientific notation in UI
+      errors.push(variance > 1e-15 ? Math.sqrt(variance) : 0);
     }
 
     return { errors, status: 'reliable' };
@@ -367,10 +369,13 @@ export class FittingEngine {
         const initialParams = this.estimateInitial(roiX, roiY, model);
         const res = this.fit(roiX, roiY, initialParams, model);
 
+        const shiftVal = shift; // Absolute shift in cm-1
+
         if (res.convergence_status === "failed") {
           all_model_results.push({
             model_type: model,
             boundary_perturbation_step: step,
+            boundary_shift_cm: shiftVal,
             boundary_left: boundLeft,
             boundary_right: boundRight,
             fitted_center: null,
@@ -382,36 +387,47 @@ export class FittingEngine {
             statistical_uncertainty_status: null,
             r_squared: null,
             reduced_chi_squared: null,
-            convergence_status: "failed"
+            convergence_status: "failed",
+            outlier_excluded: false
           });
-        } else {
-          // Converged
-          const peak = res.peaks[0];
-          validCenters.push(peak.center.value as number);
+          continue;
+        }
+
+        // Converged - Apply Sanity Check (Outlier Detection)
+        const peak = res.peaks[0];
+        const centerVal = peak.center.value as number;
+        const centerShift = Math.abs(centerVal - nominalCenter);
+        const isOutlier = centerShift > (3 * baseFwhm);
+
+        if (!isOutlier) {
+          validCenters.push(centerVal);
           
           if (res.r2 !== null && !isNaN(res.r2)) {
              r2Sums[model] += res.r2;
              r2Counts[model] += 1;
           }
-
-          const modelResult = {
-            model_type: model,
-            boundary_perturbation_step: step,
-            boundary_left: boundLeft,
-            boundary_right: boundRight,
-            fitted_center: peak.center.value,
-            fitted_fwhm: peak.fwhm.value,
-            fitted_amplitude: peak.amplitude.value,
-            fitted_center_statistical_error: peak.center.error,
-            fitted_fwhm_statistical_error: peak.fwhm.error,
-            fitted_amplitude_statistical_error: peak.amplitude.error,
-            statistical_uncertainty_status: res.statistical_uncertainty_status,
-            r_squared: res.r2,
-            reduced_chi_squared: res.reducedChi2,
-            convergence_status: "converged"
-          };
-          all_model_results.push(modelResult);
         }
+
+        const modelResult = {
+          model_type: model,
+          boundary_perturbation_step: step,
+          boundary_shift_cm: shiftVal,
+          boundary_left: boundLeft,
+          boundary_right: boundRight,
+          fitted_center: centerVal,
+          fitted_fwhm: peak.fwhm.value,
+          fitted_amplitude: peak.amplitude.value,
+          fitted_center_statistical_error: peak.center.error,
+          fitted_fwhm_statistical_error: peak.fwhm.error,
+          fitted_amplitude_statistical_error: peak.amplitude.error,
+          statistical_uncertainty_status: res.statistical_uncertainty_status,
+          r_squared: res.r2,
+          reduced_chi_squared: res.reducedChi2,
+          convergence_status: "converged",
+          outlier_excluded: isOutlier,
+          exclusion_reason: isOutlier ? `Center shift (${centerShift.toFixed(2)} cm-1) exceeds 3x FWHM (${(3 * baseFwhm).toFixed(2)} cm-1)` : null
+        };
+        all_model_results.push(modelResult);
       }
     }
 

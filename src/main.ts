@@ -2099,33 +2099,53 @@ function renderFitResults() {
 }
 
 function generateInterpretationHtml(epi: any, protocolId: string) {
-  const statErr = epi.fitted_center_statistical_error || 0;
+  const statErr = epi.fitted_center_statistical_error;
+  const statStatus = epi.statistical_uncertainty_status;
   const epiRange = (epi.epistemic_center_max !== null && epi.epistemic_center_min !== null) 
     ? (epi.epistemic_center_max - epi.epistemic_center_min) : 0;
   const combined = epi.combined_uncertainty || 0;
   const bestModel = epi.best_fit_model || 'unknown';
   const r2 = epi.r_squared || 0;
   const center = epi.fitted_center || 0;
-  const ratio = epiRange / (statErr * 2 || 1e-9);
+  
+  const formatValue = (val: number | null) => {
+    if (val === null || isNaN(val)) return "N/A";
+    if (val === 0) return "0.0000";
+    if (val < 0.001) {
+      return val.toExponential(2).replace("e", "×10<sup>").replace("+", "") + "</sup>";
+    }
+    return val.toFixed(4);
+  };
+
+  const statStr = statStatus === 'ill_conditioned' ? 'ill-conditioned (unreliable)' : `± ${formatValue(statErr)}`;
+  
+  const ratio = (statErr && statErr > 0) ? (epiRange / (statErr * 2)) : 100;
 
   // Part 1: What Was Found
-  const part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile, which achieved the best fit with R² = ${r2.toFixed(4)}. The fitting precision from the optimizer is ± ${statErr.toFixed(4)} cm⁻¹. Across all three peak shape models and boundary variations tested, the center position ranged from ${epi.epistemic_center_min.toFixed(3)} to ${epi.epistemic_center_max.toFixed(3)} cm⁻¹.`;
+  const part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr} cm⁻¹. Systematic perturbation across model types and boundaries revealed an epistemic range from ${epi.epistemic_center_min?.toFixed(2)} to ${epi.epistemic_center_max?.toFixed(2)} cm⁻¹.`;
 
   // Part 2: What It Means
   let part2 = "";
-  if (ratio < 2) {
-    part2 = "The result is robust. Your reported peak position is stable across different fitting assumptions. The dominant source of uncertainty is instrumental noise, not your choice of peak shape model. You can report this value with confidence.";
+  if (statStatus === 'ill_conditioned') {
+    part2 = "The statistical covariance matrix is ill-conditioned, meaning the numerical precision of the optimizer cannot be trusted for this specific peak. This usually occurs when the peak is extremely broad or the baseline is unstable.";
+  } else if (ratio < 2) {
+    part2 = "The result is robust. Epistemic uncertainty is within 2x of the statistical error. The choice of peak shape model introduces negligible structural ambiguity.";
   } else if (ratio <= 5) {
-    part2 = "Moderate model sensitivity detected. Your result depends meaningfully on the choice of peak shape and boundary selection. We recommend reporting the full uncertainty range rather than just the optimizer precision. Consider whether a Voigt profile is physically appropriate for this material.";
+    part2 = "Moderate model sensitivity detected. The result depends meaningfully on your choice of Lorentzian vs Gaussian character. We recommend reporting the combined uncertainty.";
   } else {
-    part2 = "This peak result is strongly sensitive to fitting assumptions. Exercise caution when making quantitative claims based on this value. The epistemic uncertainty dominates the statistical uncertainty, suggesting the peak may be poorly resolved or overlapping with a neighbouring band. Consider collecting higher resolution data or widening the spectral window.";
+    part2 = "High sensitivity detected. The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.";
   }
 
   // Part 3: What To Report
-  const part3 = `For publication, report this peak center as <b>${center.toFixed(2)} ± ${combined.toFixed(4)} cm⁻¹</b>, where the uncertainty accounts for both fitting precision and sensitivity to modelling assumptions.`;
+  let part3 = "";
+  if (statStatus === 'ill_conditioned' || statErr === 0 || statErr === null) {
+      part3 = `Statistical precision unavailable. Epistemic range: <b>${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹</b>. See confidence assessment.`;
+  } else {
+      part3 = `Report as <b>${center.toFixed(2)} ± ${formatValue(combined)} cm⁻¹</b>, accounting for both statistical precision and model sensitivity.`;
+  }
 
   return `
-    <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; height: 100%;">
+    <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; min-height: 100%;">
       <div style="margin-bottom: 24px;">
         <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What Was Found</h4>
         <p style="font-size: 15px; margin: 0;">${part1}</p>
