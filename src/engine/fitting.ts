@@ -384,7 +384,6 @@ export class FittingEngine {
     const validCenters: number[] = [];
     let maxMeanR2 = -Infinity;
     let bestFitModel: "lorentzian" | "gaussian" | "voigt" | null = null;
-    let bestFitRecord: any = null;
 
     const r2Sums: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
     const r2Counts: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
