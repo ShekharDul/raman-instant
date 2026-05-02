@@ -2073,19 +2073,7 @@ function renderFitResults() {
     const resDiv = document.getElementById('plot-residual-small')!;
     const uncDiv = document.getElementById('plot-uncertainty-bars')!;
 
-    const componentTraces = state.fitResult!.peaks.map((p, i) => {
-      const y = state.fitResult!.fitX.map(xv => {
-        const c = p.center.value || 0;
-        const a = p.amplitude.value || 0;
-        const f = p.fwhm.value || 0;
-        if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
-        if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
-        return FittingEngine.lorentzian(xv, a, c, f);
-      });
-      return { x: state.fitResult!.fitX, y, name: `Peak ${i+1}` };
-    });
-
-    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false, state.showGrid, epi.all_model_results);
+    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, false, state.showGrid, epi.all_model_results);
     ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
     ChartRenderer.renderUncertaintyPanel(uncDiv, epi, epi.fitted_center || 0);
 

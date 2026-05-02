@@ -582,7 +582,7 @@ export class ChartRenderer {
     }
   }
 
-  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false, showGrid = true, perturbationResults: any[] = []) {
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], showXLabels = false, showGrid = true, perturbationResults: any[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
