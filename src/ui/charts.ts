@@ -1062,13 +1062,14 @@ export class ChartRenderer {
       r.convergence_status === 'converged' && !r.outlier_excluded
     );
 
-    // Edge Case: No converged fits
-    if (allResults.filter((r: any) => r.convergence_status === 'converged').length === 0) {
+    // Edge Case: No converged fits or invalid result
+    const hasConverged = allResults.some((r: any) => r.convergence_status === 'converged');
+    if (!hasConverged) {
       Plotly.newPlot(container, [], {
         paper_bgcolor: 'white',
         plot_bgcolor: 'white',
         annotations: [{
-          text: "Insufficient valid fits to display ensemble.",
+          text: "Fitting failed. No valid model converged for this region.",
           showarrow: false,
           font: { size: 14, family: 'Arial', color: '#64748b' }
         }],

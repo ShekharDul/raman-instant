@@ -2020,6 +2020,9 @@ async function runFitting(minX: number, maxX: number) {
   const active = state.files.get(state.activeFileId || '');
   if (!active) return;
 
+  // Problem 2: Assign Protocol ID before fitting starts
+  (active as any).protocolId = (window as any).crypto.randomUUID();
+
   const data = active.processed;
   const roiX: number[] = [];
   const roiY: number[] = [];
@@ -2087,7 +2090,7 @@ function renderFitResults() {
   leftPane.innerHTML = `
     <div class="unc-header">
       <div class="unc-title">Model Uncertainty Analysis</div>
-      <div class="unc-badge">${epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN'} — R² = ${epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A'}</div>
+      <div class="unc-badge">${isValidUncertaintyResult(epi) ? (epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN') + ' — R² = ' + (epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A') : 'FITTING FAILED'}</div>
     </div>
     <div id="plot-fit-large" class="plot-container" style="flex: 1; min-height: 0;"></div>
     <div id="plot-residual-small" class="plot-container" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
@@ -2111,6 +2114,26 @@ function renderFitResults() {
   rightBottom.innerHTML = generateInterpretationHtml(epi, active.protocolId || 'UNSET');
   rightPane.appendChild(rightBottom);
 
+  if (!isValidUncertaintyResult(epi)) {
+    rightTop.innerHTML = `
+      <div class="unc-small-caps">Uncertainty Decomposition</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+          <span style="color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Fitting Precision</span>
+          <span style="font-family: var(--font-mono); font-weight: 700;">—</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+          <span style="color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Model Sensitivity</span>
+          <span style="font-family: var(--font-mono); font-weight: 700;">—</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid var(--border); padding-top: 12px;">
+          <span style="color: var(--text-primary); text-transform: uppercase; font-weight: 700;">Total Uncertainty</span>
+          <span style="font-family: var(--font-mono); font-weight: 800;">—</span>
+        </div>
+      </div>
+    `;
+  }
+  
   root.appendChild(rightPane);
 
   requestAnimationFrame(() => {
@@ -2140,8 +2163,10 @@ function renderFitResults() {
   });
 }
 
-function formatEpistemicRange(min: number, max: number): string {
-  const spread = max - min;
+function formatEpistemicRange(min: number | undefined | null, max: number | undefined | null): string {
+  if (min === null || min === undefined || max === null || max === undefined) return '';
+  if (isNaN(min) || isNaN(max)) return '';
+  const spread = Math.abs(max - min);
 
   // Determine decimal places needed to show the spread meaningfully
   let decimalPlaces: number;
@@ -2201,7 +2226,33 @@ function formatReportAs(center: number, statisticalError: number | null, _isDege
   return `${centerStr} ± ${roundedError} cm⁻¹`;
 }
 
+function isValidUncertaintyResult(epi: any): boolean {
+  if (!epi) return false;
+  if (epi.fitted_center === null || epi.fitted_center === undefined) return false;
+  if (epi.fitted_center === 0 && (epi.r_squared === 0 || epi.r_squared === null)) return false; // uninitialized default
+  if (!epi.best_fit_model || epi.best_fit_model === 'UNKNOWN' || epi.best_fit_model === 'unknown') return false;
+  if (epi.r_squared === null || epi.r_squared === undefined || epi.r_squared === 0) return false;
+  return true;
+}
+
 function generateInterpretationHtml(epi: any, protocolId: string) {
+  if (!isValidUncertaintyResult(epi)) {
+    return `
+      <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; min-height: 100%;">
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Fitting failed</h4>
+          <p style="font-size: 15px; margin: 0;">None of the three model types converged for this peak region. This may indicate an overlapping peak, a broad asymmetric feature, or insufficient signal. Try adjusting the fit region boundaries or check the baseline correction.</p>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What It Means</h4>
+          <p style="font-size: 15px; margin: 0; font-style: italic; color: #94a3b8;">Convergence failed. Numerical assessment unavailable for this region.</p>
+        </div>
+        <div style="border-top: 1px solid #eee; padding-top: 16px; font-size: 10px; color: #94a3b8; font-family: var(--font-mono); line-height: 1.4;">
+          Instant Raman Protocol ID: ${protocolId.substring(0, 8)}
+        </div>
+      </div>
+    `;
+  }
   const statStr = formatStatisticalError(epi.fitted_center_statistical_error);
   const bestModel = epi.best_fit_model || 'unknown';
   const r2 = epi.r_squared || 0;
@@ -2223,7 +2274,7 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
     const combined = epi.combined_uncertainty || 0;
     const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
     
-    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range of ${rangeStr}.`;
+    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
 
     if (epi.epistemic_classification === 'MODEL_SENSITIVE') {
       part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
@@ -2231,7 +2282,9 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
       part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
     }
 
-    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, combined, false)}. Epistemic range: ${rangeStr}. See confidence assessment.`;
+    const reportAs = formatReportAs(center, combined, false);
+    const rangeClause = rangeStr ? `. Epistemic range: ${rangeStr}` : '';
+    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
   }
 
   return `
