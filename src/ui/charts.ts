@@ -3,6 +3,7 @@
  * Paper-White theme for professional research figures.
  */
 declare const Plotly: any;
+import { formatStatisticalError } from '../engine/fitting.ts';
 
 // Swiss Modernist Palette
 const COLORS = {
@@ -1156,7 +1157,7 @@ export class ChartRenderer {
         hovertemplate: 
           `<b>Model:</b> ${r.model_type.toUpperCase()}<br>` +
           `<b>Center:</b> ${r.fitted_center.toFixed(4)} cm⁻¹<br>` +
-          `<b>Statistical error:</b> ${r.fitted_center_statistical_error ? r.fitted_center_statistical_error.toFixed(6) : 'ill-conditioned'}<br>` +
+          `<b>Precision:</b> ${formatStatisticalError(r.fitted_center_statistical_error)}<br>` +
           `<b>Status:</b> ${isOutlier ? 'Outlier excluded — ' + (r.exclusion_reason || 'Range violation') : 'Valid'}<extra></extra>`
       });
     });

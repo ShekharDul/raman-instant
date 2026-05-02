@@ -9,6 +9,26 @@
 import { levenbergMarquardt as lm } from 'ml-levenberg-marquardt';
 import { SingularValueDecomposition, Matrix } from 'ml-matrix';
 
+export const DEGENERATE_RANGE_THRESHOLD_CM = 0.01;
+
+export function formatStatisticalError(value: number | null): string {
+  if (value === null) return "ill-conditioned";
+  if (value === 0) return "0 cm⁻¹";
+  
+  if (value < 0.001) {
+    const exponent = Math.floor(Math.log10(value));
+    const base = value / Math.pow(10, exponent);
+    const superscripts: Record<string, string> = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', 
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻'
+    };
+    const expStr = exponent.toString().split('').map(c => superscripts[c] || c).join('');
+    return `± ${base.toFixed(2)}×10${expStr} cm⁻¹`;
+  }
+  
+  return `± ${value.toFixed(4)} cm⁻¹`;
+}
+
 export interface FitParameter {
   value: number | null;
   error: number | null;
@@ -70,8 +90,10 @@ export interface EpistemicResult {
   epistemic_center_max: number | null;
   epistemic_standard_deviation: number | null;
   combined_uncertainty: number | null;
-  convergence_status: 'converged' | 'failed' | null;
-  all_model_results: ModelResult[] | null;
+  convergence_status: 'converged' | 'failed';
+  all_model_results: any[];
+  isDegenerateRange: boolean;
+  epistemic_classification: 'STABLE' | 'MODEL_SENSITIVE';
 }
 
 export class FittingEngine {
@@ -485,30 +507,63 @@ export class FittingEngine {
     let epistemic_center_max: number | null = null;
     let epistemic_standard_deviation: number | null = null;
     let combined_uncertainty: number | null = null;
+    let isDegenerateRange = false;
 
     if (validCenters.length > 0) {
       epistemic_center_min = Math.min(...validCenters);
       epistemic_center_max = Math.max(...validCenters);
       
-      const meanC = validCenters.reduce((a, b) => a + b, 0) / validCenters.length;
-      const variance = validCenters.reduce((a, b) => a + Math.pow(b - meanC, 2), 0) / validCenters.length;
-      epistemic_standard_deviation = Math.sqrt(variance);
+      if (epistemic_center_max - epistemic_center_min < DEGENERATE_RANGE_THRESHOLD_CM) {
+        isDegenerateRange = true;
+        epistemic_center_min = null;
+        epistemic_center_max = null;
+      }
 
-      // Best fit record is the best fit model at perturbation 0 (or closest to 0 if 0 failed)
-      // Usually the base boundary is step=0
-      let bestRecord = all_model_results.find(m => m.model_type === bestFitModel && m.boundary_perturbation_step === 0 && m.convergence_status === "converged");
-      if (!bestRecord) {
-        // fallback to any valid record for this model
-        bestRecord = all_model_results.find(m => m.model_type === bestFitModel && m.convergence_status === "converged");
+      if (!isDegenerateRange) {
+        const meanC = validCenters.reduce((a, b) => a + b, 0) / validCenters.length;
+        const variance = validCenters.reduce((a, b) => a + Math.pow(b - meanC, 2), 0) / validCenters.length;
+        epistemic_standard_deviation = Math.sqrt(variance);
+      } else {
+        epistemic_standard_deviation = 0;
       }
+
+      // Combined uncertainty: RSS of statistical error of best fit and epistemic SD
+      // Find best fit result at step 0
+      const baseResult = all_model_results.find(r => r.boundary_perturbation_step === 0 && r.model_type === bestFitModel);
+      const statErr = baseResult ? baseResult.fitted_center_statistical_error : null;
       
-      bestFitRecord = bestRecord;
-      
-      if (bestFitRecord && bestFitRecord.fitted_center_statistical_error !== null) {
-        const statErr = bestFitRecord.fitted_center_statistical_error;
-        const epiRange = epistemic_center_max - epistemic_center_min;
-        combined_uncertainty = Math.sqrt(Math.pow(statErr, 2) + Math.pow(epiRange / 2, 2));
+      if (statErr !== null) {
+        combined_uncertainty = Math.sqrt(Math.pow(statErr, 2) + Math.pow(epistemic_standard_deviation || 0, 2));
+      } else {
+        combined_uncertainty = epistemic_standard_deviation;
       }
+
+      const classification = (statErr && statErr > 0 && validCenters.length > 1) 
+        ? ((Math.max(...validCenters) - Math.min(...validCenters)) / (statErr * 2) > 5 ? 'MODEL_SENSITIVE' : 'STABLE')
+        : 'STABLE';
+
+      return {
+        peak_id: peakId,
+        nominal_center: nominalCenter,
+        boundary_left: baseBoundaryLeft,
+        boundary_right: baseBoundaryRight,
+        boundary_perturbation_range: perturbationRangePct,
+        best_fit_model: bestFitModel,
+        fitted_center: baseResult ? baseResult.fitted_center : validCenters[0],
+        fitted_center_statistical_error: statErr,
+        fitted_fwhm: baseResult ? baseResult.fitted_fwhm : null,
+        fitted_amplitude: baseResult ? baseResult.fitted_amplitude : null,
+        r_squared: maxMeanR2 === -Infinity ? null : maxMeanR2,
+        reduced_chi_squared: baseResult ? baseResult.reduced_chi_squared : null,
+        epistemic_center_min,
+        epistemic_center_max,
+        epistemic_standard_deviation,
+        combined_uncertainty,
+        convergence_status: 'converged',
+        all_model_results,
+        isDegenerateRange,
+        epistemic_classification: classification
+      };
     }
 
     return {
@@ -517,19 +572,21 @@ export class FittingEngine {
       boundary_left: baseBoundaryLeft,
       boundary_right: baseBoundaryRight,
       boundary_perturbation_range: perturbationRangePct,
-      best_fit_model: bestFitModel,
-      fitted_center: bestFitRecord ? bestFitRecord.fitted_center : null,
-      fitted_center_statistical_error: bestFitRecord ? bestFitRecord.fitted_center_statistical_error : null,
-      fitted_fwhm: bestFitRecord ? bestFitRecord.fitted_fwhm : null,
-      fitted_amplitude: bestFitRecord ? bestFitRecord.fitted_amplitude : null,
-      r_squared: bestFitRecord ? bestFitRecord.r_squared : null,
-      reduced_chi_squared: bestFitRecord ? bestFitRecord.reduced_chi_squared : null,
-      epistemic_center_min,
-      epistemic_center_max,
-      epistemic_standard_deviation,
-      combined_uncertainty,
-      convergence_status: bestFitRecord ? bestFitRecord.convergence_status : (all_model_results.length > 0 ? "failed" : null),
-      all_model_results
+      best_fit_model: null,
+      fitted_center: null,
+      fitted_center_statistical_error: null,
+      fitted_fwhm: null,
+      fitted_amplitude: null,
+      r_squared: null,
+      reduced_chi_squared: null,
+      epistemic_center_min: null,
+      epistemic_center_max: null,
+      epistemic_standard_deviation: null,
+      combined_uncertainty: null,
+      convergence_status: 'failed',
+      all_model_results,
+      isDegenerateRange: false,
+      epistemic_classification: 'STABLE'
     };
   }
 }

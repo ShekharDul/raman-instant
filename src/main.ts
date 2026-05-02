@@ -9,7 +9,7 @@ import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
 import { ReportGenerator } from './ui/reportGenerator.ts';
-import { FittingEngine, type FitResult } from './engine/fitting.ts';
+import { FittingEngine, type FitResult, formatStatisticalError } from './engine/fitting.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
 import { ProtocolManager, type InstantRamanProtocol } from './engine/protocol.ts';
 import * as XLSX from 'xlsx';
@@ -2141,49 +2141,37 @@ function renderFitResults() {
 }
 
 function generateInterpretationHtml(epi: any, protocolId: string) {
-  const statErr = epi.fitted_center_statistical_error;
-  const statStatus = epi.statistical_uncertainty_status;
-  const epiRange = (epi.epistemic_center_max !== null && epi.epistemic_center_min !== null) 
-    ? (epi.epistemic_center_max - epi.epistemic_center_min) : 0;
-  const combined = epi.combined_uncertainty || 0;
+  const statStr = formatStatisticalError(epi.fitted_center_statistical_error);
   const bestModel = epi.best_fit_model || 'unknown';
   const r2 = epi.r_squared || 0;
   const center = epi.fitted_center || 0;
   
-  const formatValue = (val: number | null) => {
-    if (val === null || isNaN(val)) return "N/A";
-    if (val === 0) return "0.0000";
-    if (val < 0.001) {
-      return val.toExponential(2).replace("e", "×10<sup>").replace("+", "") + "</sup>";
+  let part1 = '';
+  let part2 = '';
+  let part3 = '';
+
+  if (epi.isDegenerateRange) {
+    // Branch 1: High Model Agreement (Degenerate case)
+    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
+    
+    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All perturbations converged to a singular result. The fit is exceptionally stable across epistemic boundaries.`;
+    
+    part3 = `<b>REPORT AS:</b> ${center.toFixed(1)} ${statStr}`;
+  } else {
+    // Branch 2: Normal/Sensitive case
+    const epiRangeMin = epi.epistemic_center_min?.toFixed(2) || 'N/A';
+    const epiRangeMax = epi.epistemic_center_max?.toFixed(2) || 'N/A';
+    const combined = epi.combined_uncertainty || 0;
+    
+    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range from ${epiRangeMin} to ${epiRangeMax} cm⁻¹.`;
+
+    if (epi.epistemic_classification === 'MODEL_SENSITIVE') {
+      part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
+    } else {
+      part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
     }
-    return val.toFixed(4);
-  };
 
-  const statStr = statStatus === 'ill_conditioned' ? 'ill-conditioned (unreliable)' : `± ${formatValue(statErr)}`;
-  
-  const ratio = (statErr && statErr > 0) ? (epiRange / (statErr * 2)) : 100;
-
-  // Part 1: What Was Found
-  const part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr} cm⁻¹. Systematic perturbation across model types and boundaries revealed an epistemic range from ${epi.epistemic_center_min?.toFixed(2)} to ${epi.epistemic_center_max?.toFixed(2)} cm⁻¹.`;
-
-  // Part 2: What It Means
-  let part2 = "";
-  if (statStatus === 'ill_conditioned') {
-    part2 = "The statistical covariance matrix is ill-conditioned, meaning the numerical precision of the optimizer cannot be trusted for this specific peak. This usually occurs when the peak is extremely broad or the baseline is unstable.";
-  } else if (ratio < 2) {
-    part2 = "The result is robust. Epistemic uncertainty is within 2x of the statistical error. The choice of peak shape model introduces negligible structural ambiguity.";
-  } else if (ratio <= 5) {
-    part2 = "Moderate model sensitivity detected. The result depends meaningfully on your choice of Lorentzian vs Gaussian character. We recommend reporting the combined uncertainty.";
-  } else {
-    part2 = "High sensitivity detected. The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.";
-  }
-
-  // Part 3: What To Report
-  let part3 = "";
-  if (statStatus === 'ill_conditioned' || statErr === 0 || statErr === null) {
-      part3 = `Statistical precision unavailable. Epistemic range: <b>${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹</b>. See confidence assessment.`;
-  } else {
-      part3 = `Report as <b>${center.toFixed(2)} ± ${formatValue(combined)} cm⁻¹</b>, accounting for both statistical precision and model sensitivity.`;
+    part3 = `Report as <b>${center.toFixed(1)} ± ${combined.toFixed(4)} cm⁻¹</b>. Epistemic range: ${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹. See confidence assessment.`;
   }
 
   return `
