@@ -11,6 +11,7 @@ import type { ReplicateStats } from './engine/replicates.ts';
 import { ReportGenerator } from './ui/reportGenerator.ts';
 import { FittingEngine, type FitResult } from './engine/fitting.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
+import { ProtocolManager, type InstantRamanProtocol } from './engine/protocol.ts';
 import * as XLSX from 'xlsx';
 
 // ── Types ──
@@ -30,6 +31,10 @@ interface ProcessedFile {
   anchors: { x: number; y: number }[];
   labels: CustomLabel[];
   color: string;
+  fileHash?: string;
+  isReproduced?: boolean;
+  protocolId?: string;
+  reproducedSteps?: Set<string>;
 }
 
 interface AppState {
@@ -196,9 +201,30 @@ function handleFiles(fileList: FileList) {
   UI.text('system-status', `INGESTING ${files.length}...`);
   files.forEach(async file => {
     try {
-      const parsed = await UniversalParser.parseFile(file);
+      if (file.name.toLowerCase().endsWith('.irp') || file.name.toLowerCase().endsWith('.json')) {
+        const text = await file.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          throw new Error("Failed to parse IRP file as JSON.");
+        }
+        promptProtocolImport(json);
+        UI.text('system-status', `READY`);
+        return;
+      }
+
+      // Read array buffer for hashing if needed later
+      const buffer = await file.arrayBuffer();
+      // Need a new File object for the parser since we consumed the buffer? 
+      // Actually UniversalParser uses file.text() internally. 
+      // arrayBuffer() might not consume it if we just read it. Wait, File is a Blob, reading it multiple times is fine.
+      const parsed = await UniversalParser.parseFile(new File([buffer], file.name));
       const id = `file-${Math.random().toString(36).slice(2, 9)}`;
-      processAndStore(id, file.name, parsed);
+      
+      const fileHash = await ProtocolManager.computeHash(buffer);
+      
+      processAndStore(id, file.name, parsed, fileHash);
       if (state.files.size === 1) state.activeFileId = id;
       
       trackEvent('file_uploaded', { 
@@ -230,12 +256,15 @@ function updateMaxXData() {
   state.maxXData = max;
 }
 
-function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
+function processAndStore(id: string, name: string, raw: NormalizedSpectrum, fileHash?: string) {
   const existing = state.files.get(id);
   const snip = parseInt(UI.val('slider-snip') || '25');
   const sg = 9;
   const mode = state.baselineMode;
   const anchors = existing?.anchors || [];
+  
+  // Store fileHash temporarily on existing if needed, or we can just append it to ProcessedFile
+  const currentHash = fileHash || (existing as any)?.fileHash || '';
 
   // Cosmic Ray Rejection
   let cleaned = raw;
@@ -302,7 +331,8 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum) {
     params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length],
-    labels: existing?.labels || []
+    labels: existing?.labels || [],
+    fileHash: currentHash
   });
 
   updateMaxXData();
@@ -320,6 +350,7 @@ function updateUI() {
   renderPlots();
   renderAnchorList();
   renderPeakTable();
+  renderTimeline();
 
   const active = state.files.get(state.activeFileId || '');
   const app = document.getElementById('app');
@@ -463,7 +494,10 @@ function renderFileList() {
         <div style="flex:1; min-width:0;">
           <div class="file-name-edit" contenteditable="true" spellcheck="false" 
                style="font-weight:600; font-size:12px; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${file.name}</div>
-          <div style="font-size: 10px; color: var(--text-dim); margin-top:2px;">${file.raw.metadata.pointCount} pts</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top:2px;">
+            <div style="font-size: 10px; color: var(--text-dim);">${file.raw.metadata.pointCount} pts</div>
+            ${file.isReproduced ? `<div style="font-size: 9px; background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; font-weight: 700; border: 1px solid #fde68a;">REPRODUCED [${file.protocolId?.slice(0, 8)}]</div>` : ''}
+          </div>
         </div>
       </div>
       <div class="file-actions">
@@ -917,12 +951,12 @@ function renderPeakTable() {
 
     state.fitResult.peaks.forEach((p) => {
       const tr = document.createElement('tr');
-      const shapeVal = p.type === 'voigt' ? p.shape?.value.toFixed(2) : '---';
+      const shapeVal = p.type === 'voigt' ? p.shape?.value?.toFixed(2) || '---' : '---';
       
       tr.innerHTML = `
-        <td>${p.center.value.toFixed(1)}</td>
-        <td>${p.amplitude.value.toFixed(3)}</td>
-        <td>${p.fwhm.value.toFixed(1)}</td>
+        <td>${(p.center.value || 0).toFixed(1)}</td>
+        <td>${(p.amplitude.value || 0).toFixed(3)}</td>
+        <td>${(p.fwhm.value || 0).toFixed(1)}</td>
         <td>${shapeVal}</td>
       `;
       body.appendChild(tr);
@@ -989,7 +1023,7 @@ function initBaselineControls() {
     UI.get('manual-controls')?.classList.add('hidden');
     
     trackEvent('baseline_correction_applied', { mode: 'auto' });
-    
+    markManualChange('Baseline Correction');
     reprocessAll();
   });
 
@@ -1001,7 +1035,7 @@ function initBaselineControls() {
     UI.get('manual-controls')?.classList.remove('hidden');
     
     trackEvent('baseline_correction_applied', { mode: 'manual' });
-    
+    markManualChange('Baseline Correction');
     reprocessAll();
   });
 
@@ -1124,6 +1158,7 @@ function initLayoutControls() {
 function initNormalization() {
   UI.get('select-norm')?.addEventListener('change', (e) => {
     state.normalizationMode = (e.target as HTMLSelectElement).value as NormalizationMode;
+    markManualChange('Normalization');
     if (state.normalizationMode === 'point') {
       UI.get('norm-point-info')?.classList.remove('hidden');
     } else {
@@ -1165,6 +1200,7 @@ function initSliders() {
       lastSnipTrack = now;
     }
     
+    markManualChange('Baseline Correction');
     reprocessAll();
   });
   UI.get('slider-stack')?.addEventListener('input', (e) => {
@@ -1213,6 +1249,7 @@ function initSliders() {
 
   UI.get('check-cosmic-ray')?.addEventListener('change', (e) => {
     state.cosmicRayRemoval = (e.target as HTMLInputElement).checked;
+    markManualChange('Cosmic Ray');
     reprocessAll();
   });
 
@@ -1959,7 +1996,21 @@ async function runFitting(minX: number, maxX: number) {
   // Run fit in microtask to not block UI immediately
   setTimeout(() => {
     const result = FittingEngine.fit(roiX, roiY, initial, type);
+    
+    let epiResult = null;
+    if (result.peaks.length > 0) {
+      const p = result.peaks[0];
+      // Generate the rigor matrix
+      epiResult = FittingEngine.evaluateEpistemicUncertainty(
+        data.wavenumberData, data.intensityData,
+        1, p.center.value || 0, p.fwhm.value || 0,
+        minX, maxX,
+        10, 5
+      );
+    }
+    
     state.fitResult = result;
+    (state as any).epiResult = epiResult;
     state.fittingMode = true;
     UI.get('btn-exit-fit')?.classList.remove('hidden');
     UI.text('system-status', 'Ready');
@@ -1983,7 +2034,7 @@ function renderFitResults() {
   
   const fitDiv = document.createElement('div');
   fitDiv.className = 'plot-container';
-  fitDiv.style.flex = '4'; // 80% height
+  fitDiv.style.flex = '3'; // 60% height
   container.appendChild(fitDiv);
   
   const resDiv = document.createElement('div');
@@ -1991,31 +2042,52 @@ function renderFitResults() {
   resDiv.style.flex = '1'; // 20% height
   container.appendChild(resDiv);
 
+  const uncDiv = document.createElement('div');
+  uncDiv.className = 'plot-container';
+  uncDiv.style.flex = '1'; // 20% height
+  uncDiv.style.borderTop = '1px solid var(--border)';
+  container.appendChild(uncDiv);
+
   const componentTraces = state.fitResult.peaks.map((p, i) => {
     const y = state.fitResult!.fitX.map(xv => {
-      if (p.type === 'voigt') return FittingEngine.voigt(xv, p.amplitude.value, p.center.value, p.fwhm.value, p.shape!.value);
-      if (p.type === 'gaussian') return FittingEngine.gaussian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
-      return FittingEngine.lorentzian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+      const c = p.center.value || 0;
+      const a = p.amplitude.value || 0;
+      const f = p.fwhm.value || 0;
+      if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
+      if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
+      return FittingEngine.lorentzian(xv, a, c, f);
     });
-    return { x: state.fitResult!.fitX, y, name: `Peak ${i+1} (${p.center.value.toFixed(1)})` };
+    return { x: state.fitResult!.fitX, y, name: `Peak ${i+1} (${(p.center.value || 0).toFixed(1)})` };
   });
 
   requestAnimationFrame(() => {
     // Render with identical left margins (80px) and shared X-range
     ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false, state.showGrid);
     ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
+    
+    if ((state as any).epiResult && state.fitResult!.peaks.length > 0) {
+      ChartRenderer.renderUncertaintyPanel(uncDiv, (state as any).epiResult, state.fitResult!.peaks[0].center.value || 0);
+    }
 
-    // Sync X-axis zoom between the two
+    // Sync X-axis zoom between the three
     const Plotly = (window as any).Plotly;
     if (Plotly) {
       (fitDiv as any).on('plotly_relayout', (ed: any) => {
         if (ed['xaxis.range[0]'] !== undefined) {
           Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+          Plotly.relayout(uncDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
         }
       });
       (resDiv as any).on('plotly_relayout', (ed: any) => {
         if (ed['xaxis.range[0]'] !== undefined) {
           Plotly.relayout(fitDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+          Plotly.relayout(uncDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+        }
+      });
+      (uncDiv as any).on('plotly_relayout', (ed: any) => {
+        if (ed['xaxis.range[0]'] !== undefined) {
+          Plotly.relayout(fitDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
+          Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
         }
       });
     }
@@ -2028,6 +2100,198 @@ UI.get('btn-exit-fit')?.addEventListener('click', () => {
   UI.get('btn-exit-fit')?.classList.add('hidden');
   updateUI();
 });
+
+// ── Protocol Handling (Step 6) ──
+
+async function promptProtocolImport(protocolJson: any) {
+  let protocol: InstantRamanProtocol;
+  try {
+    protocol = ProtocolManager.validateSchema(protocolJson);
+  } catch (err: any) {
+    alert(err.message || "Invalid Protocol File.");
+    return;
+  }
+
+  const modal = UI.get('modal-protocol');
+  const summaryContent = UI.get('protocol-summary-content');
+  const hashStatus = UI.get('protocol-hash-status');
+  if (!modal || !summaryContent || !hashStatus) return;
+
+  modal.classList.add('active');
+
+  // Build Summary
+  const meta = protocol.protocol_metadata;
+  const source = protocol.source_data_record;
+  const steps = protocol.processing_steps;
+
+  let summaryHtml = `
+    <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+      <div style="font-weight: 700; color: var(--text-primary);">Metadata</div>
+      <div>ID: <span style="font-family: var(--font-mono); font-size: 10px;">${meta.protocol_id}</span></div>
+      <div>Created: ${new Date(meta.created_at).toLocaleString()}</div>
+      <div>By: ${meta.created_by} (IR v${meta.instant_raman_version})</div>
+    </div>
+    <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+      <div style="font-weight: 700; color: var(--text-primary);">Source Data Record</div>
+      <div>Filename: ${source.original_filename}</div>
+      <div>Range: ${source.wavenumber_range.min.toFixed(1)} - ${source.wavenumber_range.max.toFixed(1)} cm⁻¹</div>
+      <div>Hash: <span style="font-family: var(--font-mono); font-size: 10px;">${source.file_hash}</span></div>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <div style="font-weight: 700; color: var(--text-primary);">Processing Pipeline</div>
+      <ul style="padding-left: 18px; margin-top: 4px; line-height: 1.6;">
+  `;
+
+  steps.forEach(step => {
+    if (step.applied) {
+      summaryHtml += `<li><b>${step.step_name}:</b> ${JSON.stringify(step.parameters)}</li>`;
+    } else {
+      summaryHtml += `<li style="opacity: 0.5;">${step.step_name}: (Not Applied)</li>`;
+    }
+  });
+
+  summaryHtml += `
+      </ul>
+    </div>
+  `;
+
+  summaryContent.innerHTML = summaryHtml;
+
+  // Hash Verification
+  const activeFile = state.files.get(state.activeFileId || '');
+  if (activeFile && activeFile.fileHash) {
+    hashStatus.classList.remove('hidden');
+    if (activeFile.fileHash === source.file_hash) {
+      hashStatus.style.background = '#ecfdf5';
+      hashStatus.style.color = '#059669';
+      hashStatus.style.border = '1px solid #10b981';
+      hashStatus.textContent = "Source file verified. This protocol will reproduce the original analysis exactly.";
+    } else {
+      hashStatus.style.background = '#fffbeb';
+      hashStatus.style.color = '#d97706';
+      hashStatus.style.border = '1px solid #f59e0b';
+      hashStatus.textContent = "Source file hash does not match the recorded protocol. Results may differ from the original analysis. Proceed with caution.";
+    }
+  } else {
+    hashStatus.classList.add('hidden');
+  }
+
+  // Action Listeners
+  const applyBtn = UI.get('btn-apply-protocol');
+  const cancelBtn = UI.get('btn-cancel-protocol');
+
+  const onApply = () => {
+    applyProtocolDeterministically(protocol);
+    modal.classList.remove('active');
+    applyBtn?.removeEventListener('click', onApply);
+    cancelBtn?.removeEventListener('click', onCancel);
+  };
+
+  const onCancel = () => {
+    modal.classList.remove('active');
+    applyBtn?.removeEventListener('click', onApply);
+    cancelBtn?.removeEventListener('click', onCancel);
+  };
+
+  applyBtn?.addEventListener('click', onApply);
+  cancelBtn?.addEventListener('click', onCancel);
+}
+
+async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
+  const activeId = state.activeFileId;
+  const file = state.files.get(activeId || '');
+  if (!file) {
+    alert("No active file to apply protocol to.");
+    return;
+  }
+
+  UI.text('system-status', 'APPLYING PROTOCOL...');
+
+  // 1. Reset state to match protocol parameters
+  const steps = protocol.processing_steps;
+  
+  // Cosmic Ray
+  const cosmicStep = steps[0];
+  state.cosmicRayRemoval = cosmicStep.applied;
+  // (Parameters are used in reprocessActive)
+
+  // Baseline
+  const baselineStep = steps[1];
+  state.baselineMode = baselineStep.parameters?.mode === 'manual' ? 'manual' : 'auto';
+  if (state.baselineMode === 'auto') {
+    UI.setVal('slider-snip', (baselineStep.parameters?.iterations || 25).toString());
+  }
+
+  // Normalization
+  const normStep = steps[2];
+  state.normalizationMode = normStep.parameters?.method || 'none';
+  state.normTargetX = normStep.parameters?.reference_wavenumber || null;
+
+  // 2. Reprocess
+  reprocessActive();
+
+  // 3. Peak Fitting / Integration (Wait for reprocessActive to finish if it were async, but it's sync)
+  const reproducedFile = state.files.get(activeId || '')!;
+  reproducedFile.isReproduced = true;
+  reproducedFile.protocolId = protocol.protocol_metadata.protocol_id;
+  reproducedFile.reproducedSteps = new Set(['Cosmic Ray', 'Baseline Correction', 'Normalization', 'Peak Detection']);
+
+  // 4. Verification Report
+  generateVerificationReport(protocol, reproducedFile);
+
+  updateUI();
+  UI.text('system-status', 'REPRODUCED');
+  showToast("Protocol applied successfully.");
+}
+
+function generateVerificationReport(protocol: InstantRamanProtocol, file: ProcessedFile) {
+  const modal = UI.get('modal-verification');
+  const content = UI.get('verification-report-content');
+  if (!modal || !content) return;
+
+  let reportHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+    <thead style="border-bottom: 1px solid var(--border);">
+      <tr style="text-align: left; color: var(--text-secondary);">
+        <th style="padding: 4px;">Metric</th>
+        <th style="padding: 4px;">Original</th>
+        <th style="padding: 4px;">Reproduced</th>
+        <th style="padding: 4px;">Diff</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  let maxDiff = 0;
+
+  // Peak Centroids
+  const origPeaks = protocol.fitting_record || [];
+  origPeaks.forEach(op => {
+    const reproduced = file.peaks.find(p => Math.abs(p.x - op.nominal_center) < 5); // Simple matching
+    const origVal = op.fitted_center || 0;
+    const reproVal = reproduced ? reproduced.x : 0;
+    const diff = Math.abs(origVal - reproVal);
+    if (diff > maxDiff) maxDiff = diff;
+
+    const warning = diff > 1e-6 ? 'style="color: #be123c; font-weight: bold;"' : '';
+    reportHtml += `
+      <tr>
+        <td style="padding: 4px;">Peak ${op.peak_id} Center</td>
+        <td style="padding: 4px;">${origVal.toFixed(6)}</td>
+        <td style="padding: 4px;">${reproVal.toFixed(6)}</td>
+        <td style="padding: 4px;" ${warning}>${diff.toExponential(2)}</td>
+      </tr>
+    `;
+  });
+
+  reportHtml += `</tbody></table>`;
+  
+  const precisionClass = maxDiff > 1e-6 ? 'style="color: #be123c; margin-top: 16px; font-weight: 700;"' : 'style="color: #059669; margin-top: 16px; font-weight: 700;"';
+  reportHtml += `<div ${precisionClass}>Maximum numerical deviation from original: ${maxDiff.toExponential(4)} cm⁻¹</div>`;
+
+  content.innerHTML = reportHtml;
+  modal.classList.add('active');
+
+  UI.get('btn-close-verification')?.addEventListener('click', () => modal.classList.remove('active'), { once: true });
+}
 
 function showToast(message: string) {
   const toast = document.createElement('div');
@@ -2055,3 +2319,53 @@ function showToast(message: string) {
     setTimeout(() => document.body.removeChild(toast), 500);
   }, 3000);
 }
+
+function renderTimeline() {
+  const active = state.files.get(state.activeFileId || '');
+  const container = UI.get('timeline-list');
+  const badge = UI.get('timeline-id-badge');
+  const uuidSpan = UI.get('timeline-uuid');
+  
+  if (!container) return;
+  if (!active) {
+    container.innerHTML = '';
+    badge?.classList.add('hidden');
+    return;
+  }
+
+  if (active.isReproduced) {
+    badge?.classList.remove('hidden');
+    if (uuidSpan) uuidSpan.textContent = active.protocolId?.slice(0, 8) || '---';
+  } else {
+    badge?.classList.add('hidden');
+  }
+
+  const steps = [
+    { name: 'Cosmic Ray', params: state.cosmicRayRemoval ? 'Enabled (MAD threshold)' : 'Disabled' },
+    { name: 'Baseline Correction', params: `${active.params.mode.toUpperCase()} (iter: ${active.params.snip})` },
+    { name: 'Normalization', params: active.params.norm === 'none' ? 'None' : active.params.norm.toUpperCase() },
+    { name: 'Peak Detection', params: `${active.peaks.length} peaks identified` }
+  ];
+
+  container.innerHTML = steps.map(step => `
+    <div class="timeline-item">
+      <div class="timeline-dot active"></div>
+      <div class="timeline-content">
+        <div class="timeline-step-name">
+          ${step.name}
+          ${(active.reproducedSteps && active.reproducedSteps.has(step.name)) ? '<span class="timeline-badge-reproduced">Reproduced</span>' : ''}
+        </div>
+        <div class="timeline-step-params">${step.params}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function markManualChange(stepName: string) {
+  const active = state.files.get(state.activeFileId || '');
+  if (active && active.reproducedSteps) {
+    active.reproducedSteps.delete(stepName);
+    updateUI();
+  }
+}
+

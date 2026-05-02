@@ -732,15 +732,18 @@ export class ChartRenderer {
         
         result.peaks.forEach((p: PeakFit, i: number) => {
           const y = result.fitX.map((xv: number) => {
-            if (p.type === 'voigt') return FittingEngine.voigt(xv, p.amplitude.value, p.center.value, p.fwhm.value, p.shape!.value);
-            if (p.type === 'gaussian') return FittingEngine.gaussian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
-            return FittingEngine.lorentzian(xv, p.amplitude.value, p.center.value, p.fwhm.value);
+            const c = p.center.value || 0;
+            const a = p.amplitude.value || 0;
+            const f = p.fwhm.value || 0;
+            if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
+            if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
+            return FittingEngine.lorentzian(xv, a, c, f);
           });
           traces.push({
             x: result.fitX,
             y,
             mode: 'lines',
-            name: `Peak ${i + 1} (${p.center.value.toFixed(1)})`,
+            name: `Peak ${i + 1} (${(p.center.value || 0).toFixed(1)})`,
             line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5 },
             fill: 'tozeroy',
             fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
@@ -1038,5 +1041,78 @@ export class ChartRenderer {
       if (i === 0) ctx.moveTo(i, py); else ctx.lineTo(i, py);
     }
     ctx.stroke();
+  }
+
+  static renderUncertaintyPanel(container: HTMLElement | string, epiResult: any, baseCenter: number) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
+    layout.xaxis.showgrid = true;
+    layout.yaxis.showgrid = false;
+    layout.margin = { l: 200, r: 40, t: 50, b: 60 };
+    layout.showlegend = false;
+    layout.yaxis.showticklabels = true;
+    
+    // Y-axis categories
+    const categories = ['Statistical Uncertainty', 'Epistemic Uncertainty', 'Combined Uncertainty'];
+    layout.yaxis.ticktext = categories;
+    layout.yaxis.tickvals = [0, 1, 2];
+    layout.yaxis.range = [-0.5, 2.5];
+
+    const statErr = epiResult.fitted_center_statistical_error || 0;
+    const epiRange = (epiResult.epistemic_center_max !== null && epiResult.epistemic_center_min !== null) 
+      ? (epiResult.epistemic_center_max - epiResult.epistemic_center_min) : 0;
+    const combined = epiResult.combined_uncertainty || 0;
+
+    const traces = [
+      {
+        type: 'bar',
+        orientation: 'h',
+        x: [statErr * 2, epiRange, combined * 2],
+        y: [0, 1, 2],
+        base: [baseCenter - statErr, baseCenter - (epiRange / 2), baseCenter - combined],
+        marker: {
+          color: ['#88CCEE', '#CC6677', '#332288'] // Paul Tol Muted: Light Blue, Rose, Dark Blue
+        },
+        hoverinfo: 'skip'
+      }
+    ];
+
+    layout.xaxis.title.text = 'Wavenumber (cm⁻¹)';
+
+    // Determine English interpretation statement
+    let interpretation = '';
+    const ratio = epiRange / (statErr * 2 || 1e-9); // Epistemic vs Statistical (approx)
+    if (ratio < 2) {
+       interpretation = 'Interpretation: Epistemic uncertainty is below 2x statistical error. The model selection introduces negligible structural ambiguity.';
+    } else if (ratio <= 5) {
+       interpretation = 'Interpretation: Epistemic uncertainty is between 2x and 5x statistical error. The reported peak center is moderately sensitive to the chosen lineshape.';
+    } else {
+       interpretation = 'Interpretation: Epistemic uncertainty is above 5x statistical error. The reported peak center is highly dependent on the chosen model (Gaussian vs Lorentzian character).';
+    }
+
+    const bestModel = epiResult.best_fit_model ? epiResult.best_fit_model.toUpperCase() : 'UNKNOWN';
+    const r2 = epiResult.r_squared ? epiResult.r_squared.toFixed(4) : 'N/A';
+
+    layout.annotations = [
+      {
+        text: `<b>Best Fit Model: ${bestModel} (R² = ${r2})</b>`,
+        xref: 'paper', yref: 'paper',
+        x: 0.5, y: 1.15, showarrow: false, xanchor: 'center', yanchor: 'bottom',
+        font: { size: 14, color: '#0f172a' }
+      },
+      {
+        text: `<i>${interpretation}</i>`,
+        xref: 'paper', yref: 'paper',
+        x: 0.5, y: -0.45, showarrow: false, xanchor: 'center', yanchor: 'top',
+        font: { size: 12, color: '#475569' }
+      }
+    ];
+
+    // Lock X axis to ± (Combined * 2.5) for visualization
+    layout.xaxis.range = [baseCenter - Math.max(combined*2.5, 0.5), baseCenter + Math.max(combined*2.5, 0.5)];
+
+    Plotly.react(container, traces, layout, { ...CONFIG, displayModeBar: false });
   }
 }

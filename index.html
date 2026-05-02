@@ -477,6 +477,16 @@
             deconvolution is recommended via the <b>PEAK FITTING (LM)</b> tool in the sidebar.
           </div>
 
+          <div class="section" id="timeline-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+            <div class="section-title">Analysis Timeline</div>
+            <div id="timeline-id-badge" class="hidden" style="margin-bottom: 12px; font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+              PROTOCOL ID: <span id="timeline-uuid">---</span>
+            </div>
+            <div id="timeline-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Timeline items injected here -->
+            </div>
+          </div>
+
           <div class="peak-table-wrap">
             <table class="peak-table">
               <thead>
@@ -754,6 +764,35 @@
         <button id="btn-cancel-snapshot"
           style="flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 10px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: var(--radius-sm);">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Protocol Summary -->
+  <div id="modal-protocol" class="modal-overlay centered">
+    <div class="modal-center-box" style="max-width: 600px; width: 90%;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px;">
+        Import Reproducibility Protocol
+      </div>
+      <div id="protocol-hash-status" class="hidden" style="margin-bottom: 16px; padding: 12px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm);">
+      </div>
+      <div id="protocol-summary-content" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; max-height: 400px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;">
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <button id="btn-apply-protocol" class="btn-primary" style="flex: 1;">Apply Protocol</button>
+        <button id="btn-cancel-protocol" style="flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 10px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: var(--radius-sm);">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Numerical Verification -->
+  <div id="modal-verification" class="modal-overlay centered">
+    <div class="modal-center-box" style="max-width: 600px; width: 90%;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px;">
+        Numerical Verification Report
+      </div>
+      <div id="verification-report-content" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; max-height: 400px; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;">
+      </div>
+      <button id="btn-close-verification" class="btn-primary" style="width: 100%;">Close</button>
     </div>
   </div>
 </body>

@@ -1,0 +1,346 @@
+{
+  "protocol_metadata": {
+    "instant_raman_version": "2.1.0",
+    "protocol_version": "1.0.0",
+    "protocol_id": "491e2ee5-267c-4bcc-8107-2d2dcc648c47",
+    "created_at": "2026-05-02T10:00:37.436Z",
+    "created_by": "Anonymous"
+  },
+  "source_data_record": {
+    "original_filename": "test_data.csv",
+    "file_format_detected": "csv",
+    "wavenumber_range": {
+      "min": 200.5,
+      "max": 3500.2
+    },
+    "wavenumber_spacing": 1.5,
+    "number_of_data_points": 2200,
+    "file_hash": "d971b67e80cfac2c06cd314b3c68b48a61768d36daec667e95896237abe72ca8"
+  },
+  "processing_steps": [
+    {
+      "step_number": 1,
+      "step_name": "cosmic_ray_rejection",
+      "applied": true,
+      "parameters": {
+        "algorithm": "MAD_zscore",
+        "threshold": 5,
+        "spikes_detected": 2,
+        "spikes_removed": 2,
+        "spike_positions": [
+          1024.5,
+          2048.1
+        ]
+      }
+    },
+    {
+      "step_number": 2,
+      "step_name": "baseline_correction",
+      "applied": true,
+      "parameters": {
+        "algorithm": "SNIP",
+        "iterations": 64,
+        "mode": "auto"
+      }
+    },
+    {
+      "step_number": 3,
+      "step_name": "normalization",
+      "applied": false,
+      "parameters": {
+        "method": "none",
+        "reference_wavenumber": null
+      }
+    },
+    {
+      "step_number": 4,
+      "step_name": "peak_detection",
+      "applied": true,
+      "parameters": {
+        "method": "parabolic_interpolation",
+        "minimum_height_threshold": 5,
+        "minimum_separation": 15,
+        "peaks_detected": 1,
+        "peak_positions": [
+          1332.5
+        ]
+      }
+    }
+  ],
+  "fitting_record": [
+    {
+      "peak_id": 1,
+      "nominal_center": 1332.5,
+      "boundary_left": 1300,
+      "boundary_right": 1365,
+      "boundary_perturbation_range": 10,
+      "best_fit_model": "voigt",
+      "fitted_center": 1332.6,
+      "fitted_center_statistical_error": 0.15,
+      "fitted_fwhm": 8.2,
+      "fitted_amplitude": 15000.5,
+      "r_squared": 0.998,
+      "reduced_chi_squared": 1.2,
+      "epistemic_center_min": 1332.1,
+      "epistemic_center_max": 1333,
+      "epistemic_standard_deviation": 0.45,
+      "combined_uncertainty": 0.47,
+      "convergence_status": "converged",
+      "all_model_results": [
+        {
+          "model_type": "lorentzian",
+          "boundary_perturbation_step": -10,
+          "boundary_left": 1295,
+          "boundary_right": 1370,
+          "fitted_center": null,
+          "fitted_fwhm": null,
+          "fitted_amplitude": null,
+          "fitted_center_statistical_error": null,
+          "fitted_fwhm_statistical_error": null,
+          "fitted_amplitude_statistical_error": null,
+          "statistical_uncertainty_status": "ill_conditioned",
+          "r_squared": null,
+          "reduced_chi_squared": null,
+          "convergence_status": "failed"
+        },
+        {
+          "model_type": "gaussian",
+          "boundary_perturbation_step": -10,
+          "boundary_left": 1295,
+          "boundary_right": 1370,
+          "fitted_center": 1332.695138484746,
+          "fitted_fwhm": 8.172845800879383,
+          "fitted_amplitude": 15042.99793512023,
+          "fitted_center_statistical_error": 0.15674832435852634,
+          "fitted_fwhm_statistical_error": 0.11640522251187649,
+          "fitted_amplitude_statistical_error": 59.37361671831874,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "voigt",
+          "boundary_perturbation_step": -10,
+          "boundary_left": 1295,
+          "boundary_right": 1370,
+          "fitted_center": 1332.5125061910635,
+          "fitted_fwhm": 8.173531684455734,
+          "fitted_amplitude": 15003.20015796818,
+          "fitted_center_statistical_error": 0.18588444621837025,
+          "fitted_fwhm_statistical_error": 0.1417045467726915,
+          "fitted_amplitude_statistical_error": 54.19671659043437,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.998,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "lorentzian",
+          "boundary_perturbation_step": -5,
+          "boundary_left": 1297.5,
+          "boundary_right": 1367.5,
+          "fitted_center": 1332.6190742528543,
+          "fitted_fwhm": 8.193083651238508,
+          "fitted_amplitude": 15007.269280482904,
+          "fitted_center_statistical_error": 0.15460984652211973,
+          "fitted_fwhm_statistical_error": 0.14877838789115377,
+          "fitted_amplitude_statistical_error": 59.956765252866695,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "gaussian",
+          "boundary_perturbation_step": -5,
+          "boundary_left": 1297.5,
+          "boundary_right": 1367.5,
+          "fitted_center": 1332.6610807368024,
+          "fitted_fwhm": 8.248437640666504,
+          "fitted_amplitude": 15042.001484441784,
+          "fitted_center_statistical_error": 0.19933279703064344,
+          "fitted_fwhm_statistical_error": 0.14745403463875092,
+          "fitted_amplitude_statistical_error": 56.53407175629114,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "voigt",
+          "boundary_perturbation_step": -5,
+          "boundary_left": 1297.5,
+          "boundary_right": 1367.5,
+          "fitted_center": 1332.5791978881625,
+          "fitted_fwhm": 8.156033310919108,
+          "fitted_amplitude": 15038.224453710918,
+          "fitted_center_statistical_error": 0.1574450420678484,
+          "fitted_fwhm_statistical_error": 0.11841588376039133,
+          "fitted_amplitude_statistical_error": 57.87436329645274,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.998,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "lorentzian",
+          "boundary_perturbation_step": 0,
+          "boundary_left": 1300,
+          "boundary_right": 1365,
+          "fitted_center": 1332.6956179005774,
+          "fitted_fwhm": 8.218184681119764,
+          "fitted_amplitude": 14993.57997499734,
+          "fitted_center_statistical_error": 0.17779897634333525,
+          "fitted_fwhm_statistical_error": 0.1387110957453219,
+          "fitted_amplitude_statistical_error": 53.28457011117528,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "gaussian",
+          "boundary_perturbation_step": 0,
+          "boundary_left": 1300,
+          "boundary_right": 1365,
+          "fitted_center": 1332.5751089798305,
+          "fitted_fwhm": 8.175419765205415,
+          "fitted_amplitude": 14996.73735358157,
+          "fitted_center_statistical_error": 0.1994291054636649,
+          "fitted_fwhm_statistical_error": 0.12348707288157047,
+          "fitted_amplitude_statistical_error": 52.84971094517128,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "voigt",
+          "boundary_perturbation_step": 0,
+          "boundary_left": 1300,
+          "boundary_right": 1365,
+          "fitted_center": 1332.5254243388977,
+          "fitted_fwhm": 8.16466526156071,
+          "fitted_amplitude": 15017.270502176723,
+          "fitted_center_statistical_error": 0.17015947048372393,
+          "fitted_fwhm_statistical_error": 0.12188294971891232,
+          "fitted_amplitude_statistical_error": 52.59754220610002,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.998,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "lorentzian",
+          "boundary_perturbation_step": 5,
+          "boundary_left": 1302.5,
+          "boundary_right": 1362.5,
+          "fitted_center": 1332.575475295161,
+          "fitted_fwhm": 8.171038473734944,
+          "fitted_amplitude": 14994.853904053347,
+          "fitted_center_statistical_error": 0.19538494153083016,
+          "fitted_fwhm_statistical_error": 0.1426825121828796,
+          "fitted_amplitude_statistical_error": 51.179080218880756,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "gaussian",
+          "boundary_perturbation_step": 5,
+          "boundary_left": 1302.5,
+          "boundary_right": 1362.5,
+          "fitted_center": 1332.6334729059133,
+          "fitted_fwhm": 8.19476330012241,
+          "fitted_amplitude": 14975.57205719287,
+          "fitted_center_statistical_error": 0.15827779231685132,
+          "fitted_fwhm_statistical_error": 0.1379878500521718,
+          "fitted_amplitude_statistical_error": 51.60471886881019,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "voigt",
+          "boundary_perturbation_step": 5,
+          "boundary_left": 1302.5,
+          "boundary_right": 1362.5,
+          "fitted_center": 1332.656921151624,
+          "fitted_fwhm": 8.180422933966982,
+          "fitted_amplitude": 14977.401051490773,
+          "fitted_center_statistical_error": 0.16891026147479113,
+          "fitted_fwhm_statistical_error": 0.12547738684041523,
+          "fitted_amplitude_statistical_error": 52.684253560258185,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.998,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "lorentzian",
+          "boundary_perturbation_step": 10,
+          "boundary_left": 1305,
+          "boundary_right": 1360,
+          "fitted_center": 1332.6796641144194,
+          "fitted_fwhm": 8.207805409408474,
+          "fitted_amplitude": 14988.467754490406,
+          "fitted_center_statistical_error": 0.1761246291698391,
+          "fitted_fwhm_statistical_error": 0.140669865645226,
+          "fitted_amplitude_statistical_error": 59.96088226804809,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "gaussian",
+          "boundary_perturbation_step": 10,
+          "boundary_left": 1305,
+          "boundary_right": 1360,
+          "fitted_center": 1332.6104496154603,
+          "fitted_fwhm": 8.174664012190707,
+          "fitted_amplitude": 14953.350135650155,
+          "fitted_center_statistical_error": 0.18231705196945602,
+          "fitted_fwhm_statistical_error": 0.14653845607499177,
+          "fitted_amplitude_statistical_error": 58.02442613226482,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.95,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        },
+        {
+          "model_type": "voigt",
+          "boundary_perturbation_step": 10,
+          "boundary_left": 1305,
+          "boundary_right": 1360,
+          "fitted_center": 1332.5125787067416,
+          "fitted_fwhm": 8.219824104746413,
+          "fitted_amplitude": 15044.044069578546,
+          "fitted_center_statistical_error": 0.15060642582503267,
+          "fitted_fwhm_statistical_error": 0.10315330019863678,
+          "fitted_amplitude_statistical_error": 52.472907511723186,
+          "statistical_uncertainty_status": "reliable",
+          "r_squared": 0.998,
+          "reduced_chi_squared": 1.2,
+          "convergence_status": "converged"
+        }
+      ]
+    }
+  ],
+  "integration_record": [
+    {
+      "peak_id": 1,
+      "boundary_left": 1300,
+      "boundary_right": 1365,
+      "local_baseline_left_intensity": 100.5,
+      "local_baseline_right_intensity": 105.2,
+      "integration_method": "simpsons",
+      "integrated_area": 125000,
+      "units": "counts * cm^-1"
+    }
+  ],
+  "reproducibility_guarantee": "This protocol was generated by Instant Raman. Applying this protocol to the source file identified by the SHA-256 hash recorded above will produce numerically identical results to within floating point precision."
+}
