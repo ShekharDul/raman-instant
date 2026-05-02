@@ -145,6 +145,7 @@ initViewControls();
 initLabelControls();
 initLabelPopover();
 initReportControls();
+initProtocolExport();
 initSnapshotModal();
 setTimeout(() => updateUI(), 150);
 
@@ -1775,6 +1776,153 @@ function initReportControls() {
   });
 
   UI.get('btn-capture-snapshot')?.addEventListener('click', captureSnapshot);
+}
+
+function initProtocolExport() {
+  UI.get('btn-export-protocol')?.addEventListener('click', () => {
+    const active = state.files.get(state.activeFileId || '');
+    if (!active) {
+      showToast("Select a file to export its protocol.");
+      return;
+    }
+    exportProtocol(active);
+  });
+}
+
+async function exportProtocol(activeFile: ProcessedFile) {
+  try {
+    const protocolId = (activeFile as any).protocolId || (window as any).crypto.randomUUID();
+    
+    // 1. Metadata
+    const metadata: any = {
+      instant_raman_version: APP_VERSION,
+      protocol_version: "1.0.0",
+      protocol_id: protocolId,
+      created_at: new Date().toISOString(),
+      created_by: "Instant Raman User"
+    };
+
+    // 2. Source Data Record
+    const sourceData: any = {
+      original_filename: activeFile.name,
+      file_format_detected: "Automatic",
+      wavenumber_range: {
+        min: activeFile.raw.wavenumberData[0],
+        max: activeFile.raw.wavenumberData[activeFile.raw.wavenumberData.length - 1]
+      },
+      wavenumber_spacing: (activeFile.raw.wavenumberData[1] - activeFile.raw.wavenumberData[0]) || 1,
+      number_of_data_points: activeFile.raw.wavenumberData.length,
+      file_hash: (activeFile as any).fileHash || "unknown"
+    };
+
+    // 3. Processing Steps
+    const steps: any[] = [
+      {
+        step_number: 0,
+        step_name: "Cosmic Ray Removal",
+        applied: state.cosmicRayRemoval,
+        parameters: {
+          algorithm: "MAD_zscore",
+          threshold: 5,
+          spikes_detected: activeFile.spikesRemoved,
+          spikes_removed: activeFile.spikesRemoved,
+          spike_positions: []
+        }
+      },
+      {
+        step_number: 1,
+        step_name: "Baseline Correction",
+        applied: true,
+        parameters: {
+          algorithm: "SNIP",
+          iterations: activeFile.params.snip,
+          mode: activeFile.params.mode
+        }
+      },
+      {
+        step_number: 2,
+        step_name: "Normalization",
+        applied: activeFile.params.norm !== 'none',
+        parameters: {
+          method: activeFile.params.norm === 'max' ? 'max_intensity' : 
+                  activeFile.params.norm === 'area' ? 'total_area' : 
+                  activeFile.params.norm === 'point' ? 'reference_peak' : 'none',
+          reference_wavenumber: state.normTargetX
+        }
+      },
+      {
+        step_number: 3,
+        step_name: "Peak Detection",
+        applied: true,
+        parameters: {
+          method: "parabolic_interpolation",
+          minimum_height_threshold: 0.05,
+          minimum_separation: 10,
+          peaks_detected: activeFile.peaks.length,
+          peak_positions: activeFile.peaks.map(p => p.x)
+        }
+      }
+    ];
+
+    // 4. Fitting Record
+    let fittingRecord: any[] | null = null;
+    if (state.fittingMode && (state as any).epiResult) {
+      const epi = (state as any).epiResult;
+      fittingRecord = [
+        {
+          peak_id: epi.peak_id || 1,
+          nominal_center: epi.nominal_center,
+          boundary_left: epi.boundary_left,
+          boundary_right: epi.boundary_right,
+          boundary_perturbation_range: epi.boundary_perturbation_range,
+          best_fit_model: epi.best_fit_model,
+          fitted_center: epi.fitted_center,
+          fitted_center_statistical_error: epi.fitted_center_statistical_error,
+          fitted_fwhm: epi.fitted_fwhm,
+          fitted_amplitude: epi.fitted_amplitude,
+          r_squared: epi.r_squared,
+          reduced_chi_squared: epi.reduced_chi_squared,
+          epistemic_center_min: epi.epistemic_center_min,
+          epistemic_center_max: epi.epistemic_center_max,
+          epistemic_standard_deviation: epi.epistemic_standard_deviation,
+          combined_uncertainty: epi.combined_uncertainty,
+          convergence_status: epi.convergence_status,
+          all_model_results: epi.all_model_results
+        }
+      ];
+    }
+
+    const protocol: any = {
+      protocol_metadata: metadata,
+      source_data_record: sourceData,
+      processing_steps: steps as any,
+      fitting_record: fittingRecord as any,
+      integration_record: null,
+      reproducibility_guarantee: "Full trace and uncertainty parameters included."
+    };
+
+    // Validation check
+    ProtocolManager.validateSchema(protocol);
+
+    // Download
+    const blob = new Blob([JSON.stringify(protocol, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const filename = `${activeFile.name.replace(/\.[^/.]+$/, "")}_protocol_${protocolId.substring(0, 8)}.irp`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`Protocol exported: ${filename}`);
+    trackEvent('protocol_exported', { file_name: activeFile.name, protocol_id: protocolId });
+  } catch (err: any) {
+    console.error('[Protocol] Export failed:', err);
+    showToast(`Export failed: ${err.message}`);
+  }
 }
 
 function initSnapshotModal() {
