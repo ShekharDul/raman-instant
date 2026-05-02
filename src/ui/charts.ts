@@ -1088,10 +1088,14 @@ export class ChartRenderer {
     // 1. KDE Curve (Background)
     const validCenters = validResults.map((r: any) => r.fitted_center);
     const n = validCenters.length;
+    
     if (n >= 4) {
       const mean = validCenters.reduce((a: number, b: number) => a + b, 0) / n;
       const sd = Math.sqrt(validCenters.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / n) || 0.001;
-      const h = 1.06 * sd * Math.pow(n, -0.2);
+      
+      // Fix 2: KDE Sigma Guard
+      if (sd >= 0.005) {
+        const h = 1.06 * sd * Math.pow(n, -0.2);
       
       const xMin = Math.min(...validCenters);
       const xMax = Math.max(...validCenters);
@@ -1119,17 +1123,18 @@ export class ChartRenderer {
       const maxKDE = Math.max(...kdeY);
       const scaledKDEY = kdeY.map(v => (v / maxKDE) * 0.8 - 0.4);
 
-      traces.push({
-        x: kdeX,
-        y: scaledKDEY,
-        fill: 'tozeroy',
-        type: 'scatter',
-        mode: 'lines',
-        fillcolor: 'rgba(51, 34, 136, 0.1)', // Paul Tol Indigo (10% opacity)
-        line: { color: 'rgba(51, 34, 136, 0.2)', width: 1 },
-        hoverinfo: 'skip',
-        showlegend: false
-      });
+        traces.push({
+          x: kdeX,
+          y: scaledKDEY,
+          fill: 'tozeroy',
+          type: 'scatter',
+          mode: 'lines',
+          fillcolor: 'rgba(51, 34, 136, 0.1)', // Paul Tol Indigo (10% opacity)
+          line: { color: 'rgba(51, 34, 136, 0.2)', width: 1 },
+          hoverinfo: 'skip',
+          showlegend: false
+        });
+      }
     }
 
     const addedLegends = new Set<string>();
@@ -1203,6 +1208,19 @@ export class ChartRenderer {
       }
     }
 
+    // Fix 3: Adaptive Tick Density
+    const computeTickInterval = (min: number, max: number) => {
+      const range = Math.abs(max - min);
+      if (range > 20) return 5;
+      if (range > 10) return 2;
+      if (range > 4) return 1;
+      if (range > 1) return 0.5;
+      if (range > 0.2) return 0.1;
+      if (range > 0.05) return 0.02;
+      return 0.01;
+    };
+    const tickInterval = computeTickInterval(xRange[0], xRange[1]);
+
     const layout: any = {
       paper_bgcolor: 'white',
       plot_bgcolor: 'white',
@@ -1210,7 +1228,7 @@ export class ChartRenderer {
         title: { text: 'Wavenumber (cm⁻¹)', font: { size: 12, family: 'Arial' } },
         range: xRange,
         gridcolor: '#f0f0f0',
-        dtick: 5,
+        dtick: tickInterval,
         nticks: 8,
         tickangle: -45,
         linecolor: '#000',
