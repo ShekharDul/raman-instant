@@ -2659,10 +2659,10 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
 
   if (protocol.fitting_record && protocol.fitting_record.length > 0) {
     const record = protocol.fitting_record[0];
-    // Use the exact 11-argument signature for bit-for-bit reproduction
+    // Use the exact 10-argument signature for bit-for-bit reproduction
     const epiResult = FittingEngine.evaluateEpistemicUncertainty(
-      reproducedFile.processed.x,
-      reproducedFile.processed.y,
+      reproducedFile.processed.wavenumberData,
+      reproducedFile.processed.intensityData,
       record.peak_id,
       record.nominal_center,
       record.fitted_fwhm || 20,
@@ -2670,8 +2670,7 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
       record.boundary_left,
       record.boundary_right,
       record.boundary_perturbation_range || 10,
-      2, // stepsPerSide
-      ['lorentzian', 'gaussian', 'voigt']
+      5 // perturbationStepPct
     );
     (reproducedFile as any).reproducedFit = epiResult;
     (state as any).epiResult = epiResult; // Update state for UI rendering
