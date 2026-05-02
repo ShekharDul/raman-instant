@@ -1149,6 +1149,12 @@ export class ChartRenderer {
 
     const traces: any[] = [];
 
+    const BIMODAL_SUPPRESSION_EPISTEMIC_THRESHOLD_CM = 0.5;
+    const epiMin = epiResult.epistemic_center_min;
+    const epiMax = epiResult.epistemic_center_max;
+    const epiRange = (epiMin !== null && epiMax !== null) ? Math.abs(epiMax - epiMin) : 0;
+    const isSuppressedBimodal = epiResult.epistemic_classification === 'STABLE_CONVERGENCE' && epiRange < BIMODAL_SUPPRESSION_EPISTEMIC_THRESHOLD_CM;
+
     // 1. KDE Curve (Background)
     const validCenters = validResults.map((r: any) => r.center || r.fitted_center);
     const n = validCenters.length;
@@ -1160,7 +1166,7 @@ export class ChartRenderer {
       
       if (sd < 0.005) {
         // Sigma guard — skip KDE
-      } else if (this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) {
+      } else if ((this.isBimodal(validCenters) || this.hasLargeGap(validCenters)) && !isSuppressedBimodal) {
         // Bimodality guard — skip KDE, show annotation
         const nominalFWHM = epiResult.fitted_fwhm || 20; // Default fallback if missing
         const clusterCount = this.countDistinctClusters(validCenters, nominalFWHM);
@@ -1292,9 +1298,6 @@ export class ChartRenderer {
     });
 
     // Axis and Range Logic
-    const epiMin = epiResult.epistemic_center_min;
-    const epiMax = epiResult.epistemic_center_max;
-    
     const allKeyPoints = [baseCenter, epiMin !== null ? epiMin : baseCenter, epiMax !== null ? epiMax : baseCenter];
     const keyMin = Math.min(...allKeyPoints);
     const keyMax = Math.max(...allKeyPoints);
@@ -1366,7 +1369,7 @@ export class ChartRenderer {
     };
 
     // Epistemic Boundary Lines (Dashed)
-    if (epiMin !== null && epiMax !== null && epiMin !== epiMax) {
+    if (epiMin !== null && epiMax !== null && epiMin !== epiMax && !isSuppressedBimodal) {
       layout.shapes.push(
         {
           type: 'line', xref: 'x', yref: 'paper',
