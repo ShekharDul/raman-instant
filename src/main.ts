@@ -113,7 +113,8 @@ const UI = {
   get: (id: string) => document.getElementById(id),
   text: (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; },
   html: (id: string, val: string) => { const el = document.getElementById(id); if (el) el.innerHTML = val; },
-  val: (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || ''
+  val: (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || '',
+  setVal: (id: string, val: string) => { const el = document.getElementById(id) as HTMLInputElement; if (el) el.value = val; }
 };
 
 // ── Analytics ──
@@ -332,7 +333,10 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length],
     labels: existing?.labels || [],
-    fileHash: currentHash
+    fileHash: currentHash,
+    isReproduced: existing?.isReproduced,
+    protocolId: existing?.protocolId,
+    reproducedSteps: existing?.reproducedSteps
   });
 
   updateMaxXData();
@@ -2220,11 +2224,16 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   state.baselineMode = baselineStep.parameters?.mode === 'manual' ? 'manual' : 'auto';
   if (state.baselineMode === 'auto') {
     UI.setVal('slider-snip', (baselineStep.parameters?.iterations || 25).toString());
+    UI.text('val-snip', (baselineStep.parameters?.iterations || 25).toString());
   }
 
   // Normalization
   const normStep = steps[2];
-  state.normalizationMode = normStep.parameters?.method || 'none';
+  const method = normStep.parameters?.method;
+  state.normalizationMode = 
+    method === 'max_intensity' ? 'max' :
+    method === 'total_area' ? 'area' :
+    method === 'reference_peak' ? 'point' : 'none';
   state.normTargetX = normStep.parameters?.reference_wavenumber || null;
 
   // 2. Reprocess
