@@ -2027,75 +2027,128 @@ function renderFitResults() {
   if (!container || !state.fitResult) return;
   
   const active = state.files.get(state.activeFileId || '');
-  if (!active) return;
+  if (!active || !(state as any).epiResult) return;
 
-  // Professional Stacked Layout (Flex)
+  const epi = (state as any).epiResult;
+
+  // 1. Quadrant Layout
   container.innerHTML = '';
   container.className = 'workspace-grid';
-  container.style.display = 'flex';
-  container.style.flexDirection = 'column';
-  container.style.gap = '0'; // No gap for shared-axis feel
+  container.style.display = 'block'; // Use custom grid class
   
-  const fitDiv = document.createElement('div');
-  fitDiv.className = 'plot-container';
-  fitDiv.style.flex = '3'; // 60% height
-  container.appendChild(fitDiv);
-  
-  const resDiv = document.createElement('div');
-  resDiv.className = 'plot-container';
-  resDiv.style.flex = '1'; // 20% height
-  container.appendChild(resDiv);
+  const root = document.createElement('div');
+  root.className = 'unc-quadrant-container';
+  container.appendChild(root);
 
-  const uncDiv = document.createElement('div');
-  uncDiv.className = 'plot-container';
-  uncDiv.style.flex = '1'; // 20% height
-  uncDiv.style.borderTop = '1px solid var(--border)';
-  container.appendChild(uncDiv);
+  // TOP SECTION (50%)
+  const topSec = document.createElement('div');
+  topSec.className = 'unc-top-section';
+  topSec.innerHTML = `
+    <div class="unc-header">
+      <div class="unc-title">Model Uncertainty Analysis</div>
+      <div class="unc-badge">${epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN'} — R² = ${epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A'}</div>
+    </div>
+    <div id="plot-fit-large" style="flex: 1; min-height: 0;"></div>
+    <div id="plot-residual-small" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
+  `;
+  root.appendChild(topSec);
 
-  const componentTraces = state.fitResult.peaks.map((p, i) => {
-    const y = state.fitResult!.fitX.map(xv => {
-      const c = p.center.value || 0;
-      const a = p.amplitude.value || 0;
-      const f = p.fwhm.value || 0;
-      if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
-      if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
-      return FittingEngine.lorentzian(xv, a, c, f);
-    });
-    return { x: state.fitResult!.fitX, y, name: `Peak ${i+1} (${(p.center.value || 0).toFixed(1)})` };
-  });
+  // BOTTOM LEFT (25%)
+  const botLeft = document.createElement('div');
+  botLeft.className = 'unc-bottom-left';
+  botLeft.innerHTML = `
+    <div class="unc-small-caps">Uncertainty Decomposition</div>
+    <div id="plot-uncertainty-bars" style="flex: 1; min-height: 0;"></div>
+  `;
+  root.appendChild(botLeft);
+
+  // BOTTOM RIGHT (25%)
+  const botRight = document.createElement('div');
+  botRight.className = 'unc-bottom-right';
+  botRight.innerHTML = generateInterpretationHtml(epi, active.protocolId || 'UNSET');
+  root.appendChild(botRight);
 
   requestAnimationFrame(() => {
-    // Render with identical left margins (80px) and shared X-range
-    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false, state.showGrid);
-    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
-    
-    if ((state as any).epiResult && state.fitResult!.peaks.length > 0) {
-      ChartRenderer.renderUncertaintyPanel(uncDiv, (state as any).epiResult, state.fitResult!.peaks[0].center.value || 0);
-    }
+    const fitDiv = document.getElementById('plot-fit-large')!;
+    const resDiv = document.getElementById('plot-residual-small')!;
+    const uncDiv = document.getElementById('plot-uncertainty-bars')!;
 
-    // Sync X-axis zoom between the three
+    const componentTraces = state.fitResult!.peaks.map((p, i) => {
+      const y = state.fitResult!.fitX.map(xv => {
+        const c = p.center.value || 0;
+        const a = p.amplitude.value || 0;
+        const f = p.fwhm.value || 0;
+        if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
+        if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
+        return FittingEngine.lorentzian(xv, a, c, f);
+      });
+      return { x: state.fitResult!.fitX, y, name: `Peak ${i+1}` };
+    });
+
+    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, componentTraces, false, state.showGrid, epi.all_model_results);
+    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
+    ChartRenderer.renderUncertaintyPanel(uncDiv, epi, epi.fitted_center || 0);
+
+    // Sync X-axis
     const Plotly = (window as any).Plotly;
     if (Plotly) {
       (fitDiv as any).on('plotly_relayout', (ed: any) => {
         if (ed['xaxis.range[0]'] !== undefined) {
           Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-          Plotly.relayout(uncDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-        }
-      });
-      (resDiv as any).on('plotly_relayout', (ed: any) => {
-        if (ed['xaxis.range[0]'] !== undefined) {
-          Plotly.relayout(fitDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-          Plotly.relayout(uncDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-        }
-      });
-      (uncDiv as any).on('plotly_relayout', (ed: any) => {
-        if (ed['xaxis.range[0]'] !== undefined) {
-          Plotly.relayout(fitDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-          Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
         }
       });
     }
   });
+}
+
+function generateInterpretationHtml(epi: any, protocolId: string) {
+  const statErr = epi.fitted_center_statistical_error || 0;
+  const epiRange = (epi.epistemic_center_max !== null && epi.epistemic_center_min !== null) 
+    ? (epi.epistemic_center_max - epi.epistemic_center_min) : 0;
+  const combined = epi.combined_uncertainty || 0;
+  const bestModel = epi.best_fit_model || 'unknown';
+  const r2 = epi.r_squared || 0;
+  const center = epi.fitted_center || 0;
+  const ratio = epiRange / (statErr * 2 || 1e-9);
+
+  // Part 1: What Was Found
+  const part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile, which achieved the best fit with R² = ${r2.toFixed(4)}. The fitting precision from the optimizer is ± ${statErr.toFixed(4)} cm⁻¹. Across all three peak shape models and boundary variations tested, the center position ranged from ${epi.epistemic_center_min.toFixed(3)} to ${epi.epistemic_center_max.toFixed(3)} cm⁻¹.`;
+
+  // Part 2: What It Means
+  let part2 = "";
+  if (ratio < 2) {
+    part2 = "The result is robust. Your reported peak position is stable across different fitting assumptions. The dominant source of uncertainty is instrumental noise, not your choice of peak shape model. You can report this value with confidence.";
+  } else if (ratio <= 5) {
+    part2 = "Moderate model sensitivity detected. Your result depends meaningfully on the choice of peak shape and boundary selection. We recommend reporting the full uncertainty range rather than just the optimizer precision. Consider whether a Voigt profile is physically appropriate for this material.";
+  } else {
+    part2 = "This peak result is strongly sensitive to fitting assumptions. Exercise caution when making quantitative claims based on this value. The epistemic uncertainty dominates the statistical uncertainty, suggesting the peak may be poorly resolved or overlapping with a neighbouring band. Consider collecting higher resolution data or widening the spectral window.";
+  }
+
+  // Part 3: What To Report
+  const part3 = `For publication, report this peak center as <b>${center.toFixed(2)} ± ${combined.toFixed(4)} cm⁻¹</b>, where the uncertainty accounts for both fitting precision and sensitivity to modelling assumptions.`;
+
+  return `
+    <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; height: 100%;">
+      <div style="margin-bottom: 24px;">
+        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What Was Found</h4>
+        <p style="font-size: 15px; margin: 0;">${part1}</p>
+      </div>
+      <div style="margin-bottom: 24px;">
+        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What It Means</h4>
+        <p style="font-size: 15px; margin: 0; font-style: italic; color: #475569;">${part2}</p>
+      </div>
+      <div style="margin-bottom: 32px;">
+        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What To Report</h4>
+        <p style="font-size: 15px; margin: 0; font-weight: 600;">${part3}</p>
+      </div>
+      <div style="border-top: 1px solid #eee; padding-top: 16px; font-size: 10px; color: #94a3b8; font-family: var(--font-mono); line-height: 1.4;">
+        Uncertainty quantified using multi-model Levenberg-Marquardt fitting with boundary perturbation analysis. 
+        Statistical uncertainty derived from SVD covariance matrix. 
+        Epistemic uncertainty derived from systematic model and boundary sensitivity analysis. 
+        <br>Instant Raman Protocol ID: ${protocolId.substring(0, 8)}
+      </div>
+    </div>
+  `;
 }
 
 UI.get('btn-exit-fit')?.addEventListener('click', () => {

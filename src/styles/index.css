@@ -1177,3 +1177,70 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
+
+/* ── Model Uncertainty Quantification Panel ── */
+.unc-quadrant-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+}
+
+.unc-top-section {
+  grid-column: 1 / span 2;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  position: relative;
+}
+
+.unc-bottom-left {
+  border-right: 1px solid #eee;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.unc-bottom-right {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.unc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.unc-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  letter-spacing: -0.01em;
+}
+
+.unc-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid #e2e8f0;
+}
+
+.unc-small-caps {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #64748b;
+  margin-bottom: 16px;
+}

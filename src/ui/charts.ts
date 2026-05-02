@@ -582,49 +582,58 @@ export class ChartRenderer {
     }
   }
 
-  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false, showGrid = true) {
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], componentTraces: { x: number[], y: number[], name: string }[], showXLabels = false, showGrid = true, perturbationResults: any[] = []) {
     if (typeof (window as any).Plotly === 'undefined') return;
     const Plotly = (window as any).Plotly;
 
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     layout.xaxis.showgrid = showGrid;
     layout.yaxis.showgrid = showGrid;
+    layout.showlegend = false; // Hide legend for cleaner academic look as requested
 
-    const traces: any[] = [
-      {
-        x: rawX,
-        y: rawY,
-        mode: 'markers',
-        name: 'Experimental Data',
-        marker: { color: '#94a3b8', size: 4, opacity: 0.6 },
-        hoverinfo: 'skip'
-      },
-      {
-        x: fitX,
-        y: fitY,
-        mode: 'lines',
-        name: 'Cumulative Fit',
-        line: { color: '#0f172a', width: 2.5 },
-        hoverinfo: 'x+y'
+    const traces: any[] = [];
+
+    // 1. Perturbation Traces (Background)
+    perturbationResults.forEach((pr) => {
+      if (pr.convergence_status === 'converged') {
+        const py = fitX.map(xv => {
+          const a = pr.fitted_amplitude;
+          const c = pr.fitted_center;
+          const w = pr.fitted_fwhm;
+          if (pr.model_type === 'voigt') return FittingEngine.voigt(xv, a, c, w, 0.5);
+          if (pr.model_type === 'gaussian') return FittingEngine.gaussian(xv, a, c, w);
+          return FittingEngine.lorentzian(xv, a, c, w);
+        });
+        traces.push({
+          x: fitX, y: py, mode: 'lines',
+          line: { 
+            color: pr.model_type === 'lorentzian' ? '#332288' : pr.model_type === 'gaussian' ? '#88CCEE' : '#CC6677',
+            width: 0.5
+          },
+          opacity: 0.15,
+          hoverinfo: 'skip'
+        });
       }
-    ];
-
-    componentTraces.forEach((ct, i) => {
-      traces.push({
-        x: ct.x,
-        y: ct.y,
-        mode: 'lines',
-        name: ct.name,
-        line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5 },
-        fill: 'tozeroy',
-        fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
-        hoverinfo: 'skip'
-      });
     });
 
-    layout.margin = { l: 80, r: 40, t: 30, b: showXLabels ? 50 : 5 };
-    layout.showlegend = true;
-    layout.legend = { ...PAPER_LAYOUT.legend, x: 1, y: 1, xanchor: 'right', bgcolor: 'rgba(255,255,255,0.8)' };
+    // 2. Raw Data
+    traces.push({
+      x: rawX, y: rawY, mode: 'lines',
+      name: 'Experimental',
+      line: { color: '#94a3b8', width: 1 },
+      opacity: 0.5,
+      hoverinfo: 'skip'
+    });
+
+    // 3. Best Fit Model (Bold)
+    traces.push({
+      x: fitX, y: fitY, mode: 'lines',
+      name: 'Best Fit',
+      line: { color: '#0f172a', width: 3 },
+      hoverinfo: 'x+y'
+    });
+
+    layout.margin = { l: 80, r: 40, t: 10, b: showXLabels ? 50 : 5 };
     layout.xaxis.range = [Math.min(...rawX), Math.max(...rawX)];
     layout.xaxis.showticklabels = showXLabels;
     if (!showXLabels) layout.xaxis.title.text = '';
@@ -1050,15 +1059,15 @@ export class ChartRenderer {
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     layout.xaxis.showgrid = true;
     layout.yaxis.showgrid = false;
-    layout.margin = { l: 200, r: 40, t: 50, b: 60 };
+    layout.margin = { l: 180, r: 40, t: 20, b: 60 };
     layout.showlegend = false;
     layout.yaxis.showticklabels = true;
     
-    // Y-axis categories
-    const categories = ['Statistical Uncertainty', 'Epistemic Uncertainty', 'Combined Uncertainty'];
-    layout.yaxis.ticktext = categories;
+    const categories = ['Statistical Uncertainty', 'Model Sensitivity', 'Total Reported Uncertainty'];
+    layout.yaxis.ticktext = categories.map(c => `<b>${c.toUpperCase()}</b>`);
     layout.yaxis.tickvals = [0, 1, 2];
-    layout.yaxis.range = [-0.5, 2.5];
+    layout.yaxis.range = [-0.6, 2.6];
+    layout.yaxis.tickfont = { size: 10, color: '#475569' };
 
     const statErr = epiResult.fitted_center_statistical_error || 0;
     const epiRange = (epiResult.epistemic_center_max !== null && epiResult.epistemic_center_min !== null) 
@@ -1073,45 +1082,32 @@ export class ChartRenderer {
         y: [0, 1, 2],
         base: [baseCenter - statErr, baseCenter - (epiRange / 2), baseCenter - combined],
         marker: {
-          color: ['#88CCEE', '#CC6677', '#332288'] // Paul Tol Muted: Light Blue, Rose, Dark Blue
+          color: ['#88CCEE', '#CC6677', '#332288'],
+          line: { color: '#0f172a', width: 1 }
         },
+        width: 0.4,
         hoverinfo: 'skip'
       }
     ];
 
     layout.xaxis.title.text = 'Wavenumber (cm⁻¹)';
+    layout.xaxis.tickfont = { size: 11 };
 
-    // Determine English interpretation statement
-    let interpretation = '';
-    const ratio = epiRange / (statErr * 2 || 1e-9); // Epistemic vs Statistical (approx)
-    if (ratio < 2) {
-       interpretation = 'Interpretation: Epistemic uncertainty is below 2x statistical error. The model selection introduces negligible structural ambiguity.';
-    } else if (ratio <= 5) {
-       interpretation = 'Interpretation: Epistemic uncertainty is between 2x and 5x statistical error. The reported peak center is moderately sensitive to the chosen lineshape.';
-    } else {
-       interpretation = 'Interpretation: Epistemic uncertainty is above 5x statistical error. The reported peak center is highly dependent on the chosen model (Gaussian vs Lorentzian character).';
-    }
+    // Reference Line
+    layout.shapes = [{
+      type: 'line', x0: baseCenter, x1: baseCenter, y0: -1, y1: 3,
+      line: { color: '#0f172a', width: 1, dash: 'dash' }
+    }];
 
-    const bestModel = epiResult.best_fit_model ? epiResult.best_fit_model.toUpperCase() : 'UNKNOWN';
-    const r2 = epiResult.r_squared ? epiResult.r_squared.toFixed(4) : 'N/A';
-
+    // Numerical annotations below bars
     layout.annotations = [
-      {
-        text: `<b>Best Fit Model: ${bestModel} (R² = ${r2})</b>`,
-        xref: 'paper', yref: 'paper',
-        x: 0.5, y: 1.15, showarrow: false, xanchor: 'center', yanchor: 'bottom',
-        font: { size: 14, color: '#0f172a' }
-      },
-      {
-        text: `<i>${interpretation}</i>`,
-        xref: 'paper', yref: 'paper',
-        x: 0.5, y: -0.45, showarrow: false, xanchor: 'center', yanchor: 'top',
-        font: { size: 12, color: '#475569' }
-      }
+      { x: baseCenter, y: 0, text: `± ${statErr.toFixed(4)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
+      { x: baseCenter, y: 1, text: `${epiRange.toFixed(4)} range`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } },
+      { x: baseCenter, y: 2, text: `± ${combined.toFixed(4)}`, showarrow: false, yshift: -20, font: { size: 10, color: '#475569', family: 'monospace' } }
     ];
 
-    // Lock X axis to ± (Combined * 2.5) for visualization
-    layout.xaxis.range = [baseCenter - Math.max(combined*2.5, 0.5), baseCenter + Math.max(combined*2.5, 0.5)];
+    const rangeMax = Math.max(combined * 3, epiRange * 2, 0.2);
+    layout.xaxis.range = [baseCenter - rangeMax, baseCenter + rangeMax];
 
     Plotly.react(container, traces, layout, { ...CONFIG, displayModeBar: false });
   }
