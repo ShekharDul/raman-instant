@@ -2264,12 +2264,12 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
 
   const r2Threshold = 0.95;
   const isPoorFit = r2 < r2Threshold;
+  const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
 
   // 1. Core Findings (Part 1)
   if (epi.isDegenerateRange) {
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
   } else {
-    const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
   }
 
