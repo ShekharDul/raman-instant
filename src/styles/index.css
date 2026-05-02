@@ -646,6 +646,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
 .analysis-card-title {
@@ -655,6 +656,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 }
 
 .analysis-card-meta {
@@ -692,6 +694,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .peak-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .peak-table th {
@@ -707,7 +710,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
   position: sticky;
   top: 0;
   z-index: 5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* Specific column widths for stability */
+.peak-table th:nth-child(1), .peak-table td:nth-child(1) { width: 40%; }
+.peak-table th:nth-child(2), .peak-table td:nth-child(2) { width: 25%; }
+.peak-table th:nth-child(3), .peak-table td:nth-child(3) { width: 25%; }
+.peak-table th:nth-child(4), .peak-table td:nth-child(4) { width: 10%; }
 
 .peak-table td {
   padding: 8px 12px;
@@ -715,6 +727,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 11px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .peak-table tbody tr {
