@@ -2140,6 +2140,34 @@ function renderFitResults() {
   });
 }
 
+function formatEpistemicRange(min: number, max: number): string {
+  const spread = max - min;
+
+  // Determine decimal places needed to show the spread meaningfully
+  let decimalPlaces: number;
+  if (spread === 0) return ''; // degenerate — should not reach here, isDegenerateRange handles this
+  else if (spread >= 1) decimalPlaces = 1;
+  else if (spread >= 0.1) decimalPlaces = 2;
+  else if (spread >= 0.01) decimalPlaces = 3;
+  else decimalPlaces = 4;
+
+  const minStr = min.toFixed(decimalPlaces);
+  const maxStr = max.toFixed(decimalPlaces);
+
+  // Safety check — if adaptive rounding still produces identical strings,
+  // increment decimal places by 1 until they differ or reach 6
+  // This handles edge cases where spread sits exactly on a threshold boundary
+  if (minStr === maxStr) {
+    for (let dp = decimalPlaces + 1; dp <= 6; dp++) {
+      const a = min.toFixed(dp);
+      const b = max.toFixed(dp);
+      if (a !== b) return `${a} to ${b} cm⁻¹`;
+    }
+  }
+
+  return `${minStr} to ${maxStr} cm⁻¹`;
+}
+
 function formatReportAs(center: number, statisticalError: number | null, _isDegenerateRange: boolean): string {
   if (statisticalError === null) {
     return `${center.toFixed(1)} ± ill-conditioned`;
@@ -2192,11 +2220,10 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
     part3 = `<b>REPORT AS:</b> ${formatReportAs(center, epi.fitted_center_statistical_error, true)}`;
   } else {
     // Branch 2: Normal/Sensitive case
-    const epiRangeMin = epi.epistemic_center_min?.toFixed(2) || 'N/A';
-    const epiRangeMax = epi.epistemic_center_max?.toFixed(2) || 'N/A';
     const combined = epi.combined_uncertainty || 0;
+    const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
     
-    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range from ${epiRangeMin} to ${epiRangeMax} cm⁻¹.`;
+    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range of ${rangeStr}.`;
 
     if (epi.epistemic_classification === 'MODEL_SENSITIVE') {
       part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
@@ -2204,7 +2231,7 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
       part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
     }
 
-    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, combined, false)}. Epistemic range: ${epi.epistemic_center_min?.toFixed(1)} to ${epi.epistemic_center_max?.toFixed(1)} cm⁻¹. See confidence assessment.`;
+    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, combined, false)}. Epistemic range: ${rangeStr}. See confidence assessment.`;
   }
 
   return `
