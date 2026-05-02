@@ -997,8 +997,9 @@ function renderPeakTable() {
 
   files.forEach(file => {
     const isActive = file.id === state.activeFileId;
-    // Auto-expand active file if not explicitly collapsed
-    if (isActive && state.expandedCardIds.size === 0) {
+    
+    // Ensure active file is tracked in expanded state if not already present
+    if (isActive && !state.expandedCardIds.has(file.id)) {
       state.expandedCardIds.add(file.id);
     }
 
