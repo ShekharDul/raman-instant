@@ -1164,7 +1164,7 @@ export class ChartRenderer {
         // Bimodality guard — skip KDE, show annotation
         const nominalFWHM = epiResult.fitted_fwhm || 20; // Default fallback if missing
         const clusterCount = this.countDistinctClusters(validCenters, nominalFWHM);
-        const modalityLabel = clusterCount >= 3 ? 'Trimodal' : (clusterCount === 2 ? 'Bimodal' : 'Multimodal');
+        const modalityLabel = clusterCount >= 3 ? 'Multimodal' : 'Bimodal';
         const annotationText = `${modalityLabel} — models diverged to separate peaks`;
         
         const annotationX = this.largestGapMidpoint(validCenters);
