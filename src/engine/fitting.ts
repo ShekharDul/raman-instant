@@ -559,18 +559,20 @@ export class FittingEngine {
       const POOR_FIT_R2_THRESHOLD = 0.95;
       let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' = 'STABLE_CONVERGENCE';
 
-      if (isDegenerateRange) {
-        classification = 'STABLE_CONVERGENCE';
-      } else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
+      if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
         classification = 'POOR_FIT';
       } else if (statErr && statErr > 0) {
         const epistemicSpread = Math.max(...validCenters) - Math.min(...validCenters);
         const ratio = epistemicSpread / (2 * statErr);
         if (ratio > 3) {
           classification = 'HIGH_SENSITIVITY';
+        } else if (isDegenerateRange) {
+          classification = 'STABLE_CONVERGENCE';
         } else {
           classification = 'STABLE_CONVERGENCE';
         }
+      } else if (isDegenerateRange) {
+        classification = 'STABLE_CONVERGENCE';
       }
 
       return {

@@ -133,8 +133,8 @@ export class ProtocolManager {
         throw new Error(`Validation Error: Missing mandatory field '${path}'.`);
       }
       if (val === null) {
-         if (!isNullable) throw new Error(`Validation Error: Field '${path}' cannot be null.`);
-         return;
+        if (!isNullable) throw new Error(`Validation Error: Field '${path}' cannot be null.`);
+        return;
       }
       if (expectedType === 'array') {
         if (!Array.isArray(val)) throw new Error(`Validation Error: '${path}' is expected to be an array, but received ${typeof val}.`);

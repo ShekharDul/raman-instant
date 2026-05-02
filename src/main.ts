@@ -224,18 +224,18 @@ function handleFiles(fileList: FileList) {
       // arrayBuffer() might not consume it if we just read it. Wait, File is a Blob, reading it multiple times is fine.
       const parsed = await UniversalParser.parseFile(new File([buffer], file.name));
       const id = `file-${Math.random().toString(36).slice(2, 9)}`;
-      
+
       const fileHash = await ProtocolManager.computeHash(buffer);
-      
+
       processAndStore(id, file.name, parsed, fileHash);
       if (state.files.size === 1) state.activeFileId = id;
-      
-      trackEvent('file_uploaded', { 
-        file_name: file.name, 
+
+      trackEvent('file_uploaded', {
+        file_name: file.name,
         file_size: file.size,
         file_type: file.name.split('.').pop()?.toLowerCase() || 'unknown'
       });
-      
+
       updateUI();
       UI.text('system-status', `READY`);
     } catch (err: any) {
@@ -265,7 +265,7 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
   const sg = 9;
   const mode = state.baselineMode;
   const anchors = existing?.anchors || [];
-  
+
   // Store fileHash temporarily on existing if needed, or we can just append it to ProcessedFile
   const currentHash = fileHash || (existing as any)?.fileHash || '';
 
@@ -276,9 +276,9 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
     const result = SpectralProcessor.rejectCosmicRays(raw);
     cleaned = { ...raw, intensityData: result.cleaned.intensityData };
     replacedCount = result.replacedCount;
-    
+
     if (replacedCount > 0) {
-        showToast(`CLEANED: Removed ${replacedCount} cosmic ray spikes from ${name}`);
+      showToast(`CLEANED: Removed ${replacedCount} cosmic ray spikes from ${name}`);
     }
   }
 
@@ -295,14 +295,14 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
     wavenumberData: raw.wavenumberData,
     intensityData: cleaned.intensityData.map((v, i) => Math.max(0, v - baseline.intensityData[i]))
   };
-  
+
   const smoothed = SpectralProcessor.savitzkyGolay(corrected, sg);
-  
+
   // Normalization
   let processed = smoothed;
   let normFactor = 1.0;
   const normMode = state.normalizationMode;
-  
+
   if (normMode === 'max') {
     const res = SpectralProcessor.normalizeMax(smoothed);
     processed = res.normalized;
@@ -320,7 +320,7 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
   const peaks = SpectralProcessor.findPeaks(processed);
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
 
-  trackEvent('peak_detection_run', { 
+  trackEvent('peak_detection_run', {
     peak_count: peaks.length,
     file_id: id,
     baseline_mode: mode
@@ -346,8 +346,8 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
 
 function hexToRgb(hex: string) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? 
-    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : 
+  return result ?
+    `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` :
     '45, 212, 191';
 }
 
@@ -360,17 +360,17 @@ function updateUI() {
 
   const active = state.files.get(state.activeFileId || '');
   const app = document.getElementById('app');
-  
+
   if (active) {
     UI.text('active-filename', active.name);
     UI.text('methods-summary', `Analysis: ${active.name} | Mode: ${active.params.mode.toUpperCase()} | ${active.peaks.length} peaks detected.`);
-    
+
     // Dynamic Theming: Inject active color as CSS variables
     if (app) {
       app.style.setProperty('--active-color', active.color);
       app.style.setProperty('--active-color-rgb', hexToRgb(active.color));
     }
-    
+
     UI.get('cal-status-container')?.classList.remove('hidden');
   } else {
     UI.get('cal-status-container')?.classList.add('hidden');
@@ -538,14 +538,14 @@ function renderFileList() {
       sel?.addRange(range);
     });
 
-    item.addEventListener('click', (e) => { 
+    item.addEventListener('click', (e) => {
       // Don't trigger active file change if clicking the checkbox, delete, or edit button
       if ((e.target as HTMLElement).closest('.compare-checkbox') || (e.target as HTMLElement).closest('.btn-del-file') || (e.target as HTMLElement).closest('.btn-edit-name')) {
         return;
       }
-      state.activeFileId = id; 
+      state.activeFileId = id;
       UI.get('cal-status-container')?.classList.add('hidden');
-      updateUI(); 
+      updateUI();
     });
     item.querySelector('.compare-checkbox')?.addEventListener('click', (e) => { e.stopPropagation(); toggleComp(id); });
     item.querySelector('.btn-del-file')?.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(id); });
@@ -579,7 +579,7 @@ function renderPlots() {
   container.style.display = '';
   container.style.flexDirection = '';
   container.style.gap = '';
-  
+
   let gridClass = 'grid-single';
   if (state.layoutMode === 'grid2x1') gridClass = 'grid-2x1';
   if (state.layoutMode === 'grid2x2') gridClass = 'grid-2x2';
@@ -632,10 +632,10 @@ function renderPlots() {
     UI.get('btn-exit-fit')?.classList.add('hidden');
   }
 
-  const normLabel = state.normalizationMode === 'none' ? '' : 
-                    state.normalizationMode === 'max' ? 'Max Intensity' :
-                    state.normalizationMode === 'area' ? 'Total Area' :
-                    `Point (${state.normTargetX?.toFixed(0)})`;
+  const normLabel = state.normalizationMode === 'none' ? '' :
+    state.normalizationMode === 'max' ? 'Max Intensity' :
+      state.normalizationMode === 'area' ? 'Total Area' :
+        `Point (${state.normTargetX?.toFixed(0)})`;
 
   if (state.layoutMode === 'stacked' && filesToRender.length > 1) {
     const div = document.createElement('div');
@@ -644,13 +644,13 @@ function renderPlots() {
     const datasets = filesToRender.map((f, i) => {
       let displayData = f.processed;
       let currentFactor = f.normFactor;
-      
+
       if (state.normalizationMode === 'none') {
         const res = SpectralProcessor.normalizeMax(f.processed);
         displayData = res.normalized;
         currentFactor = res.factor;
       }
-      
+
       const offset = i * state.stackOffset;
       const offsetData = {
         wavenumberData: displayData.wavenumberData,
@@ -752,7 +752,7 @@ function attachFitListener(el: HTMLElement) {
   const Plotly = (window as any).Plotly;
   const plotEl = el as any;
   if (!plotEl || !Plotly) return;
-  
+
   // Force box selection mode
   // Force box selection mode (with safety timeout to ensure Plotly is ready)
   const setDragMode = () => {
@@ -784,7 +784,7 @@ function attachManualBaselineListener(el: HTMLElement) {
         // Prevent infinite loop by checking if change is needed
         let needsFix = false;
         const fix: any = {};
-        
+
         if (data['xaxis.range[0]'] < 0) {
           fix['xaxis.range[0]'] = 0;
           needsFix = true;
@@ -805,8 +805,8 @@ function attachManualBaselineListener(el: HTMLElement) {
           if (state.viewHistory.length > 20) state.viewHistory.shift();
         }
         state.viewRange = [newMinX, newMaxX];
-      } 
-      
+      }
+
       // Clamp Y-axis if it goes negative during manual zoom/pan
       if (data['yaxis.range[0]'] !== undefined && data['yaxis.range[0]'] < 0) {
         const Plotly = (window as any).Plotly;
@@ -834,10 +834,10 @@ function attachManualBaselineListener(el: HTMLElement) {
         const activeFile = state.files.get(state.activeFileId || '');
         if (activeFile) {
           // Find nearest detected peak
-          const nearest = activeFile.peaks.reduce((prev, curr) => 
+          const nearest = activeFile.peaks.reduce((prev, curr) =>
             Math.abs(curr.x - x) < Math.abs(prev.x - x) ? curr : prev
           );
-          
+
           if (Math.abs(nearest.x - x) < 15) { // snapped range
             if (!state.ratioSelection.p1) {
               state.ratioSelection.p1 = nearest;
@@ -861,7 +861,7 @@ function attachManualBaselineListener(el: HTMLElement) {
         if (!data || !data.points || data.points.length === 0) return;
         const { x, y } = data.points[0];
         state.pendingLabel = { x, y };
-        
+
         const modal = UI.get('modal-label');
         const input = UI.get('input-label-text') as HTMLInputElement;
         if (modal && input) {
@@ -919,19 +919,19 @@ function renderPeakTable() {
     UI.text('th-peak-2', 'Int (±SD)');
     UI.text('th-peak-3', 'FWHM (±SD)');
     UI.text('th-peak-4', '');
-    
+
     state.replicateGroup.peakStats.forEach(p => {
       const isSelected = state.replicateGroup!.selectedPeakX.has(p.xMean);
       const tr = document.createElement('tr');
       if (isSelected) tr.classList.add('selected');
-      
+
       tr.innerHTML = `
         <td>${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}</td>
         <td>${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}</td>
         <td>${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}</td>
         <td></td>
       `;
-      
+
       tr.addEventListener('click', () => {
         if (state.replicateGroup!.selectedPeakX.has(p.xMean)) {
           state.replicateGroup!.selectedPeakX.delete(p.xMean);
@@ -941,7 +941,7 @@ function renderPeakTable() {
         renderPeakTable();
         renderPlots();
       });
-      
+
       body.appendChild(tr);
     });
     return;
@@ -958,7 +958,7 @@ function renderPeakTable() {
     state.fitResult.peaks.forEach((p) => {
       const tr = document.createElement('tr');
       const shapeVal = p.type === 'voigt' ? p.shape?.value?.toFixed(2) || '---' : '---';
-      
+
       tr.innerHTML = `
         <td>${(p.center.value || 0).toFixed(1)}</td>
         <td>${(p.amplitude.value || 0).toFixed(3)}</td>
@@ -998,14 +998,14 @@ function renderPeakTable() {
     const isSelected = active.selectedPeakX.has(p.x);
     const tr = document.createElement('tr');
     if (isSelected) tr.classList.add('selected');
-    
+
     tr.innerHTML = `
       <td>${p.x.toFixed(1)}</td>
       <td>${p.y.toFixed(2)}</td>
       <td>${p.fwhm.toFixed(1)}</td>
       <td></td>
     `;
-    
+
     tr.addEventListener('click', () => {
       if (active.selectedPeakX.has(p.x)) {
         active.selectedPeakX.delete(p.x);
@@ -1015,7 +1015,7 @@ function renderPeakTable() {
       renderPeakTable();
       renderPlots();
     });
-    
+
     body.appendChild(tr);
   });
 }
@@ -1027,7 +1027,7 @@ function initBaselineControls() {
     UI.get('btn-mode-manual')?.classList.remove('active-compare');
     UI.get('snip-controls')?.classList.remove('hidden');
     UI.get('manual-controls')?.classList.add('hidden');
-    
+
     trackEvent('baseline_correction_applied', { mode: 'auto' });
     markManualChange('Baseline Correction');
     reprocessAll();
@@ -1039,7 +1039,7 @@ function initBaselineControls() {
     UI.get('btn-mode-snip')?.classList.remove('active-compare');
     UI.get('snip-controls')?.classList.add('hidden');
     UI.get('manual-controls')?.classList.remove('hidden');
-    
+
     trackEvent('baseline_correction_applied', { mode: 'manual' });
     markManualChange('Baseline Correction');
     reprocessAll();
@@ -1122,7 +1122,7 @@ function initLayoutControls() {
   UI.get('btn-group-replicates')?.addEventListener('click', () => {
     const selectedIds = Array.from(state.comparisonIds);
     if (state.activeFileId) selectedIds.push(state.activeFileId);
-    
+
     const uniqueIds = Array.from(new Set(selectedIds));
     if (uniqueIds.length < 2) {
       alert("Please select at least 2 files (using COMP buttons) to calculate a statistical average.");
@@ -1149,7 +1149,7 @@ function initLayoutControls() {
   UI.get('btn-start-fit-mode')?.addEventListener('click', () => {
     state.selectingROI = !state.selectingROI;
     if (state.selectingROI) {
-        showToast("Drag on the plot to select your fitting region.");
+      showToast("Drag on the plot to select your fitting region.");
     }
     updateUI();
   });
@@ -1198,14 +1198,14 @@ function initSliders() {
   UI.get('slider-snip')?.addEventListener('input', (e) => {
     const val = (e.target as HTMLInputElement).value;
     UI.text('val-snip', val);
-    
+
     // Throttled tracking for slider
     const now = Date.now();
     if (now - lastSnipTrack > 1000) {
       trackEvent('baseline_correction_applied', { mode: 'auto', iterations: parseInt(val) });
       lastSnipTrack = now;
     }
-    
+
     markManualChange('Baseline Correction');
     reprocessAll();
   });
@@ -1370,7 +1370,7 @@ function initLabelControls() {
 
   UI.get('btn-label-save')?.addEventListener('click', saveLabel);
   UI.get('btn-label-cancel')?.addEventListener('click', closeLabelModal);
-  
+
   UI.get('input-label-text')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') saveLabel();
     if (e.key === 'Escape') closeLabelModal();
@@ -1381,7 +1381,7 @@ function saveLabel() {
   const input = UI.get('input-label-text') as HTMLInputElement;
   const text = input?.value.trim();
   const active = state.files.get(state.activeFileId || '');
-  
+
   if (text && active && state.pendingLabel) {
     active.labels.push({
       id: `label-${Math.random().toString(36).slice(2, 9)}`,
@@ -1389,7 +1389,7 @@ function saveLabel() {
       y: state.pendingLabel.y,
       text
     });
-    
+
     exitAllLabelModes();
     closeLabelModal();
     updateUI();
@@ -1505,7 +1505,7 @@ function attachLabelClickListener(el: HTMLElement) {
     if (!ann || !ann.name || !ann.name.startsWith('customlabel:')) return;
 
     const labelId = ann.name.replace('customlabel:', '');
-    
+
     // Get screen position from the click event
     const event = eventData.event || window.event;
     if (event) {
@@ -1524,7 +1524,7 @@ function attachFreeLabelListener(el: HTMLElement) {
 
   plotEl.addEventListener('click', (e: MouseEvent) => {
     if (!state.freeLabelMode) return;
-    
+
     // Ignore clicks on popovers or buttons
     if ((e.target as HTMLElement).closest('.label-popover')) return;
 
@@ -1534,11 +1534,11 @@ function attachFreeLabelListener(el: HTMLElement) {
     if (!xaxis || !yaxis || !margin) return;
 
     const rect = plotEl.getBoundingClientRect();
-    
+
     // Calculate pixel coordinates relative to the plot drawing area
     const px = e.clientX - rect.left - margin.l;
     const py = e.clientY - rect.top - margin.t;
-    
+
     // Ensure click is within the actual plot area
     if (px < 0 || px > plotEl._fullLayout.width - margin.l - margin.r) return;
     if (py < 0 || py > plotEl._fullLayout.height - margin.t - margin.b) return;
@@ -1547,7 +1547,7 @@ function attachFreeLabelListener(el: HTMLElement) {
     const y = yaxis.p2d(py);
 
     state.pendingLabel = { x, y };
-    
+
     const modal = UI.get('modal-label');
     const input = UI.get('input-label-text') as HTMLInputElement;
     if (modal && input) {
@@ -1617,7 +1617,7 @@ async function exportExcel() {
     const sheetNames = new Set();
     for (const id of fileIds) {
       const file = state.files.get(id)!;
-      
+
       let baseName = file.name.substring(0, 25).replace(/[\\\/\?\*\[\]]/g, '_');
       let sheetName = baseName;
       let counter = 1;
@@ -1637,19 +1637,19 @@ async function exportExcel() {
       }
 
       spectralData.push([]); // Spacer
-      
-      const normLabel = file.params.norm === 'none' ? 'None' : 
-                       file.params.norm === 'max' ? 'Max Intensity' :
-                       file.params.norm === 'area' ? 'Total Area (AUC)' :
-                       `Point Ref (${state.normTargetX?.toFixed(1)} cm⁻¹)`;
+
+      const normLabel = file.params.norm === 'none' ? 'None' :
+        file.params.norm === 'max' ? 'Max Intensity' :
+          file.params.norm === 'area' ? 'Total Area (AUC)' :
+            `Point Ref (${state.normTargetX?.toFixed(1)} cm⁻¹)`;
 
       spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Baseline Corrected', `Normalized (${normLabel})`]);
-      
+
       for (let i = 0; i < file.raw.wavenumberData.length; i++) {
         if (state.viewRange && (file.raw.wavenumberData[i] < state.viewRange[0] || file.raw.wavenumberData[i] > state.viewRange[1])) continue;
         spectralData.push([
-          file.raw.wavenumberData[i], 
-          file.raw.intensityData[i], 
+          file.raw.wavenumberData[i],
+          file.raw.intensityData[i],
           file.corrected.intensityData[i],
           file.processed.intensityData[i]
         ]);
@@ -1695,7 +1695,7 @@ async function exportExcel() {
         await writable.write(blob);
         await writable.close();
         return;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     XLSX.writeFile(wb, defaultFilename);
@@ -1721,10 +1721,10 @@ async function exportFigure(format: 'png' | 'svg') {
   if (filesToRender.length === 0) return;
 
   try {
-    const normLabel = state.normalizationMode === 'none' ? '' : 
-                    state.normalizationMode === 'max' ? 'Max Intensity' :
-                    state.normalizationMode === 'area' ? 'Total Area' :
-                    `Point (${state.normTargetX?.toFixed(0)})`;
+    const normLabel = state.normalizationMode === 'none' ? '' :
+      state.normalizationMode === 'max' ? 'Max Intensity' :
+        state.normalizationMode === 'area' ? 'Total Area' :
+          `Point (${state.normTargetX?.toFixed(0)})`;
     await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
   } catch (err) {
     console.error('[raman — instant] Export Error:', err);
@@ -1760,7 +1760,7 @@ function initReportControls() {
       return;
     }
     trackEvent('export_generated', { export_type: 'portfolio' });
-    
+
     const reportData: import('./ui/reportGenerator.ts').ReportData = {
       timestamp: new Date().toISOString(),
       snapshots: state.snapshots,
@@ -1769,7 +1769,7 @@ function initReportControls() {
         filenames: Array.from(state.files.values()).map(f => f.name)
       }
     };
-    
+
     ReportGenerator.generate(reportData);
     showToast(`Generating Portfolio with ${state.snapshots.length} analysis blocks...`);
   });
@@ -1834,7 +1834,7 @@ async function saveSnapshot(title: string) {
   // 1. Plot State Capture (Grid-Aware)
   const plotEls = document.querySelectorAll('.plot-container');
   const snapshotTraces: any[] = [];
-  
+
   plotEls.forEach(el => {
     const plotlyEl = el as any;
     const parentItem = el.closest('.plot-item');
@@ -1887,7 +1887,7 @@ async function saveSnapshot(title: string) {
     const fileIdsToRender = new Set(state.comparisonIds);
     if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
     const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
-    
+
     // Group peaks by filename
     tableData = filesToRender.map(f => ({
       fileName: f.name,
@@ -1947,7 +1947,7 @@ async function saveSnapshot(title: string) {
           x: Array.isArray(d.x) ? [...d.x] : d.x,
           y: Array.isArray(d.y) ? [...d.y] : d.y
         })),
-        layout: { 
+        layout: {
           xaxis: { range: el._fullLayout?.xaxis?.range },
           yaxis: { range: el._fullLayout?.yaxis?.range },
           shapes: el._fullLayout?.shapes || [],
@@ -1973,14 +1973,14 @@ async function saveSnapshot(title: string) {
   // 5. Build Robust Layout from Live Plot
   const firstPlotEl = plotEls[0] as any;
   const liveLayout = firstPlotEl?._fullLayout || {};
-  
+
   const finalLayout = {
-    xaxis: { 
-      title: 'Raman Shift (cm⁻¹)', 
-      range: liveLayout.xaxis?.range || state.viewRange || undefined 
+    xaxis: {
+      title: 'Raman Shift (cm⁻¹)',
+      range: liveLayout.xaxis?.range || state.viewRange || undefined
     },
-    yaxis: { 
-      title: 'Intensity (a.u.)', 
+    yaxis: {
+      title: 'Intensity (a.u.)',
       // Systematic Fix: For grid layouts, we prefer independent scaling to avoid capping peaks.
       // We set range to undefined for grids, letting Plotly autoscale each subplot.
       range: (state.layoutMode.startsWith('grid')) ? undefined : (liveLayout.yaxis?.range || yRange)
@@ -1990,7 +1990,7 @@ async function saveSnapshot(title: string) {
   };
 
   const snapshot: any = {
-    id, title, type, timestamp, traces, 
+    id, title, type, timestamp, traces,
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
     ratio: ratioData,
@@ -2007,10 +2007,10 @@ async function saveSnapshot(title: string) {
   };
 
   state.snapshots.push(snapshot);
-  
+
   const countEl = UI.get('snapshot-count');
   if (countEl) countEl.innerText = state.snapshots.length.toString();
-  
+
   showToast(`Snapshot captured: "${title}"`);
   updateUI();
 }
@@ -2026,7 +2026,7 @@ async function runFitting(minX: number, maxX: number) {
   const data = active.processed;
   const roiX: number[] = [];
   const roiY: number[] = [];
-  
+
   for (let i = 0; i < data.wavenumberData.length; i++) {
     const x = data.wavenumberData[i];
     if (x >= minX && x <= maxX) {
@@ -2039,13 +2039,13 @@ async function runFitting(minX: number, maxX: number) {
 
   const type = (UI.get('select-fit-type') as HTMLSelectElement).value as any;
   const initial = FittingEngine.estimateInitial(roiX, roiY, type);
-  
+
   UI.text('system-status', 'Fitting...');
-  
+
   // Run fit in microtask to not block UI immediately
   setTimeout(() => {
     const result = FittingEngine.fit(roiX, roiY, initial, type);
-    
+
     let epiResult = null;
     if (result.peaks.length > 0) {
       const p = result.peaks[0];
@@ -2057,7 +2057,7 @@ async function runFitting(minX: number, maxX: number) {
         10, 5
       );
     }
-    
+
     state.fitResult = result;
     (state as any).epiResult = epiResult;
     state.fittingMode = true;
@@ -2070,7 +2070,7 @@ async function runFitting(minX: number, maxX: number) {
 function renderFitResults() {
   const container = UI.get('workspace-container');
   if (!container || !state.fitResult) return;
-  
+
   const active = state.files.get(state.activeFileId || '');
   if (!active || !(state as any).epiResult) return;
 
@@ -2079,7 +2079,7 @@ function renderFitResults() {
   container.innerHTML = '';
   container.className = 'workspace-grid';
   container.style.display = 'block';
-  
+
   const root = document.createElement('div');
   root.className = 'unc-quadrant-container';
   container.appendChild(root);
@@ -2100,7 +2100,7 @@ function renderFitResults() {
   // RIGHT PANE (40%)
   const rightPane = document.createElement('div');
   rightPane.className = 'unc-right-pane';
-  
+
   const rightTop = document.createElement('div');
   rightTop.className = 'unc-right-top';
   rightTop.innerHTML = `
@@ -2133,7 +2133,7 @@ function renderFitResults() {
       </div>
     `;
   }
-  
+
   root.appendChild(rightPane);
 
   requestAnimationFrame(() => {
@@ -2257,36 +2257,42 @@ function generateInterpretationHtml(epi: any, protocolId: string) {
   const bestModel = epi.best_fit_model || 'unknown';
   const r2 = epi.r_squared || 0;
   const center = epi.fitted_center || 0;
-  
+
   let part1 = '';
   let part2 = '';
   let part3 = '';
 
+  const r2Threshold = 0.95;
+  const isPoorFit = r2 < r2Threshold;
+
+  // 1. Core Findings (Part 1)
   if (epi.isDegenerateRange) {
-    // Branch 1: High Model Agreement (Degenerate case)
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
-    
-    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All three model types and all boundary perturbations converged to the same center. The result is stable and model-insensitive.`;
-    
-    part3 = `<b>REPORT AS:</b> ${formatReportAs(center, epi.fitted_center_statistical_error, true)}`;
   } else {
-    // Branch 2: Normal/Sensitive case
-    const combined = epi.combined_uncertainty || 0;
     const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
-    
     part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
+  }
 
-    if (epi.epistemic_classification === 'POOR_FIT') {
-      part2 = `<div style="color: #d97706; font-weight: 600;">Poor fit quality.</div> The best model explains less than 95% of the variance in this region. This may indicate overlapping peaks, an asymmetric feature, or incorrect region boundaries. Interpret the center position with caution.`;
-    } else if (epi.epistemic_classification === 'HIGH_SENSITIVITY') {
-      part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
-    } else {
-      part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
-    }
+  // 2. Meaning & Confidence (Part 2) - POOR_FIT takes absolute precedence
+  if (isPoorFit || epi.epistemic_classification === 'POOR_FIT') {
+    part2 = `<div style="color: #d97706; font-weight: 600;">Poor fit quality.</div> The best model explains less than 95% of the variance in this region. This may indicate overlapping peaks, an asymmetric feature, or incorrect region boundaries. Interpret the center position with caution.`;
+  } else if (epi.isDegenerateRange) {
+    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All three model types and all boundary perturbations converged to the same center. The result is stable and model-insensitive.`;
+  } else if (epi.epistemic_classification === 'HIGH_SENSITIVITY') {
+    part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
+  } else {
+    part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
+  }
 
-    const reportAs = formatReportAs(center, combined, false);
-    const rangeClause = rangeStr ? `. Epistemic range: ${rangeStr}` : '';
-    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
+  // 3. Reporting Logic (Part 3)
+  const combined = epi.combined_uncertainty || 0;
+  const reportAs = formatReportAs(center, combined, epi.isDegenerateRange);
+  const rangeClause = (rangeStr && !epi.isDegenerateRange) ? `. Epistemic range: ${rangeStr}` : '';
+  
+  if (isPoorFit) {
+     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. <span style="color: #d97706;">Caution: Low variance explained.</span>`;
+  } else {
+     part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
   }
 
   return `
@@ -2428,7 +2434,7 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
 
   // 1. Reset state to match protocol parameters
   const steps = protocol.processing_steps;
-  
+
   // Cosmic Ray
   const cosmicStep = steps[0];
   state.cosmicRayRemoval = cosmicStep.applied;
@@ -2445,10 +2451,10 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   // Normalization
   const normStep = steps[2];
   const method = normStep.parameters?.method;
-  state.normalizationMode = 
+  state.normalizationMode =
     method === 'max_intensity' ? 'max' :
-    method === 'total_area' ? 'area' :
-    method === 'reference_peak' ? 'point' : 'none';
+      method === 'total_area' ? 'area' :
+        method === 'reference_peak' ? 'point' : 'none';
   state.normTargetX = normStep.parameters?.reference_wavenumber || null;
 
   // 2. Reprocess
@@ -2507,7 +2513,7 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
   });
 
   reportHtml += `</tbody></table>`;
-  
+
   const precisionClass = maxDiff > 1e-6 ? 'style="color: #be123c; margin-top: 16px; font-weight: 700;"' : 'style="color: #059669; margin-top: 16px; font-weight: 700;"';
   reportHtml += `<div ${precisionClass}>Maximum numerical deviation from original: ${maxDiff.toExponential(4)} cm⁻¹</div>`;
 
@@ -2534,9 +2540,9 @@ function showToast(message: string) {
   toast.style.zIndex = '99999';
   toast.style.boxShadow = '0 4px 16px rgba(13,148,136,0.3)';
   toast.textContent = message;
-  
+
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.5s ease';
@@ -2549,7 +2555,7 @@ function renderTimeline() {
   const container = UI.get('timeline-list');
   const badge = UI.get('timeline-id-badge');
   const uuidSpan = UI.get('timeline-uuid');
-  
+
   if (!container) return;
   if (!active) {
     container.innerHTML = '';
