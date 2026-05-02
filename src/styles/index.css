@@ -1182,7 +1182,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .unc-quadrant-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 65% 35%;
   height: 100%;
   background: #fff;
   overflow: hidden;
