@@ -402,177 +402,138 @@
 
     </aside>
 
-    <main class="workspace" style="position: relative; display: flex; flex-direction: column;">
-      <!-- Drawer Toggle -->
-      <button id="btn-toggle-drawer" class="drawer-toggle">
-        <span>Analysis</span>
-        <span class="toggle-icon">▸</span>
-      </button>
+    <main class="workspace">
+      <div id="plot-area" class="plot-area">
+        <!-- Drawer Toggle -->
+        <button id="btn-toggle-drawer" class="drawer-toggle">
+          <span>Analysis</span>
+          <span class="toggle-icon">▸</span>
+        </button>
 
-      <!-- Floating Instrument Control -->
-      <div class="instrument-overlay">
-        <div class="instrument-control">
-          <span class="control-label">Show raw spectrum</span>
-          <div class="toggle-slider-wrap">
-            <input type="checkbox" id="check-show-unprocessed" class="toggle-input" checked>
-            <label for="check-show-unprocessed" class="toggle-label"></label>
-          </div>
-        </div>
-        <div class="instrument-control">
-          <span class="control-label">Show baseline</span>
-          <div class="toggle-slider-wrap">
-            <input type="checkbox" id="check-show-baseline" class="toggle-input">
-            <label for="check-show-baseline" class="toggle-label"></label>
-          </div>
-        </div>
-        <div class="instrument-control">
-          <span class="control-label">Hide grid</span>
-          <div class="toggle-slider-wrap">
-            <input type="checkbox" id="check-hide-grid" class="toggle-input">
-            <label for="check-hide-grid" class="toggle-label"></label>
-          </div>
-        </div>
-      </div>
-
-      <div id="workspace-container" class="workspace-grid grid-single" style="flex: 1; min-height: 0;">
-        <div id="plot-main" class="plot-container"></div>
-        <div id="toast-container"></div>
-      </div>
-
-      <!-- Label Edit Popover -->
-      <div id="label-edit-popover" class="label-popover">
-        <div class="label-popover-header">
-          <span class="label-popover-title">Edit label</span>
-          <button id="btn-popover-close" class="label-popover-close" title="Close">✕</button>
-        </div>
-        <input type="text" id="input-popover-label" class="label-popover-input" placeholder="Label text..." />
-        <div class="label-popover-actions">
-          <button id="btn-popover-delete" class="label-popover-btn delete" title="Delete this label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            Delete
-          </button>
-          <button id="btn-popover-save" class="label-popover-btn save">Save</button>
-        </div>
-      </div>
-    </main>
-
-
-    <aside id="data-panel" class="data-panel">
-      <div class="tab-header">
-        <button id="btn-tab-analysis" class="tab-btn active">Analysis</button>
-        <button id="btn-tab-export" class="tab-btn">Export & style</button>
-      </div>
-
-      <div id="pane-analysis" class="tab-pane active">
-        <!-- Empty State -->
-        <div id="analysis-empty" class="pane-empty">
-          <div style="text-align:center; padding:40px 20px; opacity:0.6;">
-            <div style="font-size:32px; margin-bottom:16px;">📊</div>
-            <div style="font-size:13px; font-weight:600; color:var(--text-primary);">No spectra selected</div>
-            <div style="font-size:12px; margin-top:8px; color:var(--text-dim);">Upload or select a file to view peak data</div>
-          </div>
-        </div>
-
-        <div class="section" style="background: var(--accent-light); border-bottom: 2px solid var(--accent);">
-          <div class="section-title">
-            <span>Analysis portfolio</span>
-            <span id="snapshot-count"
-              style="background: var(--accent); color: #fff; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">0</span>
-          </div>
-          <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">Capture current view
-            (plot + table) to include in your final interactive report.</p>
-          <button id="btn-capture-snapshot" class="btn-primary">📸 Capture current analysis</button>
-        </div>
-
-        <div id="analysis-content" class="hidden"
-          style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-          <div class="panel-header"
-            style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <button id="btn-expand-drawer" class="btn-icon" title="Toggle Focus Mode (Expands Panel Width)">
-                <span id="expand-icon">⤢</span>
-              </button>
-              <div class="panel-title">Peak Analysis</div>
-            </div>
-            <span class="peak-info-icon"
-              title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below."
-              style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>
-          </div>
-
-          <div id="proximity-warning" class="hidden"
-            style="margin: 0 18px 16px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: var(--radius-sm); color: #92400e; font-size: 11px; line-height: 1.5;">
-            ⚠️ Adjacent peaks detected within 30 cm⁻¹. Reported centroids and FWHM values may reflect blended
-            contributions from overlapping bands. For quantitative analysis of these peaks, Lorentzian/Gaussian
-            deconvolution is recommended via the <b>PEAK FITTING (LM)</b> tool in the sidebar.
-          </div>
-
-          <div class="section" id="timeline-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-            <div class="section-title">Analysis Timeline</div>
-            <div id="timeline-id-badge" class="hidden" style="margin-bottom: 12px; font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block;">
-              PROTOCOL ID: <span id="timeline-uuid">---</span>
-            </div>
-            <div id="timeline-list" style="display: flex; flex-direction: column; gap: 8px;">
-              <!-- Timeline items injected here -->
+        <!-- Floating Instrument Control -->
+        <div class="instrument-overlay">
+          <div class="instrument-control">
+            <span class="control-label">Show raw spectrum</span>
+            <div class="toggle-slider-wrap">
+              <input type="checkbox" id="check-show-unprocessed" class="toggle-input" checked>
+              <label for="check-show-unprocessed" class="toggle-label"></label>
             </div>
           </div>
-
-          <div id="analysis-tables-container" class="analysis-tables-container">
-            <!-- Dynamic cards injected here by main.ts -->
+          <div class="instrument-control">
+            <span class="control-label">Show baseline</span>
+            <div class="toggle-slider-wrap">
+              <input type="checkbox" id="check-show-baseline" class="toggle-input">
+              <label for="check-show-baseline" class="toggle-label"></label>
+            </div>
           </div>
+          <div class="instrument-control">
+            <span class="control-label">Hide grid</span>
+            <div class="toggle-slider-wrap">
+              <input type="checkbox" id="check-hide-grid" class="toggle-input">
+              <label for="check-hide-grid" class="toggle-label"></label>
+            </div>
+          </div>
+        </div>
 
-          <div class="section"
-            style="border-top: 1px solid var(--border); padding: 16px 18px;">
-            <div class="ctrl-label"><span>Peak ratio calculator</span></div>
-            <button id="btn-ratio-mode" class="btn-small" style="width: 100%; margin-bottom: 8px;"
-              title="Select two peaks on the plot to calculate their intensity and area ratios">
-              Enable ratio selection
+        <div id="workspace-container" class="workspace-grid grid-single">
+          <div id="plot-main" class="plot-container"></div>
+          <div id="toast-container"></div>
+        </div>
+
+        <!-- Label Edit Popover -->
+        <div id="label-edit-popover" class="label-popover">
+          <div class="label-popover-header">
+            <span class="label-popover-title">Edit label</span>
+            <button id="btn-popover-close" class="label-popover-close" title="Close">✕</button>
+          </div>
+          <input type="text" id="input-popover-label" class="label-popover-input" placeholder="Label text..." />
+          <div class="label-popover-actions">
+            <button id="btn-popover-delete" class="label-popover-btn delete" title="Delete this label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Delete
             </button>
-            <div id="ratio-results" class="hidden"
-              style="padding: 10px; background: var(--bg-panel); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; border-radius: var(--radius-sm);">
-              <div
-                style="display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
-                <span style="color: var(--text-secondary);">P1:</span> <span id="ratio-p1"
-                  style="font-weight: 600;">---</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
-                <span style="color: var(--text-secondary);">P2:</span> <span id="ratio-p2"
-                  style="font-weight: 600;">---</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px;">
-                <span style="color: var(--text-primary);">Intensity ratio:</span> <span id="val-int-ratio"
-                  style="font-weight: 700; color: var(--accent);">0.00</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px;">
-                <span style="color: var(--text-primary);">Area ratio:</span> <span id="val-area-ratio"
-                  style="font-weight: 700; color: var(--accent);">0.00</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="section"
-            style="border-top: 1px solid var(--border); padding: 16px 18px;">
-            <div class="ctrl-label"><span>Custom annotations</span></div>
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-              <button id="btn-label-mode" class="btn-small" style="flex: 1;"
-                title="Enable label mode, then click on a data point to add a label">
-                Label peak
-              </button>
-              <button id="btn-free-label-mode" class="btn-small" style="flex: 1;"
-                title="Enable free label mode, then click anywhere on the plot">
-                Free annotation
-              </button>
-            </div>
-            <div id="label-list-container" class="hidden">
-              <div
-                style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
-                Active labels</div>
-              <div id="label-list"
-                style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
-            </div>
+            <button id="btn-popover-save" class="label-popover-btn save">Save</button>
           </div>
         </div>
       </div>
+
+      <!-- Peak Data Grid Panel (the 30% docked view) -->
+      <div id="peak-data-grid" class="data-grid">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Analysis Drawer (the 360px displacer) -->
+      <aside id="analysis-drawer" class="analysis-drawer">
+        <div class="tab-header">
+          <button id="btn-tab-analysis" class="tab-btn active">Analysis</button>
+          <button id="btn-tab-export" class="tab-btn">Export & style</button>
+        </div>
+
+        <div id="pane-analysis" class="tab-pane active">
+          <!-- Empty State -->
+          <div id="analysis-empty" class="pane-empty">
+            <div style="text-align:center; padding:40px 20px; opacity:0.6;">
+              <div style="font-size:32px; margin-bottom:16px;">📊</div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary);">No spectra selected</div>
+              <div style="font-size:12px; margin-top:8px; color:var(--text-dim);">Upload or select a file to view peak data</div>
+            </div>
+          </div>
+
+          <div class="section" style="background: var(--accent-light); border-bottom: 2px solid var(--accent);">
+            <div class="section-title">
+              <span>Analysis portfolio</span>
+              <span id="snapshot-count"
+                style="background: var(--accent); color: #fff; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">0</span>
+            </div>
+            <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">Capture current view
+              (plot + table) to include in your final interactive report.</p>
+            <button id="btn-capture-snapshot" class="btn-primary">📸 Capture current analysis</button>
+          </div>
+
+          <div id="analysis-content" class="hidden"
+            style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="panel-header"
+              style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
+              <div class="panel-title">Analysis Timeline</div>
+              <span class="peak-info-icon"
+                title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below."
+                style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>
+            </div>
+
+            <div id="proximity-warning" class="hidden"
+              style="margin: 16px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: var(--radius-sm); color: #92400e; font-size: 11px; line-height: 1.5;">
+              ⚠️ Adjacent peaks detected within 30 cm⁻¹. Reported centroids and FWHM values may reflect blended
+              contributions from overlapping bands. For quantitative analysis of these peaks, Lorentzian/Gaussian
+              deconvolution is recommended via the <b>PEAK FITTING (LM)</b> tool in the sidebar.
+            </div>
+
+            <div class="section" id="timeline-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+              <div id="timeline-id-badge" class="hidden" style="margin-bottom: 12px; font-size: 10px; font-weight: 700; color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                PROTOCOL ID: <span id="timeline-uuid">---</span>
+              </div>
+              <div id="timeline-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Timeline items injected here -->
+              </div>
+            </div>
+
+            <div id="analysis-tables-container" class="analysis-tables-container" style="display: none;">
+              <!-- Deprecated: Tables moved to 30% grid -->
+            </div>
+
+            <div class="section" style="padding: 16px; border-top: 1px solid var(--border); background: #f8fafc;">
+              <div class="section-title">Peak ratio calculator</div>
+              <button id="btn-mode-ratio" class="btn-small" style="width: 100%;">Enable ratio selection</button>
+            </div>
+
+            <div class="section" style="padding: 16px; border-top: 1px solid var(--border);">
+              <div class="section-title">Custom annotations</div>
+              <div style="display: flex; gap: 8px;">
+                <button id="btn-mode-label" class="btn-small" style="flex: 1;">Label peak</button>
+                <button id="btn-mode-free-label" class="btn-small" style="flex: 1;">Free annotation</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
       <div id="pane-export" class="tab-pane">
         <!-- Empty State -->
@@ -816,6 +777,7 @@
       <button id="btn-close-verification" class="btn-primary" style="width: 100%;">Close</button>
     </div>
   </div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>

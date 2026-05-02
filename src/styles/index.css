@@ -396,22 +396,58 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ── Main Workspace ── */
+/* ── Main Workspace Refactor ── */
 .workspace {
   background: var(--bg-app);
   display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 16px;
+  flex-direction: row;
+  padding: 0;
+  gap: 0;
   overflow: hidden;
-  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
+  min-height: 0;
 }
 
-#app:has(.data-panel.drawer-open) .workspace {
-  margin-right: var(--drawer-width);
+.plot-area {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: flex 0.3s ease;
+  background: var(--bg-app);
 }
 
-#app:has(.data-panel.drawer-open.expanded) .workspace {
-  margin-right: var(--drawer-width-expanded);
+/* ── Peak Data Grid (Docked Panel) ── */
+.data-grid {
+  flex: 0 0 0%;
+  overflow: hidden;
+  transition: flex 0.3s ease;
+  background: var(--bg-surface);
+  border-left: 0.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.data-grid.open {
+  flex: 0 0 30%;
+}
+
+/* ── Analysis Drawer (Flex Row) ── */
+.analysis-drawer {
+  flex: 0 0 0%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  transition: flex 0.3s ease;
+}
+
+.analysis-drawer.drawer-open {
+  flex: 0 0 360px;
 }
 
 .workspace-grid {
@@ -422,6 +458,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   min-height: 0;
   height: 100%;
   position: relative;
+  padding: 16px;
 }
 
 .grid-single { grid-template-columns: 1fr; }
@@ -503,22 +540,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ── Data Panel (Right Drawer) ── */
+/* Deprecated: Using flex-based .analysis-drawer instead */
 .data-panel {
-  position: fixed;
-  top: 48px;
-  right: 0;
-  bottom: 28px;
-  width: var(--drawer-width);
-  background: var(--bg-surface);
-  border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10001;
-  box-shadow: none;
+  display: none;
 }
 
 .data-panel.expanded {
@@ -564,12 +588,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 10px;
 }
 
-#app:has(.data-panel.drawer-open) .drawer-toggle {
-  right: calc(var(--drawer-width) + 12px);
-}
-
-#app:has(.data-panel.drawer-open.expanded) .drawer-toggle {
-  right: calc(var(--drawer-width-expanded) + 12px);
+#app:has(.analysis-drawer.drawer-open) .drawer-toggle {
+  right: 12px;
 }
 
 #app:has(.data-panel.drawer-open) .drawer-toggle .toggle-icon {
@@ -769,15 +789,24 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .peak-table th:nth-child(3), .peak-table td:nth-child(3) { width: 25%; }
 .peak-table th:nth-child(4), .peak-table td:nth-child(4) { width: 10%; }
 
+.peak-table tbody tr {
+  height: 32px;
+}
+
+.peak-table tbody tr:nth-child(even) {
+  background: #fcfcfd;
+}
+
 .peak-table td {
-  padding: 8px 12px;
+  padding: 0 12px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .peak-table tbody tr {

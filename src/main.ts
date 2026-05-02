@@ -70,8 +70,7 @@ interface AppState {
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
   epiResult: import('./engine/fitting').EpistemicResult | null;
-  drawerExpanded: boolean;
-  expandedCardIds: Set<string>;
+  visibleTableFileId: string | null;
 }
 
 // ── State ──
@@ -108,8 +107,7 @@ const state: AppState = {
   pendingLabel: null,
   snapshots: [],
   epiResult: null,
-  drawerExpanded: false,
-  expandedCardIds: new Set(),
+  visibleTableFileId: null
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -151,7 +149,6 @@ initLabelPopover();
 initReportControls();
 initProtocolExport();
 initSnapshotModal();
-initDrawerExpansion();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -369,13 +366,8 @@ function updateUI() {
   renderFileList();
   renderPlots();
   renderAnchorList();
-  renderPeakTable();
+  renderDataGrid();
   renderTimeline();
-
-  const panel = UI.get('data-panel');
-  if (panel) panel.classList.toggle('expanded', state.drawerExpanded);
-  const expandIcon = UI.get('expand-icon');
-  if (expandIcon) expandIcon.textContent = state.drawerExpanded ? '⤓' : '⤢';
 
   const active = state.files.get(state.activeFileId || '');
   const app = document.getElementById('app');
@@ -526,6 +518,9 @@ function renderFileList() {
         </div>
       </div>
       <div class="file-actions">
+        <button class="btn-view-table ${state.visibleTableFileId === id ? 'active' : ''}" title="View peak table" style="background:none; border:none; color:${state.visibleTableFileId === id ? 'var(--accent)' : 'var(--text-dim)'}; cursor:pointer; padding:4px; ${state.visibleTableFileId === id ? 'border: 1px solid var(--accent); border-radius: 4px; background: var(--accent-light);' : ''}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+        </button>
         <button class="btn-edit-name" title="Rename file" style="background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
         </button>
@@ -565,6 +560,11 @@ function renderFileList() {
       state.activeFileId = id;
       UI.get('cal-status-container')?.classList.add('hidden');
       updateUI();
+    });
+
+    item.querySelector('.btn-view-table')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDataGrid(id);
     });
     item.querySelector('.compare-checkbox')?.addEventListener('click', (e) => { e.stopPropagation(); toggleComp(id); });
     item.querySelector('.btn-del-file')?.addEventListener('click', (e) => { e.stopPropagation(); deleteFile(id); });
@@ -923,213 +923,7 @@ function renderAnchorList() {
   });
 }
 
-function renderPeakTable() {
-  const container = UI.get('analysis-tables-container');
-  const warning = UI.get('proximity-warning');
-  if (!container) return;
-  container.innerHTML = '';
 
-  // 1. Handle Replicate Mode (Special top-level card)
-  if (state.layoutMode === 'replicate' && state.replicateGroup) {
-    warning?.classList.add('hidden');
-    const card = createAnalysisCard("Statistical Average (Mean ± SD)", "Collective Analysis", "var(--laser)", true);
-    const table = createPeakTable(['Shift (±SD)', 'Int (±SD)', 'FWHM (±SD)', '']);
-    const tbody = table.querySelector('tbody')!;
-
-    state.replicateGroup.peakStats.forEach(p => {
-      const isSelected = state.replicateGroup!.selectedPeakX.has(p.xMean);
-      const tr = createTableRow([
-        `${p.xMean.toFixed(1)} ± ${p.xSD.toFixed(2)}`,
-        `${p.yMean.toFixed(3)} ± ${p.ySD.toFixed(4)}`,
-        `${p.fwhmMean.toFixed(1)} ± ${p.fwhmSD.toFixed(2)}`,
-        ''
-      ], isSelected);
-      tr.addEventListener('click', () => {
-        if (state.replicateGroup!.selectedPeakX.has(p.xMean)) state.replicateGroup!.selectedPeakX.delete(p.xMean);
-        else state.replicateGroup!.selectedPeakX.add(p.xMean);
-        renderPeakTable();
-        renderPlots();
-      });
-      tbody.appendChild(tr);
-    });
-    card.querySelector('.analysis-card-content')?.appendChild(table);
-    container.appendChild(card);
-    return;
-  }
-
-  // 2. Handle Fitting Mode (Special top-level card)
-  if (state.fittingMode && state.fitResult) {
-    warning?.classList.add('hidden');
-    const activeFile = state.files.get(state.activeFileId || '');
-    const card = createAnalysisCard("Deconvolution Parameters", "Multi-Model Fit", activeFile?.color || "var(--accent)", true);
-    const table = createPeakTable(['Center', 'Amplitude', 'FWHM', 'Shape (η)']);
-    const tbody = table.querySelector('tbody')!;
-
-    state.fitResult.peaks.forEach((p) => {
-      const shapeVal = p.type === 'voigt' ? p.shape?.value?.toFixed(2) || '---' : '---';
-      const tr = createTableRow([
-        (p.center.value || 0).toFixed(1),
-        (p.amplitude.value || 0).toFixed(3),
-        (p.fwhm.value || 0).toFixed(1),
-        shapeVal
-      ], false);
-      tbody.appendChild(tr);
-    });
-    card.querySelector('.analysis-card-content')?.appendChild(table);
-    container.appendChild(card);
-    return;
-  }
-
-  // 3. Handle Regular Files (Active + Comparisons)
-  const fileIds = new Set(state.comparisonIds);
-  if (state.activeFileId) fileIds.add(state.activeFileId);
-
-  const files = Array.from(fileIds)
-    .map(id => state.files.get(id))
-    .filter(f => !!f) as ProcessedFile[];
-
-  if (files.length === 0) {
-    warning?.classList.add('hidden');
-    return;
-  }
-
-  let globalProximityIssue = false;
-
-  files.forEach(file => {
-    const isActive = file.id === state.activeFileId;
-    
-    // Ensure active file is tracked in expanded state if not already present
-    if (isActive && !state.expandedCardIds.has(file.id)) {
-      state.expandedCardIds.add(file.id);
-    }
-
-    const isExpanded = state.expandedCardIds.has(file.id);
-    const card = createAnalysisCard(file.name, `Spectral Peaks (${file.peaks.length})`, file.color, isExpanded);
-    if (isActive) card.classList.add('active');
-
-    if (file.peaks.length === 0) {
-      const emptyMsg = document.createElement('div');
-      emptyMsg.style.padding = '16px';
-      emptyMsg.style.fontSize = '11px';
-      emptyMsg.style.color = 'var(--text-dim)';
-      emptyMsg.style.textAlign = 'center';
-      emptyMsg.textContent = "No peaks detected. Adjust sensitivity or ROI.";
-      card.querySelector('.analysis-card-content')?.appendChild(emptyMsg);
-    } else {
-      const table = createPeakTable(['Shift (cm⁻¹)', 'Int (Abs)', 'FWHM', '']);
-      const tbody = table.querySelector('tbody')!;
-      const sortedPeaks = [...file.peaks].sort((a, b) => a.x - b.x);
-
-      sortedPeaks.forEach(p => {
-        const isSelected = file.selectedPeakX.has(p.x);
-        const tr = createTableRow([
-          p.x.toFixed(1),
-          p.y.toFixed(2),
-          p.fwhm.toFixed(1),
-          ''
-        ], isSelected);
-
-        tr.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (file.selectedPeakX.has(p.x)) {
-            file.selectedPeakX.delete(p.x);
-          } else {
-            file.selectedPeakX.add(p.x);
-          }
-          renderPeakTable();
-          renderPlots();
-        });
-        tbody.appendChild(tr);
-      });
-
-      card.querySelector('.analysis-card-content')?.appendChild(table);
-
-      // Proximity Check
-      let hasProximityIssue = false;
-      for (let i = 0; i < sortedPeaks.length - 1; i++) {
-        if (Math.abs(sortedPeaks[i].x - sortedPeaks[i + 1].x) < 30) {
-          hasProximityIssue = true;
-          break;
-        }
-      }
-      if (hasProximityIssue && isActive) globalProximityIssue = true;
-    }
-
-    // Toggle logic: Clicking header of inactive card makes it active. 
-    // Clicking active card header toggles expansion.
-    card.querySelector('.analysis-card-header')?.addEventListener('click', () => {
-      if (!isActive) {
-        state.activeFileId = file.id;
-        state.expandedCardIds.add(file.id); // Expand when making active
-        updateUI();
-      } else {
-        if (state.expandedCardIds.has(file.id)) {
-          state.expandedCardIds.delete(file.id);
-        } else {
-          state.expandedCardIds.add(file.id);
-        }
-        renderPeakTable();
-      }
-    });
-
-    container.appendChild(card);
-  });
-
-  if (globalProximityIssue) warning?.classList.remove('hidden');
-  else warning?.classList.add('hidden');
-}
-
-// ── UI Helper Functions ──
-
-function createAnalysisCard(title: string, subtitle: string, color: string, isExpanded: boolean) {
-  const card = document.createElement('div');
-  card.className = `analysis-card ${isExpanded ? 'expanded' : ''}`;
-  card.style.setProperty('--active-color', color);
-
-  card.innerHTML = `
-    <div class="analysis-card-header">
-      <div class="analysis-card-title-wrap">
-        <div class="analysis-card-title">${title}</div>
-        <div class="analysis-card-meta">${subtitle}</div>
-      </div>
-      <div class="analysis-card-toggle">▸</div>
-    </div>
-    <div class="analysis-card-content"></div>
-  `;
-  return card;
-}
-
-function createPeakTable(headers: string[]) {
-  const table = document.createElement('table');
-  table.className = 'peak-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        ${headers.map(h => `<th>${h}</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
-  return table;
-}
-
-function createTableRow(cells: string[], isSelected: boolean) {
-  const tr = document.createElement('tr');
-  if (isSelected) tr.className = 'selected';
-  tr.innerHTML = cells.map(c => `<td>${c}</td>`).join('');
-  return tr;
-}
-
-function initDrawerExpansion() {
-  UI.get('btn-expand-drawer')?.addEventListener('click', () => {
-    state.drawerExpanded = !state.drawerExpanded;
-    updateUI();
-    // Plotly needs time for the CSS transition to complete before resizing
-    setTimeout(() => {
-      renderPlots();
-    }, 310);
-  });
-}
 
 function initBaselineControls() {
   UI.get('btn-mode-snip')?.addEventListener('click', () => {
@@ -1197,29 +991,104 @@ function initSupportModal() {
 
 function initDrawerToggle() {
   const toggleBtn = UI.get('btn-toggle-drawer');
-  const panel = document.querySelector('.data-panel') as HTMLElement;
-  if (!toggleBtn || !panel) return;
+  const panel = UI.get('analysis-drawer');
+  const workspace = document.querySelector('.workspace');
+
+  if (!toggleBtn || !panel || !workspace) return;
 
   toggleBtn.addEventListener('click', () => {
     panel.classList.toggle('drawer-open');
     const isOpen = panel.classList.contains('drawer-open');
     toggleBtn.querySelector('span:first-child')!.textContent = isOpen ? 'Close' : 'Analysis';
     toggleBtn.querySelector('.toggle-icon')!.textContent = isOpen ? '✕' : '▸';
-
-    // Resize Plotly plots after transition completes
-    panel.addEventListener('transitionend', () => {
-      const plotEl = document.getElementById('plot-main');
-      if (plotEl && (window as any).Plotly) {
-        (window as any).Plotly.Plots.resize(plotEl);
-      }
-      // Also resize any grid plots
-      document.querySelectorAll('.plot-item').forEach((el) => {
-        if ((window as any).Plotly) {
-          (window as any).Plotly.Plots.resize(el);
-        }
-      });
-    }, { once: true });
+    updateUI();
   });
+
+  // Global listener for flex transitions to ensure Plotly resizes
+  workspace.addEventListener('transitionend', (e) => {
+    if ((e.target as HTMLElement).classList.contains('plot-area') || 
+        (e.target as HTMLElement).classList.contains('data-grid') || 
+        (e.target as HTMLElement).classList.contains('analysis-drawer')) {
+      renderPlots();
+    }
+  });
+}
+
+function toggleDataGrid(fileId: string) {
+  if (state.visibleTableFileId === fileId) {
+    state.visibleTableFileId = null;
+  } else {
+    state.visibleTableFileId = fileId;
+  }
+  updateUI();
+}
+
+function renderDataGrid() {
+  const container = UI.get('peak-data-grid');
+  if (!container) return;
+
+  if (!state.visibleTableFileId) {
+    container.classList.remove('open');
+    container.innerHTML = '';
+    return;
+  }
+
+  const file = state.files.get(state.visibleTableFileId);
+  if (!file) {
+    state.visibleTableFileId = null;
+    container.classList.remove('open');
+    return;
+  }
+
+  container.classList.add('open');
+  
+  container.innerHTML = `
+    <div class="panel-header" style="background: var(--bg-surface); padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column;">
+        <span style="font-size: 11px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${file.name}</span>
+        <span style="font-size: 10px; color: var(--text-dim);">${file.peaks.length} peaks identified</span>
+      </div>
+      <button id="btn-close-data-grid" class="btn-icon" style="opacity: 0.6; padding: 4px;">✕</button>
+    </div>
+    <div style="flex: 1; overflow-y: auto;">
+      <table class="peak-table" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+        <thead style="position: sticky; top: 0; background: var(--bg-surface); z-index: 10; box-shadow: 0 1px 0 var(--border);">
+          <tr>
+            <th>Shift</th>
+            <th>Int.</th>
+            <th>FWHM</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${file.peaks.map(p => `
+            <tr>
+              <td>${p.x.toFixed(1)}</td>
+              <td>${p.y.toFixed(0)}</td>
+              <td>${p.fwhm.toFixed(1)}</td>
+              <td>
+                <span class="badge" style="background: ${getConvergenceColor(p.type)}; color: #fff; padding: 1px 6px; border-radius: 8px; font-size: 9px; text-transform: uppercase;">
+                  ${p.type.charAt(0)}
+                </span>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  UI.get('btn-close-data-grid')?.addEventListener('click', () => {
+    state.visibleTableFileId = null;
+    updateUI();
+  });
+}
+
+function getConvergenceColor(type: string) {
+  if (type === 'gaussian') return '#0d9488';
+  if (type === 'lorentzian') return '#8b5cf6';
+  if (type === 'voigt') return '#f59e0b';
+  return '#64748b';
 }
 
 function initLayoutControls() {
@@ -1288,14 +1157,13 @@ function initNormalization() {
 
 
 function initRatioCalculator() {
-  UI.get('btn-ratio-mode')?.addEventListener('click', () => {
+  UI.get('btn-mode-ratio')?.addEventListener('click', () => {
     state.ratioMode = !state.ratioMode;
-    const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
+    const btn = UI.get('btn-mode-ratio') as HTMLButtonElement;
     if (state.ratioMode) {
       btn.innerText = 'Ratio mode: active (pick 2 peaks)';
       btn.classList.add('active-compare');
       state.ratioSelection = { p1: null, p2: null };
-      UI.get('ratio-results')?.classList.remove('hidden');
     } else {
       btn.innerText = 'Enable ratio selection';
       btn.classList.remove('active-compare');
@@ -1446,33 +1314,33 @@ function initSliders() {
 function exitAllLabelModes() {
   state.labelMode = false;
   state.freeLabelMode = false;
-  const btnSnap = UI.get('btn-label-mode') as HTMLButtonElement;
-  const btnFree = UI.get('btn-free-label-mode') as HTMLButtonElement;
+  const btnSnap = UI.get('btn-mode-label') as HTMLButtonElement;
+  const btnFree = UI.get('btn-mode-free-label') as HTMLButtonElement;
   if (btnSnap) { btnSnap.innerText = 'Label peak'; btnSnap.classList.remove('active-compare'); }
   if (btnFree) { btnFree.innerText = 'Free annotation'; btnFree.classList.remove('active-compare'); }
 }
 
 function initLabelControls() {
-  UI.get('btn-label-mode')?.addEventListener('click', () => {
+  UI.get('btn-mode-label')?.addEventListener('click', () => {
     if (state.labelMode) {
       exitAllLabelModes();
     } else {
       exitAllLabelModes();
       state.labelMode = true;
-      const btn = UI.get('btn-label-mode') as HTMLButtonElement;
+      const btn = UI.get('btn-mode-label') as HTMLButtonElement;
       btn.innerText = 'Click a peak...';
       btn.classList.add('active-compare');
       showToast("Label Peak: Click any point on the spectrum to label it.");
     }
   });
 
-  UI.get('btn-free-label-mode')?.addEventListener('click', () => {
+  UI.get('btn-mode-free-label')?.addEventListener('click', () => {
     if (state.freeLabelMode) {
       exitAllLabelModes();
     } else {
       exitAllLabelModes();
       state.freeLabelMode = true;
-      const btn = UI.get('btn-free-label-mode') as HTMLButtonElement;
+      const btn = UI.get('btn-mode-free-label') as HTMLButtonElement;
       btn.innerText = 'Click anywhere...';
       btn.classList.add('active-compare');
       showToast("Free Annotation: Click anywhere on the plot to place a label.");
