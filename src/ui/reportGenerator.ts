@@ -7,6 +7,7 @@ export interface Snapshot {
   title: string;
   type: 'general' | 'fitting' | 'replicate';
   timestamp: string;
+  narrative?: string;
   traces: any[];
   layout: any;
   tableData: any[];

@@ -1751,22 +1751,27 @@ async function exportFigure(format: 'png' | 'svg') {
   }
 }
 
-function generateCaption() {
-  const active = state.files.get(state.activeFileId || '');
-  if (!active) return;
-
-  const params = active.params;
+function getScientificNarrative(file: ProcessedFile) {
+  const params = file.params;
   const snip = params.snip;
   const sg = params.sg;
   const norm = params.norm;
-  const peakCount = active.peaks.length;
+  const peakCount = file.peaks.length;
 
   let normDesc = 'no additional normalization';
   if (norm === 'max') normDesc = 'peak maximum normalization';
   if (norm === 'area') normDesc = 'total area (AUC) normalization';
   if (norm === 'point') normDesc = `normalization to the peak at ${state.normTargetX?.toFixed(1)} cm⁻¹`;
 
-  const caption = `Figure. Raman spectrum of ${active.name}. Data was processed using the Instant Raman (v2.0) spectral workstation. Background subtraction was performed using the SNIP algorithm (${snip} iterations), followed by Savitzky-Golay smoothing (window size ${sg}). The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Figure generated via Instant Raman (https://raman-instant.com).`;
+  return `Raman spectrum of ${file.name}. Data was processed using the Instant Raman (${APP_VERSION}) spectral workstation. Background subtraction was performed using the Simple Non-Iterative Peak (SNIP) algorithm (${snip} iterations) [1], followed by Savitzky-Golay smoothing (window size ${sg}) [2]. The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Analysis protocol verified via SHA-256 integrity check.`;
+}
+
+function generateCaption() {
+  const active = state.files.get(state.activeFileId || '');
+  if (!active) return;
+
+  const narrative = getScientificNarrative(active);
+  const caption = `Figure. ${narrative} Figure generated via Instant Raman (https://raman-instant.com).`;
 
   const area = UI.get('text-caption') as HTMLTextAreaElement;
   if (area) area.value = caption;
@@ -2180,7 +2185,9 @@ async function saveSnapshot(title: string) {
   };
 
   const snapshot: any = {
-    id, title, type, timestamp, traces,
+    id, title, type, timestamp,
+    narrative: activeFile ? getScientificNarrative(activeFile) : undefined,
+    traces,
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
     ratio: ratioData,

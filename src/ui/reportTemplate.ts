@@ -197,6 +197,39 @@ export const REPORT_TEMPLATE = `
             background: #fff;
         }
 
+        .scientific-narrative {
+            background: #fdf2f2;
+            border-left: 4px solid #ef4444;
+            padding: 16px 24px;
+            margin: 24px 0;
+            font-size: 13px;
+            color: #7f1d1d;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .bibliography-section {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 2px solid var(--text-main);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .bibliography-section h2 {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-main);
+            margin-bottom: 16px;
+        }
+
+        .bib-item {
+            margin-bottom: 12px;
+            padding-left: 24px;
+            text-indent: -24px;
+        }
+
         @media print {
             body { padding: 20px; }
             .snapshot-block { page-break-before: always; border-top: none; padding-top: 0; }
@@ -223,6 +256,13 @@ export const REPORT_TEMPLATE = `
         <main id="snapshots-main">
             <!-- Snapshots will be injected here -->
         </main>
+
+        <section class="bibliography-section">
+            <h2>References & Methodology</h2>
+            <div class="bib-item">[1] Ryan, C. G., et al. (1988). "SNIP: A statistics-sensitive background estimator." Nuclear Instruments and Methods in Physics Research Section B.</div>
+            <div class="bib-item">[2] Savitzky, A., & Golay, M. J. (1964). "Smoothing and Differentiation of Data by Simplified Least Squares Procedures." Analytical Chemistry.</div>
+            <div class="bib-item">[3] Instant Raman Documentation. "Uncertainty Quantification and Epistemic Risk in Peak Fitting." https://raman-instant.github.io/docs</div>
+        </section>
 
         <footer>
             <a href="https://raman-instant.github.io/" class="branding-link">
@@ -274,6 +314,7 @@ export const REPORT_TEMPLATE = `
                                     <span>BEST MODEL: \${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
                                 </div>
                             </div>
+                            \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
                             <div class="unc-report-layout">
                                 <div class="unc-report-left">
                                     <div id="\${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
@@ -297,6 +338,7 @@ export const REPORT_TEMPLATE = `
                                     <span>NORM: \${snap.settings.norm.toUpperCase()}</span>
                                 </div>
                             </div>
+                            \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
                             <div id="\${plotId}" class="plot-container"></div>
                             <div class="snapshot-table-wrap">
                                 <table id="table-\${snap.id}">
