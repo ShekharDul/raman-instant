@@ -83,17 +83,16 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           
           <div className="lp-copy">
             <p className="lp-mb-8" style={{ fontSize: '1.25rem', color: 'var(--lp-gray-600)' }}>
-              Traditional Raman spectroscopy software treats peak fitting as a deterministic process. However, in pharmaceutical 
-              R&D (Leeds/AstraZeneca crystallization studies), I found that minor adjustments to the analysis window boundaries 
-              led to significant shifts in peak position.
+              Traditional Raman spectroscopy software treats peak fitting as a single, fixed result, ignoring how 
+              minor adjustments to analysis boundaries can lead to significant shifts in your data.
             </p>
             <p className="lp-mb-8" style={{ paddingLeft: '32px', borderLeft: '4px solid var(--lp-teal)', fontWeight: 700, fontSize: '1.25rem' }}>
-              This "boundary-dependency" is a form of epistemic uncertainty that single-fit workflows systematically ignore, 
-              leading to potentially false assignments of polymorphs or chemical states.
+              This "boundary-dependency" is a form of uncertainty that standard workflows systematically overlook, 
+              potentially leading to false assignments of chemical states.
             </p>
             <p style={{ fontSize: '1.125rem', color: 'var(--lp-gray-600)' }}>
-              Instant Raman was developed to expose this ambiguity by running 15-fit ensembles across perturbed boundaries, 
-              calculating a total uncertainty that combines statistical fit quality with model-choice variance.
+              Instant Raman was developed to expose this ambiguity by running multi-fit ensembles across 
+              varying boundaries, providing a verified range instead of a single, potentially biased number.
             </p>
           </div>
         </div>
