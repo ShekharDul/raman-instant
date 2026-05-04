@@ -1564,7 +1564,17 @@ body.workstation-active #app { display: grid !important; }
 
 @media (max-width: 1024px) {
   .lp-about-grid { grid-template-columns: 1fr; gap: 48px; }
-  .lp-comparison-grid { grid-template-columns: 1fr; }
+  .lp-comparison-grid { grid-template-columns: 1fr; gap: 48px; padding: 0 24px; }
+  .lp-case-card { min-width: 100%; max-width: 100%; }
   .lp-hero-h1 { font-size: 3rem; }
   .lp-section { padding: 80px 0; }
+}
+
+@media (max-width: 768px) {
+  .lp-section { padding: 60px 0; }
+  .lp-comparison-grid { gap: 32px; }
+  .lp-case-content { padding: 24px; }
+  .lp-hero-h1 { font-size: 2.5rem; }
+  .lp-hero-p { font-size: 1.1rem; }
+  .lp-extra-wide { padding: 0 20px; }
 }
