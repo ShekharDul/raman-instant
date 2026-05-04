@@ -167,7 +167,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             ].map((card, i) => (
               <div key={i} className="lp-capability-card">
                 <div className="lp-card-icon">
-                  {React.cloneElement(card.icon as React.ReactElement, { size: 24 })}
+                  {React.cloneElement(card.icon as React.ReactElement<any>, { size: 24 })}
                 </div>
                 <h4 className="lp-card-h4">{card.title}</h4>
                 <p className="lp-card-p">{card.desc}</p>
