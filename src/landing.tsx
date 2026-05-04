@@ -110,7 +110,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             {/* No Fit/Unstable Case */}
             <div className="lp-case-card">
               <img 
-                src="assets/Screenshot 2026-05-03 015910.png" 
+                src="assets/CaseA.png" 
                 alt="No Fit/Unstable Case" 
                 className="lp-case-img"
               />
@@ -130,7 +130,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             {/* Stable Fit Case */}
             <div className="lp-case-card">
               <img 
-                src="assets/Screenshot 2026-05-04 164441.png" 
+                src="assets/CaseB.png" 
                 alt="Stable Analysis Case" 
                 className="lp-case-img"
               />
