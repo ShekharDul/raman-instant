@@ -9,15 +9,32 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
     "esbuild": "^0.28.0",
+    "postcss": "^8.5.13",
+    "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
     "vite": "^8.0.10"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/three": "^0.184.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
     "ml-levenberg-marquardt": "^5.0.1",
     "ml-matrix": "^6.12.2",
     "plotly.js-cartesian-dist-min": "^3.5.0",
     "plotly.js-dist-min": "^3.5.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.184.0",
     "xlsx": "^0.18.5"
   }
 }

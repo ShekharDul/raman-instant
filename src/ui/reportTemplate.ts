@@ -16,6 +16,7 @@ export const REPORT_TEMPLATE = `
             --text-muted: #64748b;
             --border: #e2e8f0;
             --accent: #2dd4bf;
+            --residual: #be123c;
             --font-sans: 'Inter', system-ui, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }

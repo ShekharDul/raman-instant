@@ -68,9 +68,11 @@
   </script>
 
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
-  <!-- All styles now loaded from external CSS via Vite -->
-  <link rel="stylesheet" href="/src/styles/index.css" />
+  <!-- Critical CSS to prevent Flash of Unrendered Content (FOUC) -->
   <style>
+    #app { display: none !important; }
+    body:not(.workstation-active) .modal-overlay { display: none !important; }
+    #landing-root { display: block; }
     /* Page-specific overrides only — design system lives in index.css */
     #heartbeat { height: 2px; width: 100%; position: fixed; top: 0; left: 0; z-index: 9999; }
   </style>
@@ -80,103 +82,8 @@
   <div id="heartbeat"></div>
   <script>document.getElementById('heartbeat').style.background = '#0d9488';</script>
 
-  <div id="mobile-landing">
-    <!-- Header -->
-    <header style="width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 60px;">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <img src="./Instant%20Raman%20Logo.jpeg" alt="Instant Raman Logo" style="height: 32px; width: auto;">
-        <h1 style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: #1a1a2e; margin: 0;">Instant Raman</h1>
-      </div>
-      <div style="font-family: var(--font-mono); font-size: 10px; color: #9ca3af;">v2.1.0</div>
-    </header>
-
-    <!-- Intro -->
-    <section style="margin-bottom: 80px;">
-      <h2 style="font-size: 28px; font-weight: 400; line-height: 1.3; color: #1a1a2e; margin-bottom: 24px; letter-spacing: -0.02em;">
-        Stop spending hours getting from raw Raman data to a figure you can actually use.
-      </h2>
-      <p style="font-size: 15px; line-height: 1.7; color: #6b7280; max-width: 90%;">
-        A specialized environment for baseline correction, peak deconvolution, and publication-ready visualization. Designed to handle complex datasets directly in your browser with absolute data privacy.
-      </p>
-    </section>
-
-    <!-- Features Container -->
-    <div style="display: flex; flex-direction: column; gap: 80px; width: 100%;">
-      
-      <!-- Feature 1: Plots -->
-      <section>
-        <div style="margin-bottom: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
-          <img src="./Waterfall.png" alt="Publication Ready Plots" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
-        </div>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">01. Publication-ready plots</h3>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Generate high-fidelity spectral visualizations designed for academic submission. We utilize the Paul Tol color-blind-safe schema to ensure maximum clarity in complex comparative datasets. Export options include 600 DPI PNGs and vector SVGs.
-        </p>
-      </section>
-
-      <!-- Feature 2: Fitting -->
-      <section>
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px; border-radius: 4px;">
-            <img src="./Lorentzian.png" alt="Peak Fitting" style="width: 100%; height: auto; display: block; border-radius: 2px;" loading="lazy">
-          </div>
-        </div>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">02. Peak fitting</h3>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Perform simultaneous multi-peak deconvolution using the Levenberg-Marquardt algorithm. Our engine supports Lorentzian, Gaussian, and Voigt profiles, allowing you to model diverse spectroscopic signals with high precision.
-        </p>
-      </section>
-
-      <!-- Feature 3: Collaboration -->
-      <section>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">03. Efficient collaboration</h3>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Sharing your work shouldn't be a headache. Instead of just sending a screenshot, you can save your whole analysis as an interactive file. This lets others zoom in on the plots and see the actual peak values for themselves.
-        </p>
-      </section>
-
-      <!-- Feature 4: Uncertainty -->
-      <section>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">04. Multi-Model Uncertainty</h3>
-        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">Standard fitting often hides ambiguity by forcing a single "correct" result.</p>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          We re-run every fit 15 times using three different mathematical models (Lorentzian, Gaussian, Voigt) and perturbed boundaries. If the models diverge, the tool labels the result as Bimodal or Multimodal, ensuring you don't report false certainty.
-        </p>
-      </section>
-
-      <!-- Feature 5: Reproducibility -->
-      <section>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">05. Reproducibility Protocols</h3>
-        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">Sharing results usually means losing the processing history of how you got there.</p>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          Export a lightweight .irp file that stores the SHA-256 hash of your raw data and every processing parameter. A colleague can drag this file in to reproduce your exact baseline, normalization, and fitting results bit-for-bit.
-        </p>
-      </section>
-
-      <!-- Feature 6: Verification -->
-      <section>
-        <h3 style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #0d9488; margin-bottom: 12px;">06. Numerical Verification</h3>
-        <p style="font-size: 14px; color: #1a1a2e; font-weight: 600; margin-bottom: 8px;">It is difficult to prove that re-processed data matches your original ground truth.</p>
-        <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-          The app compares re-calculated peak positions against original stored values and reports any deviation down to 10⁻⁶ cm⁻¹. This provides a mathematical guarantee that your analysis remains consistent across versions.
-        </p>
-      </section>
-
-    </div>
-
-    <!-- Footer -->
-    <footer style="margin-top: 100px; padding: 40px 0; border-top: 1px solid #e2e8f0; width: 100%;">
-      <div style="background: #1a1a2e; color: #fff; padding: 24px; border-radius: 8px; text-align: center;">
-        <p style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;">
-          Optimized for Desktop Workflow
-        </p>
-        <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
-          Instant Raman requires the precision of a desktop environment.
-        </p>
-      </div>
-
-    </footer>
-  </div>
+  <div id="landing-root"></div>
+  <script type="module" src="./src/landing-entry.tsx"></script>
 
   <div id="app">
     <header class="header">
@@ -571,6 +478,14 @@
               interactive report</button>
             <button id="btn-export-protocol" class="btn-premium"
               style="background: #f8fafc; margin-top: 12px; border: 1px solid var(--border); color: var(--text-primary);">🔬 Download Reproducibility Protocol (.irp)</button>
+          </div>
+
+          <div class="section" style="padding: 18px; border-bottom: 1px solid var(--border);">
+            <div class="section-title">Live annotations</div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-export-mode-label" class="btn-small" style="flex: 1;">Add peak label</button>
+              <button id="btn-export-mode-free-label" class="btn-small" style="flex: 1;">Add custom label</button>
+            </div>
           </div>
 
           <div class="section" style="padding: 18px;">

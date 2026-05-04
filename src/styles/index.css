@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
-   Instant Raman v2.1 — The Quiet Tool
+/* Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+   Instant Raman v2.1 Ã¢â‚¬â€ The Quiet Tool
    Calm, warm, confident workspace for spectral analysis.
-   ═══════════════════════════════════════════════════════════════ */
+   Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
@@ -42,20 +42,38 @@
 
   --drawer-width: 360px;
   --drawer-width-expanded: 650px;
+
+  /* Landing Page Design Tokens */
+  --lp-bg: #fafbfc;
+  --lp-white: #ffffff;
+  --lp-gray-100: #f3f4f6;
+  --lp-gray-400: #9ca3af;
+  --lp-gray-600: #4b5563;
+  --lp-gray-900: #111827;
+  --lp-teal: #0d9488;
+  --lp-teal-light: #f0fdfa;
+  --lp-teal-strong: #0f766e;
+  --lp-section-py: 120px;
+  --lp-section-py-mobile: 60px;
 }
 
-/* ── Reset ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Reset Ã¢â€â‚¬Ã¢â€â‚¬ */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  height: 100%;
+  min-height: 100%;
   background: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
-  overflow: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.workstation-active {
+  overflow: hidden;
+  height: 100vh;
 }
 
 #app {
@@ -65,7 +83,7 @@ html, body {
   height: 100vh;
 }
 
-/* ── Header ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬ */
 .header {
   grid-column: 1 / -1;
   background: var(--bg-surface);
@@ -99,7 +117,7 @@ html, body {
   font-weight: 500;
 }
 
-/* ── Status ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Status Ã¢â€â‚¬Ã¢â€â‚¬ */
 .status {
   display: flex;
   align-items: center;
@@ -113,7 +131,7 @@ html, body {
   border-radius: 50%;
 }
 
-/* ── Sidebar ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Sidebar Ã¢â€â‚¬Ã¢â€â‚¬ */
 .sidebar {
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
@@ -137,7 +155,7 @@ html, body {
   align-items: center;
 }
 
-/* ── Upload Zone ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Upload Zone Ã¢â€â‚¬Ã¢â€â‚¬ */
 .upload-zone {
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius);
@@ -158,7 +176,7 @@ html, body {
   background: var(--accent-light);
 }
 
-/* ── Controls ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Controls Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ctrl-group { margin-bottom: 16px; }
 .ctrl-label {
   display: flex;
@@ -175,7 +193,7 @@ html, body {
   font-size: 12px;
 }
 
-/* ── Range Slider ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Range Slider Ã¢â€â‚¬Ã¢â€â‚¬ */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -207,7 +225,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
 
-/* ── File List ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ File List Ã¢â€â‚¬Ã¢â€â‚¬ */
 .file-list {
   flex: 1;
   overflow-y: auto;
@@ -298,7 +316,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .file-actions { display: flex; gap: 4px; align-items: center; justify-content: center; }
 
-/* ── Timeline ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Timeline Ã¢â€â‚¬Ã¢â€â‚¬ */
 .timeline-item {
   display: flex;
   gap: 12px;
@@ -363,7 +381,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   text-transform: uppercase;
 }
 
-/* ── Small Buttons ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Small Buttons Ã¢â€â‚¬Ã¢â€â‚¬ */
 .btn-small {
   font-size: 10px;
   font-weight: 600;
@@ -395,8 +413,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: var(--reference);
 }
 
-/* ── Main Workspace ── */
-/* ── Main Workspace Refactor ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Main Workspace Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Main Workspace Refactor Ã¢â€â‚¬Ã¢â€â‚¬ */
 .workspace {
   background: var(--bg-app);
   display: flex;
@@ -415,10 +433,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-direction: column;
   position: relative;
   background: var(--bg-app);
-  /* Remove transition here — plot area should naturally follow the drawer's displacement */
+  /* Remove transition here Ã¢â‚¬â€ plot area should naturally follow the drawer's displacement */
 }
 
-/* ── Peak Data Grid (Docked Panel) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Peak Data Grid (Docked Panel) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .data-grid {
   flex: 0 0 0px;
   width: 0;
@@ -439,7 +457,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-left-color: var(--border);
 }
 
-/* ── Analysis Drawer (Flex Row) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Analysis Drawer (Flex Row) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .analysis-drawer {
   flex: 0 0 0px;
   width: 0;
@@ -509,7 +527,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-secondary);
 }
 
-/* ── Panel Header ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Panel Header Ã¢â€â‚¬Ã¢â€â‚¬ */
 .panel-header {
   padding: 10px 18px;
   border-bottom: 1px solid var(--border);
@@ -552,7 +570,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-primary);
 }
 
-/* ── Data Panel (Right Drawer) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Data Panel (Right Drawer) Ã¢â€â‚¬Ã¢â€â‚¬ */
 /* Deprecated: Using flex-based .analysis-drawer instead */
 .data-panel {
   display: none;
@@ -567,7 +585,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.08);
 }
 
-/* ── Drawer Toggle ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Drawer Toggle Ã¢â€â‚¬Ã¢â€â‚¬ */
 .drawer-toggle {
   position: absolute;
   top: 12px;
@@ -609,7 +627,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: rotate(180deg);
 }
 
-/* ── Tabs ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Tabs Ã¢â€â‚¬Ã¢â€â‚¬ */
 .tab-header {
   display: flex;
   background: var(--bg-panel);
@@ -650,7 +668,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .tab-pane.active { display: flex; }
 
-/* ── Empty States ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Empty States Ã¢â€â‚¬Ã¢â€â‚¬ */
 .pane-empty {
   display: flex;
   flex-direction: column;
@@ -660,7 +678,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-dim);
 }
 
-/* ── Analysis Tables Container ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Analysis Tables Container Ã¢â€â‚¬Ã¢â€â‚¬ */
 .analysis-tables-container {
   flex: 1;
   overflow-y: auto;
@@ -671,7 +689,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   min-height: 0;
 }
 
-/* ── Analysis Card ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Analysis Card Ã¢â€â‚¬Ã¢â€â‚¬ */
 .analysis-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -771,7 +789,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: block;
 }
 
-/* ── Refined Peak Table ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Refined Peak Table Ã¢â€â‚¬Ã¢â€â‚¬ */
 .peak-table {
   width: 100%;
   border-collapse: collapse;
@@ -845,13 +863,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .peak-table tbody tr.selected td:first-child::before {
-  content: '●';
+  content: 'Ã¢â€”Â';
   margin-right: 6px;
   font-size: 8px;
 }
 
 
-/* ── Export Section ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Export Section Ã¢â€â‚¬Ã¢â€â‚¬ */
 .export-section {
   padding: 18px;
   background: var(--bg-panel);
@@ -861,7 +879,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   gap: 10px;
 }
 
-/* ── Primary Button ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Primary Button Ã¢â€â‚¬Ã¢â€â‚¬ */
 .btn-primary {
   width: 100%;
   padding: 10px;
@@ -882,7 +900,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: var(--shadow-md);
 }
 
-/* ── Premium Buttons ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Premium Buttons Ã¢â€â‚¬Ã¢â€â‚¬ */
 .btn-premium {
   width: 100%;
   padding: 10px 16px;
@@ -921,7 +939,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: translateY(0);
 }
 
-/* ── Floating Button Group ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Floating Button Group Ã¢â€â‚¬Ã¢â€â‚¬ */
 .btn-group-floating {
   position: absolute;
   bottom: 40px;
@@ -938,7 +956,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: var(--shadow-lg);
 }
 
-/* ── Viewer Placeholder ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Viewer Placeholder Ã¢â€â‚¬Ã¢â€â‚¬ */
 .viewer-placeholder {
   position: absolute;
   top: 50%;
@@ -981,7 +999,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-radius: var(--radius-sm);
 }
 
-/* ── Footer ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Footer Ã¢â€â‚¬Ã¢â€â‚¬ */
 .footer {
   grid-column: 1 / -1;
   background: var(--bg-panel);
@@ -995,7 +1013,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-dim);
 }
 
-/* ── Modals ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Modals Ã¢â€â‚¬Ã¢â€â‚¬ */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1043,7 +1061,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   align-items: center;
 }
 
-.modal-overlay.centered .modal-content {
+.modal-overlay.centered .modal-content,
+.modal-overlay.centered .modal-center-box {
   height: auto;
   width: 90%;
   max-width: 400px;
@@ -1057,7 +1076,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modal-overlay.active.centered .modal-content {
+.modal-overlay.active.centered .modal-content,
+.modal-overlay.active.centered .modal-center-box {
   transform: scale(1) translateY(0);
   opacity: 1;
 }
@@ -1099,7 +1119,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--bg-active);
 }
 
-/* ── Documentation Sections (In Modals) ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Documentation Sections (In Modals) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .docs-section { margin-bottom: 32px; line-height: 1.6; }
 .docs-section h2 {
   font-size: 12px;
@@ -1122,12 +1142,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
   margin: 16px 0;
 }
 
-/* ── Utilities ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Utilities Ã¢â€â‚¬Ã¢â€â‚¬ */
 .hidden { display: none !important; }
 .status-active { color: var(--accent); }
 .status-warning { color: var(--reference); }
 
-/* ── Instrument Floating Controls ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Instrument Floating Controls Ã¢â€â‚¬Ã¢â€â‚¬ */
 .instrument-overlay {
   position: absolute;
   top: 12px;
@@ -1165,7 +1185,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   letter-spacing: 0.01em;
 }
 
-/* ── Toggle Switch ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Toggle Switch Ã¢â€â‚¬Ã¢â€â‚¬ */
 .toggle-slider-wrap {
   position: relative;
   width: 32px;
@@ -1209,7 +1229,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: translateX(16px);
 }
 
-/* ── MOBILE LANDING PAGE ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ MOBILE LANDING PAGE Ã¢â€â‚¬Ã¢â€â‚¬ */
 #mobile-landing {
   display: none;
   flex-direction: column;
@@ -1224,14 +1244,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── RESPONSIVE SWITCH ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ RESPONSIVE SWITCH Ã¢â€â‚¬Ã¢â€â‚¬ */
 @media (max-width: 1024px) {
   #app { display: none !important; }
   #mobile-landing { display: flex !important; }
   body { overflow: auto; }
 }
 
-/* ── Scrollbar Styling ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Scrollbar Styling Ã¢â€â‚¬Ã¢â€â‚¬ */
 ::-webkit-scrollbar {
   width: 5px;
 }
@@ -1249,13 +1269,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--text-dim);
 }
 
-/* ── Selection ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Selection Ã¢â€â‚¬Ã¢â€â‚¬ */
 ::selection {
   background: var(--accent-medium);
   color: var(--text-primary);
 }
 
-/* ── Label Edit Popover ── */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Label Edit Popover Ã¢â€â‚¬Ã¢â€â‚¬ */
 .label-popover {
   position: absolute;
   z-index: 2000;
@@ -1388,7 +1408,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
-/* ── Model Uncertainty Quantification Panel ── */
+/* â”€â”€ Plot Containers â”€â”€ */
+.plot-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Model Uncertainty Quantification Panel Ã¢â€â‚¬Ã¢â€â‚¬ */
 .unc-quadrant-container {
   display: flex;
   height: 100%;
@@ -1459,4 +1488,83 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: #64748b;
   margin-bottom: 12px;
   flex-shrink: 0;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+   VISIBILITY LOGIC (LANDING vs WORKSTATION)
+   Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+body.workstation-active #landing-root { display: none !important; }
+body.workstation-active #app { display: grid !important; }
+#landing-root { display: block; }
+#app { display: none !important; }
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+   LANDING PAGE STYLES (.lp- prefix)
+   Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+.lp-wrapper { background: var(--lp-bg); color: var(--lp-gray-900); font-family: var(--font-sans); }
+.lp-max-width { max-width: var(--lp-grid-width, 1200px); margin: 0 auto; padding: 0 24px; }
+.lp-narrow-width { max-width: 42rem; margin: 0 auto; padding: 0 24px; }
+.lp-extra-wide { max-width: 1600px; margin: 0 auto; padding: 0 48px; }
+
+.lp-section { padding: var(--lp-section-py) 0; }
+.lp-section.bg-white { background: var(--lp-white); border-top: 1px solid var(--lp-gray-100); border-bottom: 1px solid var(--lp-gray-100); }
+.lp-section-mono { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--lp-teal); font-weight: 700; }
+.lp-section-h2 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 12px; }
+
+/* Hero */
+.lp-hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 24px; }
+.lp-hero-h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 32px; }
+.lp-hero-h1 span { color: var(--lp-teal); }
+.lp-hero-p { font-size: 1.25rem; color: var(--lp-gray-600); max-width: 650px; margin: 0 auto 48px; }
+.lp-btn-primary { background: var(--lp-teal); color: white; padding: 16px 32px; border-radius: 8px; font-weight: 700; font-size: 1.125rem; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; transition: all 0.2s; }
+.lp-btn-primary:hover { background: var(--lp-teal-strong); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25); }
+
+/* Comparison Grid */
+.lp-comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 64px; }
+.lp-case-card { background: var(--lp-white); border: 1px solid var(--lp-gray-100); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); transition: transform 0.3s ease; }
+.lp-case-card:hover { transform: translateY(-8px); }
+.lp-case-img { width: 100%; height: 420px; object-fit: cover; object-position: top center; display: block; border-bottom: 1px solid var(--lp-gray-100); }
+.lp-case-content { padding: 24px; }
+.lp-case-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; }
+.lp-case-label.error { color: #dc2626; }
+.lp-case-label.success { color: var(--lp-teal); }
+.lp-case-p { font-size: 0.95rem; color: var(--lp-gray-600); line-height: 1.6; }
+
+/* Capability Grid */
+.lp-capability-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 64px; }
+.lp-capability-card { padding: 32px; background: var(--lp-gray-50); border: 1px solid var(--lp-gray-100); border-radius: 16px; transition: all 0.2s; }
+.lp-capability-card:hover { background: var(--lp-white); border-color: var(--lp-teal); box-shadow: var(--shadow-md); }
+.lp-card-icon { color: var(--lp-teal); margin-bottom: 20px; }
+.lp-card-h4 { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; }
+.lp-card-p { font-size: 0.95rem; color: var(--lp-gray-600); line-height: 1.6; }
+
+/* About Section (Dossier) */
+.lp-about-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 64px; align-items: start; }
+.lp-dossier-h3 { font-size: 3rem; font-weight: 900; letter-spacing: -0.03em; color: var(--lp-gray-900); margin-bottom: 8px; }
+.lp-about-text { font-size: 1.125rem; color: var(--lp-gray-600); line-height: 1.7; margin-bottom: 24px; }
+.lp-profile-title { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--lp-teal); text-transform: uppercase; margin-bottom: 16px; }
+
+.lp-research-box { background: var(--lp-gray-50); padding: 40px; border-radius: 20px; border: 1px solid var(--lp-gray-100); }
+.lp-research-h4 { font-size: 1.25rem; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+.lp-research-p { font-size: 1rem; color: var(--lp-gray-600); line-height: 1.6; }
+
+.lp-social-links { display: flex; flex-wrap: wrap; gap: 12px; }
+.lp-social-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1.5px solid var(--lp-gray-200); border-radius: 8px; color: var(--lp-gray-900); font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.lp-social-btn:hover { border-color: var(--lp-teal); color: var(--lp-teal); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+
+.lp-footer { padding: 48px 24px; border-top: 1px solid var(--lp-gray-100); text-align: center; }
+.lp-footer-p { font-family: var(--font-mono); font-size: 10px; color: var(--lp-gray-400); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Utilities */
+.lp-mb-6 { margin-bottom: 24px; }
+.lp-mb-8 { margin-bottom: 32px; }
+.lp-mt-8 { margin-top: 32px; }
+.lp-mt-12 { margin-top: 48px; }
+.lp-text-teal { color: var(--lp-teal); }
+
+@media (max-width: 1024px) {
+  .lp-about-grid { grid-template-columns: 1fr; gap: 48px; }
+  .lp-comparison-grid { grid-template-columns: 1fr; }
+  .lp-hero-h1 { font-size: 3rem; }
+  .lp-section { padding: 80px 0; }
 }

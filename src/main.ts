@@ -149,6 +149,7 @@ initLabelPopover();
 initReportControls();
 initProtocolExport();
 initSnapshotModal();
+initExportStylingControls();
 setTimeout(() => updateUI(), 150);
 
 function initViewControls() {
@@ -1355,38 +1356,56 @@ function initSliders() {
 function exitAllLabelModes() {
   state.labelMode = false;
   state.freeLabelMode = false;
-  const btnSnap = UI.get('btn-mode-label') as HTMLButtonElement;
-  const btnFree = UI.get('btn-mode-free-label') as HTMLButtonElement;
+  const btnSnap = UI.get('btn-mode-label');
+  const btnFree = UI.get('btn-mode-free-label');
+  const btnExpSnap = UI.get('btn-export-mode-label');
+  const btnExpFree = UI.get('btn-export-mode-free-label');
+
   if (btnSnap) { btnSnap.innerText = 'Label peak'; btnSnap.classList.remove('active-compare'); }
   if (btnFree) { btnFree.innerText = 'Free annotation'; btnFree.classList.remove('active-compare'); }
+  if (btnExpSnap) { btnExpSnap.innerText = 'Add peak label'; btnExpSnap.classList.remove('active-compare'); }
+  if (btnExpFree) { btnExpFree.innerText = 'Add custom label'; btnExpFree.classList.remove('active-compare'); }
 }
 
 function initLabelControls() {
-  UI.get('btn-mode-label')?.addEventListener('click', () => {
+  const onLabelClick = () => {
     if (state.labelMode) {
       exitAllLabelModes();
     } else {
       exitAllLabelModes();
       state.labelMode = true;
-      const btn = UI.get('btn-mode-label') as HTMLButtonElement;
-      btn.innerText = 'Click a peak...';
-      btn.classList.add('active-compare');
+      ['btn-mode-label', 'btn-export-mode-label'].forEach(id => {
+        const btn = UI.get(id) as HTMLButtonElement;
+        if (btn) {
+          btn.innerText = 'Click a peak...';
+          btn.classList.add('active-compare');
+        }
+      });
       showToast("Label Peak: Click any point on the spectrum to label it.");
     }
-  });
+  };
 
-  UI.get('btn-mode-free-label')?.addEventListener('click', () => {
+  const onFreeLabelClick = () => {
     if (state.freeLabelMode) {
       exitAllLabelModes();
     } else {
       exitAllLabelModes();
       state.freeLabelMode = true;
-      const btn = UI.get('btn-mode-free-label') as HTMLButtonElement;
-      btn.innerText = 'Click anywhere...';
-      btn.classList.add('active-compare');
+      ['btn-mode-free-label', 'btn-export-mode-free-label'].forEach(id => {
+        const btn = UI.get(id) as HTMLButtonElement;
+        if (btn) {
+          btn.innerText = 'Click anywhere...';
+          btn.classList.add('active-compare');
+        }
+      });
       showToast("Free Annotation: Click anywhere on the plot to place a label.");
     }
-  });
+  };
+
+  UI.get('btn-mode-label')?.addEventListener('click', onLabelClick);
+  UI.get('btn-export-mode-label')?.addEventListener('click', onLabelClick);
+  UI.get('btn-mode-free-label')?.addEventListener('click', onFreeLabelClick);
+  UI.get('btn-export-mode-free-label')?.addEventListener('click', onFreeLabelClick);
 
   UI.get('btn-label-save')?.addEventListener('click', saveLabel);
   UI.get('btn-label-cancel')?.addEventListener('click', closeLabelModal);
@@ -1394,6 +1413,39 @@ function initLabelControls() {
   UI.get('input-label-text')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') saveLabel();
     if (e.key === 'Escape') closeLabelModal();
+  });
+}
+
+function initExportStylingControls() {
+  // Font Size
+  UI.get('select-axis-font')?.addEventListener('change', (e) => {
+    state.axisFontSize = parseInt((e.target as HTMLSelectElement).value);
+    updateUI();
+  });
+
+  // Axis Box
+  UI.get('check-axis-box')?.addEventListener('change', (e) => {
+    state.showAxisBox = (e.target as HTMLInputElement).checked;
+    updateUI();
+  });
+
+  // Range Controls
+  UI.get('btn-apply-range')?.addEventListener('click', () => {
+    const min = parseFloat(UI.val('input-range-min'));
+    const max = parseFloat(UI.val('input-range-max'));
+    if (!isNaN(min) && !isNaN(max) && min < max) {
+      if (state.viewRange) state.viewHistory.push([...state.viewRange]);
+      state.viewRange = [min, max];
+      updateUI();
+    }
+  });
+
+  UI.get('btn-reset-range')?.addEventListener('click', () => {
+    if (state.viewRange) state.viewHistory.push([...state.viewRange]);
+    state.viewRange = null;
+    UI.setVal('input-range-min', '');
+    UI.setVal('input-range-max', '');
+    updateUI();
   });
 }
 
