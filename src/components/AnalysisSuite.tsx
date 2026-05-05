@@ -40,7 +40,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
         ChartRenderer.renderFit(
           fitPlotRef.current, 
           state.fitResult!.fitX, 
-          state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]),
+          state.fitResult!.fitX.map((_val: number, i: number) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]),
           state.fitResult!.fitX, 
           state.fitResult!.fitY, 
           false, 
@@ -91,7 +91,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
     if (mcResult && mcPlotRef.current) {
       ChartRenderer.renderMonteCarloDist(
         mcPlotRef.current, 
-        mcResult.ratio_distribution, 
+        mcResult.distribution, 
         "I_D / I_G Ratio Distribution"
       );
     }
@@ -280,16 +280,16 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Calculated Ratio</div>
-                    <div className="text-3xl font-mono font-black text-slate-900">{mcResult.ratio_mean.toFixed(3)}</div>
+                    <div className="text-3xl font-mono font-black text-slate-900">{mcResult.mean.toFixed(3)}</div>
                   </div>
                   <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Std. Deviation</div>
-                    <div className="text-3xl font-mono font-black text-slate-900">±{mcResult.ratio_std.toFixed(4)}</div>
+                    <div className="text-3xl font-mono font-black text-slate-900">±{mcResult.std.toFixed(4)}</div>
                   </div>
                   <div className="p-8 bg-emerald-50 rounded-3xl border border-emerald-100">
                     <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">95% Confidence Interval</div>
                     <div className="text-2xl font-mono font-black text-emerald-900">
-                      [{mcResult.confidence_interval_95[0].toFixed(2)}, {mcResult.confidence_interval_95[1].toFixed(2)}]
+                      [{mcResult.confidenceInterval95[0].toFixed(2)}, {mcResult.confidenceInterval95[1].toFixed(2)}]
                     </div>
                   </div>
                 </div>
