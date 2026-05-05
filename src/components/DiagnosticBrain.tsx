@@ -27,9 +27,11 @@ const INPUTS: Node[] = [
 ];
 
 const HIDDEN: Node[] = [
-  { id: 'h1', label: 'Ensemble Auditor', sub: 'Perturbation scan', layer: 'hidden' },
-  { id: 'h2', label: 'Accuracy Gate', sub: 'R² Thresholding', layer: 'hidden' },
-  { id: 'h3', label: 'Deconvolution', sub: 'Component split', layer: 'hidden' },
+  { id: 'h1', label: 'Lattice Audit', sub: 'Center-Shift Tracking', layer: 'hidden' },
+  { id: 'h2', label: 'Domain Audit', sub: 'Width Stability Analysis', layer: 'hidden' },
+  { id: 'h3', label: 'Convergence Audit', sub: 'Boundary Sensitivity', layer: 'hidden' },
+  { id: 'h4', label: 'Phase Resolver', sub: 'Bimodal Dist Analysis', layer: 'hidden' },
+  { id: 'h5', label: 'Signal Audit', sub: 'Residual Pattern Scan', layer: 'hidden' },
 ];
 
 const OUTPUTS: Node[] = [
@@ -74,12 +76,12 @@ const OUTPUTS: Node[] = [
     }
   },
   { 
-    id: 'o5', label: 'Phonon Confinement', sub: 'Nanoscale Effects', layer: 'output',
+    id: 'o5', label: 'Unmodeled Physics', sub: 'Secondary Phonon Modes', layer: 'output',
     insight: {
-      title: 'Phonon Confinement',
-      desc: 'Reveals nanoscale effects or electron-phonon coupling via asymmetry.',
+      title: 'Unmodeled Physics',
+      desc: 'Reveals non-random patterns pointing to secondary phonon modes or fluorescence.',
       interpretation: 'Indicates quantum confinement in nano-materials.',
-      sensitivity: 'Medium Sensitivity',
+      sensitivity: 'High Diagnostic Value',
       specificity: 'Low Specificity'
     }
   },
@@ -87,15 +89,10 @@ const OUTPUTS: Node[] = [
 
 const CONNECTIONS = [
   { from: 'i1', to: 'h1' }, { from: 'h1', to: 'o1' },
-  { from: 'i1', to: 'h3' }, { from: 'h3', to: 'o4' },
-  { from: 'i2', to: 'h1' }, { from: 'h1', to: 'o2' },
-  { from: 'i2', to: 'h3' }, { from: 'h3', to: 'o5' },
-  { from: 'i3', to: 'h1' }, { from: 'h1', to: 'o3' },
-  { from: 'i3', to: 'h2' }, { from: 'h2', to: 'o4' },
-  { from: 'i4', to: 'h2' }, { from: 'h2', to: 'o4' },
-  { from: 'i4', to: 'h3' }, { from: 'h3', to: 'o3' },
-  { from: 'i5', to: 'h2' }, { from: 'h2', to: 'o5' },
-  { from: 'i5', to: 'h1' }, { from: 'h1', to: 'o3' },
+  { from: 'i2', to: 'h2' }, { from: 'h2', to: 'o2' },
+  { from: 'i3', to: 'h3' }, { from: 'h3', to: 'o3' },
+  { from: 'i4', to: 'h4' }, { from: 'h4', to: 'o4' },
+  { from: 'i5', to: 'h5' }, { from: 'h5', to: 'o5' },
 ];
 
 const DiagnosticBrain: React.FC = () => {
