@@ -246,34 +246,32 @@ const DiagnosticBrain: React.FC = () => {
             ))}
           </div>
 
-          {/* Detailed Insight Card */}
           <AnimatePresence>
             {selectedOutput && selectedOutput.insight && (
               <motion.div 
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 20, scale: 0.95 }}
                 className="insight-card"
               >
-                <div style={{ flex: 1 }}>
+                <div>
                   <div className="insight-badge">Scientific Verdict</div>
                   <h3 className="insight-title">{selectedOutput.insight.title}</h3>
                   <p className="insight-desc">{selectedOutput.insight.desc}</p>
                 </div>
-                <div style={{ width: '220px', paddingLeft: '24px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                  <div className="insight-grid">
-                    <div className="insight-metric-item">
-                      <span className="metric-label">Sensitivity</span>
-                      <span className="metric-value">{selectedOutput.insight.sensitivity}</span>
-                    </div>
-                    <div className="insight-metric-item">
-                      <span className="metric-label">Specificity</span>
-                      <span className="metric-value">{selectedOutput.insight.specificity}</span>
-                    </div>
+
+                <div className="insight-grid">
+                  <div className="insight-metric-item">
+                    <span className="metric-label">Sensitivity</span>
+                    <span className="metric-value">{selectedOutput.insight.sensitivity}</span>
                   </div>
-                  <div style={{ marginTop: '20px', fontSize: '11px', color: '#64748b', fontStyle: 'italic' }}>
-                    * Paired with Accuracy-First Residual Auditing
+                  <div className="insight-metric-item">
+                    <span className="metric-label">Specificity</span>
+                    <span className="metric-value">{selectedOutput.insight.specificity}</span>
                   </div>
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic' }}>
+                  * Paired with Accuracy-First Residual Auditing
                 </div>
               </motion.div>
             )}

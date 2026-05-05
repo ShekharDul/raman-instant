@@ -128,17 +128,17 @@
 /* Tooltip Overlay */
 .insight-card {
   position: absolute;
-  bottom: -180px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
+  top: -20px;
+  right: -40px;
+  width: 420px;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid #2dd4bf;
   border-radius: 20px;
-  padding: 32px;
+  padding: 24px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   display: flex;
-  gap: 24px;
+  flex-direction: column;
+  gap: 16px;
   z-index: 100;
   backdrop-filter: blur(20px);
 }
