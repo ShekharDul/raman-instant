@@ -10,7 +10,7 @@
 }
 
 .brain-container {
-  max-width: 1200px;
+  max-width: 1400px; /* Expanded for side-by-side clarity */
   margin: 0 auto;
   padding: 0 40px;
   position: relative;
@@ -88,9 +88,9 @@
   position: absolute;
 }
 
-.layer-input { left: 20px; }
-.layer-hidden { left: 320px; }
-.layer-output { left: 620px; }
+.layer-input { left: 320px; }
+.layer-hidden { left: 580px; }
+.layer-output { left: 840px; }
 
 .brain-node {
   background: rgba(15, 23, 42, 0.8);
@@ -129,8 +129,8 @@
 .insight-card {
   position: absolute;
   top: 40px;
-  right: 0;
-  width: 280px; /* Reduced for a more compact side-panel feel */
+  right: 20px; /* Far right with margin */
+  width: 280px;
   background: rgba(15, 23, 42, 0.98);
   border: 1px solid rgba(45, 212, 191, 0.4);
   border-radius: 12px;
