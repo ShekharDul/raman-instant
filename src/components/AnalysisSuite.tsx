@@ -205,7 +205,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
         <div className="suite-dark-glow" />
         <div className="suite-dark-content">
           <div style={{ flex: 1 }}>
-             <div style={{ width: 48, height: 48, background: 'rgba(99, 102, 241, 0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyCenter: 'center', marginBottom: 24, border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+             <div style={{ width: 48, height: 48, background: 'rgba(99, 102, 241, 0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, border: '1px solid rgba(99, 102, 241, 0.3)' }}>
                 <BarChart3 size={24} color="#818cf8" style={{ margin: 'auto' }} />
              </div>
              <h3 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>Ensemble Distribution</h3>
@@ -283,7 +283,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
       <footer className="suite-footer">
         <div className="suite-footer-content">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-             <div style={{ width: 40, height: 40, background: '#0f172a', borderRadius: 12, display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
+             <div style={{ width: 40, height: 40, background: '#0f172a', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShieldCheck size={20} color="#34d399" style={{ margin: 'auto' }} />
              </div>
              <div style={{ textAlign: 'left' }}>
