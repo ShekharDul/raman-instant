@@ -183,6 +183,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
   }, [mcResult, ratioMode]);
 
   const isStable = epi.epistemic_classification === 'STABLE_CONVERGENCE';
+  const isPoorFit = epi.epistemic_classification === 'POOR_FIT';
 
   return (
     <div className="analysis-suite-viewport">
@@ -229,18 +230,20 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
           >
             <div className={`suite-status-tag ${isStable ? 'status-tag-stable' : 'status-tag-unstable'}`}>
               {isStable ? <ShieldCheck size={16} /> : <AlertTriangle size={16} />}
-              {isStable ? 'VALIDATED CONVERGENCE' : 'HIGH EPISTEMIC SENSITIVITY'}
+              {isStable ? 'VALIDATED CONVERGENCE' : (isPoorFit ? 'POOR MODEL FIT' : 'HIGH EPISTEMIC SENSITIVITY')}
             </div>
             <h2 className="suite-verdict-title">
               Analytical Verdict: <br/>
               <span style={{ color: isStable ? '#059669' : '#e11d48' }}>
-                {isStable ? 'Scientifically Defensible' : 'Requires Re-calibration'}
+                {isStable ? 'Scientifically Defensible' : (isPoorFit ? 'Model Mismatch Detected' : 'Requires Re-calibration')}
               </span>
             </h2>
             <p className="suite-verdict-p">
               {isStable 
                 ? `The model ensemble converged to a narrow, unimodal distribution across ${epi.ensembleTotal || 15} iterations. The fitted center position remains invariant to boundary perturbations, confirming high reproducibility.`
-                : "The fitting surface shows extreme sensitivity to boundary conditions. Minor shifts in local search space result in divergent solutions. Use caution when reporting absolute peak positions."}
+                : (isPoorFit 
+                  ? "The selected lineshape model does not adequately describe the experimental data. This typically indicates a complex overlapping peak structure or a non-standard physical process. Multi-peak deconvolution is strongly recommended."
+                  : "The fitting surface shows extreme sensitivity to boundary conditions. Minor shifts in local search space result in divergent solutions. Use caution when reporting absolute peak positions.")}
             </p>
 
             {epi.bimodality?.detected && (

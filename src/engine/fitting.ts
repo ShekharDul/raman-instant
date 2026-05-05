@@ -146,14 +146,22 @@ export class FittingEngine {
       }
     }
     
-    if (peaks.length === 0) {
+    // Systematic Selection: Sort by amplitude and keep top 5 major peaks to prevent model overfitting
+    const formattedPeaks = [];
+    for (let i = 0; i < peaks.length; i += (type === 'voigt' ? 4 : 3)) {
+      formattedPeaks.push(peaks.slice(i, i + (type === 'voigt' ? 4 : 3)));
+    }
+    formattedPeaks.sort((a, b) => b[0] - a[0]);
+    const topPeaks = formattedPeaks.slice(0, 5).flat();
+    
+    if (topPeaks.length === 0) {
       const maxVal = Math.max(...y);
       const idx = y.indexOf(maxVal);
-      peaks.push(maxVal, x[idx], 20);
-      if (type === 'voigt') peaks.push(0.5);
+      topPeaks.push(maxVal, x[idx], 20);
+      if (type === 'voigt') topPeaks.push(0.5);
     }
     
-    return peaks;
+    return topPeaks;
   }
 
   /**
@@ -617,15 +625,15 @@ export class FittingEngine {
       // Residual Analysis on best fit
       const residualAnalysis = baseResult?.residuals ? this.analyzeResiduals(baseResult.residuals) : undefined;
 
-      const POOR_FIT_R2_THRESHOLD = 0.95;
+      const POOR_FIT_R2_THRESHOLD = 0.90;
       let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT' = 'STABLE_CONVERGENCE';
       
-      if (isDegenerateRange) classification = 'STABLE_CONVERGENCE';
-      else if (maxMeanR2 < 0) classification = 'INVALID_FIT';
+      // Accuracy-First Classification: Accuracy MUST take precedence over stability
+      if (maxMeanR2 < 0) classification = 'INVALID_FIT';
       else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) classification = 'POOR_FIT';
+      else if (isDegenerateRange) classification = 'STABLE_CONVERGENCE';
       else if (statErr && statErr > 0) {
         const spread = epistemic_center_max - epistemic_center_min;
-        // If epistemic spread is > 3x the statistical error (2*statErr is the 95% CI roughly)
         if (spread > (3 * statErr)) classification = 'HIGH_SENSITIVITY';
       }
 
