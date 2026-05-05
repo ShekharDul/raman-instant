@@ -88,9 +88,9 @@
   position: absolute;
 }
 
-.layer-input { left: 0; }
-.layer-hidden { left: 50%; transform: translateX(-50%); }
-.layer-output { right: 0; }
+.layer-input { left: 50px; }
+.layer-hidden { left: 350px; }
+.layer-output { left: 650px; }
 
 .brain-node {
   background: rgba(15, 23, 42, 0.8);
@@ -128,17 +128,17 @@
 /* Tooltip Overlay */
 .insight-card {
   position: absolute;
-  top: -20px;
-  right: -40px;
-  width: 420px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid #2dd4bf;
-  border-radius: 20px;
-  padding: 24px;
+  top: 40px;
+  right: 0;
+  width: 330px; /* 20% reduction from 420px approx */
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  border-radius: 16px;
+  padding: 20px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   z-index: 100;
   backdrop-filter: blur(20px);
 }
