@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { DiagnosticDashboard } from './components/DiagnosticDashboard.tsx';
+import { AnalysisSuite } from './components/AnalysisSuite.tsx';
 
 // ── Types ──
 interface ProcessedFile {
@@ -2333,99 +2334,30 @@ function renderFitResults() {
 
   const epi = (state as any).epiResult;
 
+  // Transform workspace into a spacious scrolling viewport
   container.innerHTML = '';
   container.className = 'workspace-grid';
   container.style.display = 'block';
+  container.style.overflowY = 'auto'; // Enable scrolling for the full suite
+  container.style.height = '100%';
+  container.style.background = '#fafbfc';
 
   const root = document.createElement('div');
-  root.className = 'unc-quadrant-container';
+  root.style.minHeight = '100%';
   container.appendChild(root);
 
-  // LEFT PANE (60%)
-  const leftPane = document.createElement('div');
-  leftPane.className = 'unc-left-pane';
-  leftPane.innerHTML = `
-    <div class="unc-header">
-      <div class="unc-title">Model Uncertainty Analysis</div>
-      <div class="unc-badge">${isValidUncertaintyResult(epi) ? (epi.best_fit_model ? epi.best_fit_model.toUpperCase() : 'UNKNOWN') + ' — R² = ' + (epi.r_squared ? epi.r_squared.toFixed(4) : 'N/A') : 'FITTING FAILED'}</div>
-    </div>
-    <div id="plot-fit-large" class="plot-container" style="flex: 1; min-height: 0;"></div>
-    <div id="plot-residual-small" class="plot-container" style="height: 20%; min-height: 80px; margin-top: 8px;"></div>
-  `;
-  root.appendChild(leftPane);
-
-  // RIGHT PANE (40%)
-  const rightPane = document.createElement('div');
-  rightPane.className = 'unc-right-pane';
-
-  const rightTop = document.createElement('div');
-  rightTop.className = 'unc-right-top';
-  rightTop.innerHTML = `
-    <div class="unc-small-caps">Uncertainty Decomposition</div>
-    <div id="plot-uncertainty-bars" class="plot-container" style="flex: 1; min-height: 0;"></div>
-  `;
-  rightPane.appendChild(rightTop);
-
-  const rightBottom = document.createElement('div');
-  rightBottom.className = 'unc-right-bottom';
-  // Use a unique ID for the React root to ensure clean mounting if needed, 
-  // but since we append to a fresh div each time it's fine.
-  rightPane.appendChild(rightBottom);
-
-  // Mount React Dashboard
-  const diagRoot = ReactDOM.createRoot(rightBottom);
-  diagRoot.render(React.createElement(DiagnosticDashboard, { 
+  // Mount the Premium Analysis Suite
+  const suiteRoot = ReactDOM.createRoot(root);
+  suiteRoot.render(React.createElement(AnalysisSuite, { 
     epi: epi, 
-    protocolId: active.protocolId || 'UNSET' 
-  }));
-
-  if (!isValidUncertaintyResult(epi)) {
-    rightTop.innerHTML = `
-      <div class="unc-small-caps">Uncertainty Decomposition</div>
-      <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; margin-top: 16px;">
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-          <span style="color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Fitting Precision</span>
-          <span style="font-family: var(--font-mono); font-weight: 700;">—</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-          <span style="color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Model Sensitivity</span>
-          <span style="font-family: var(--font-mono); font-weight: 700;">—</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid var(--border); padding-top: 12px;">
-          <span style="color: var(--text-primary); text-transform: uppercase; font-weight: 700;">Total Uncertainty</span>
-          <span style="font-family: var(--font-mono); font-weight: 800;">—</span>
-        </div>
-      </div>
-    `;
-  }
-
-  root.appendChild(rightPane);
-
-  requestAnimationFrame(() => {
-    const fitDiv = document.getElementById('plot-fit-large')!;
-    const resDiv = document.getElementById('plot-residual-small')!;
-    const uncDiv = document.getElementById('plot-uncertainty-bars')!;
-
-    ChartRenderer.renderFit(fitDiv, state.fitResult!.fitX, state.fitResult!.fitX.map((_, i) => state.fitResult!.fitY[i] + state.fitResult!.residuals[i]), state.fitResult!.fitX, state.fitResult!.fitY, false, state.showGrid, epi.all_model_results);
-    ChartRenderer.renderResidual(resDiv, { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, undefined, state.showGrid);
-    ChartRenderer.renderUncertaintyPanel(uncDiv, epi, epi.fitted_center || 0);
-
-    // Force resize to fix container mismatch
-    const Plotly = (window as any).Plotly;
-    if (Plotly) {
-      setTimeout(() => {
-        Plotly.Plots.resize(fitDiv);
-        Plotly.Plots.resize(resDiv);
-        Plotly.Plots.resize(uncDiv);
-      }, 50);
-
-      (fitDiv as any).on('plotly_relayout', (ed: any) => {
-        if (ed['xaxis.range[0]'] !== undefined) {
-          Plotly.relayout(resDiv, { 'xaxis.range': [ed['xaxis.range[0]'], ed['xaxis.range[1]']] });
-        }
-      });
+    protocolId: active.protocolId || 'UNSET',
+    state: state,
+    onClose: () => {
+      // Exit uncertainty mode and return to standard workstation
+      (state as any).epiResult = null;
+      updateUI();
     }
-  });
+  }));
 }
 
 function formatEpistemicRange(min: number | undefined | null, max: number | undefined | null): string {
