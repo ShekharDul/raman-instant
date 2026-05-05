@@ -597,16 +597,18 @@ export class ChartRenderer {
 
     const traces: any[] = [];
 
-    // 1. Perturbation Traces (Background)
+    // 1. Perturbation Traces (Background Ensemble)
     perturbationResults.forEach((pr) => {
       if (pr.convergence_status === 'converged') {
+        const peaks = pr.fitted_peaks || [{ amplitude: pr.fitted_amplitude, center: pr.fitted_center, fwhm: pr.fitted_fwhm }];
         const py = fitX.map(xv => {
-          const a = pr.fitted_amplitude;
-          const c = pr.fitted_center;
-          const w = pr.fitted_fwhm;
-          if (pr.model_type === 'voigt') return FittingEngine.voigt(xv, a, c, w, 0.5);
-          if (pr.model_type === 'gaussian') return FittingEngine.gaussian(xv, a, c, w);
-          return FittingEngine.lorentzian(xv, a, c, w);
+          let sum = 0;
+          peaks.forEach((p: any) => {
+            if (pr.model_type === 'voigt') sum += FittingEngine.voigt(xv, p.amplitude, p.center, p.fwhm, 0.5);
+            else if (pr.model_type === 'gaussian') sum += FittingEngine.gaussian(xv, p.amplitude, p.center, p.fwhm);
+            else sum += FittingEngine.lorentzian(xv, p.amplitude, p.center, p.fwhm);
+          });
+          return sum;
         });
         traces.push({
           x: fitX, y: py, mode: 'lines',
@@ -629,10 +631,29 @@ export class ChartRenderer {
       hoverinfo: 'skip'
     });
 
-    // 3. Best Fit Model (Bold)
+    // 3. Individual Components of Best Fit (Subtle Dashed)
+    const bestRes = perturbationResults.find(pr => pr.pert_step === 0 && pr.pert_type === 'symmetric');
+    if (bestRes && bestRes.fitted_peaks && bestRes.fitted_peaks.length > 1) {
+      bestRes.fitted_peaks.forEach((p: any, pIdx: number) => {
+        const py = fitX.map(xv => {
+          if (bestRes.model_type === 'voigt') return FittingEngine.voigt(xv, p.amplitude, p.center, p.fwhm, 0.5);
+          if (bestRes.model_type === 'gaussian') return FittingEngine.gaussian(xv, p.amplitude, p.center, p.fwhm);
+          return FittingEngine.lorentzian(xv, p.amplitude, p.center, p.fwhm);
+        });
+        traces.push({
+          x: fitX, y: py, mode: 'lines',
+          name: `Component ${pIdx + 1}`,
+          line: { color: '#0f172a', width: 1.5, dash: 'dash' },
+          opacity: 0.4,
+          hoverinfo: 'skip'
+        });
+      });
+    }
+
+    // 4. Best Fit Model Sum (Bold)
     traces.push({
       x: fitX, y: fitY, mode: 'lines',
-      name: 'Best Fit',
+      name: 'Best Fit Sum',
       line: { color: '#0f172a', width: 3 },
       hoverinfo: 'x+y'
     });

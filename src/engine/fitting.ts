@@ -84,6 +84,7 @@ export interface EpistemicResult {
   fitted_center_statistical_error: number | null;
   fitted_fwhm: number | null;
   fitted_amplitude: number | null;
+  fitted_peaks: { amplitude: number, center: number, fwhm: number }[];
   r_squared: number | null;
   reduced_chi_squared: number | null;
   epistemic_center_min: number | null;
@@ -405,15 +406,21 @@ export class FittingEngine {
     x: number[],
     y: number[],
     peakId: number,
-    nominalCenter: number,
-    baseFwhm: number,
-    nominalAmplitude: number,
+    nominalCenters: number | number[],
+    baseFwhms: number | number[],
+    nominalAmplitudes: number | number[],
     baseBoundaryLeft: number,
     baseBoundaryRight: number,
     perturbationRangePct: number = 10,
     perturbationStepPct: number = 5,
     extendedAnalysis: boolean = false
   ): EpistemicResult {
+    const centers = Array.isArray(nominalCenters) ? nominalCenters : [nominalCenters];
+    const fwhms = Array.isArray(baseFwhms) ? baseFwhms : [baseFwhms];
+    const amplitudes = Array.isArray(nominalAmplitudes) ? nominalAmplitudes : [nominalAmplitudes];
+    const numPeaks = centers.length;
+    const baseFwhm = fwhms[0]; // Use first peak as reference for perturbation scale
+
     const models: ("lorentzian" | "gaussian" | "voigt")[] = ["lorentzian", "gaussian", "voigt"];
     
     interface Perturbation {
@@ -471,18 +478,21 @@ export class FittingEngine {
       for (const model of models) {
         if (roiX.length < 5) continue;
 
-        const initialParams = model === 'voigt' 
-          ? [nominalAmplitude, nominalCenter, baseFwhm, 0.5] 
-          : [nominalAmplitude, nominalCenter, baseFwhm];
+        const initialParams: number[] = [];
+        for (let i = 0; i < numPeaks; i++) {
+          initialParams.push(amplitudes[i], centers[i], fwhms[i]);
+          if (model === 'voigt') initialParams.push(0.5);
+        }
         
         const res = this.fit(roiX, roiY, initialParams, model);
 
         if (res.convergence_status === "failed") continue;
 
+        // For multi-peak, we track the primary peak (usually first) for the main histogram
         const peak = res.peaks[0];
         const centerVal = peak.center.value as number;
-        const centerShift = Math.abs(centerVal - nominalCenter);
-        const isOutlier = centerShift > (3 * baseFwhm);
+        const centerShift = Math.abs(centerVal - centers[0]);
+        const isOutlier = centerShift > (3 * fwhms[0]);
 
         if (!isOutlier) {
           validCenters.push(centerVal);
@@ -544,6 +554,9 @@ export class FittingEngine {
       const baseResult = all_model_results.find(r => r.pert_step === 0 && r.model_type === bestFitModel && r.pert_type === 'symmetric');
       const statErr = baseResult ? baseResult.fitted_center_statistical_error : null;
       const combined_uncertainty = statErr !== null ? Math.sqrt(Math.pow(statErr, 2) + Math.pow(epistemic_standard_deviation || 0, 2)) : epistemic_standard_deviation;
+
+      // Track multi-peak data for the best fit
+      const fitted_peaks = baseResult?.fitted_peaks || [];
 
       // Bimodality Detection
       const range = epistemic_center_max - epistemic_center_min;
@@ -616,7 +629,7 @@ export class FittingEngine {
 
       return {
         peak_id: peakId,
-        nominal_center: nominalCenter,
+        nominal_center: centers[0],
         boundary_left: baseBoundaryLeft,
         boundary_right: baseBoundaryRight,
         boundary_perturbation_range: 10,
@@ -625,6 +638,7 @@ export class FittingEngine {
         fitted_center_statistical_error: statErr,
         fitted_fwhm: baseResult ? baseResult.fitted_fwhm : null,
         fitted_amplitude: baseResult ? baseResult.fitted_amplitude : null,
+        fitted_peaks,
         r_squared: maxMeanR2 === -Infinity ? null : maxMeanR2,
         reduced_chi_squared: baseResult ? baseResult.reduced_chi_squared : null,
         epistemic_center_min,
@@ -645,7 +659,7 @@ export class FittingEngine {
 
     return {
       peak_id: peakId,
-      nominal_center: nominalCenter,
+      nominal_center: centers[0],
       boundary_left: baseBoundaryLeft,
       boundary_right: baseBoundaryRight,
       boundary_perturbation_range: 10,
@@ -654,6 +668,7 @@ export class FittingEngine {
       fitted_center_statistical_error: null,
       fitted_fwhm: null,
       fitted_amplitude: null,
+      fitted_peaks: [],
       r_squared: null,
       reduced_chi_squared: null,
       epistemic_center_min: null,
@@ -663,7 +678,7 @@ export class FittingEngine {
       convergence_status: 'failed',
       all_model_results,
       isDegenerateRange: false,
-      epistemic_classification: 'STABLE_CONVERGENCE',
+      epistemic_classification: 'INVALID_FIT',
       ensembleModelCounts: { lorentzian: 0, gaussian: 0, voigt: 0 },
       ensembleN: 0
     };

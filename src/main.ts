@@ -2322,7 +2322,18 @@ async function runFitting(minX: number, maxX: number) {
   if (roiX.length < 5) return;
 
   const type = (UI.get('select-fit-type') as HTMLSelectElement).value as any;
-  const initial = FittingEngine.estimateInitial(roiX, roiY, type);
+  let initial = FittingEngine.estimateInitial(roiX, roiY, type);
+
+  // Context-Aware Deconvolution: If ratio selection exists, force a 2-peak fit seeded by labels
+  if (state.ratioSelection?.p1 && state.ratioSelection?.p2) {
+    const p1 = state.ratioSelection.p1;
+    const p2 = state.ratioSelection.p2;
+    if (type === 'voigt') {
+      initial = [p1.y, p1.x, p1.fwhm || 15, 0.5, p2.y, p2.x, p2.fwhm || 15, 0.5];
+    } else {
+      initial = [p1.y, p1.x, p1.fwhm || 15, p2.y, p2.x, p2.fwhm || 15];
+    }
+  }
 
   UI.text('system-status', 'Fitting...');
 
@@ -2332,11 +2343,13 @@ async function runFitting(minX: number, maxX: number) {
 
     let epiResult = null;
     if (result.peaks.length > 0) {
-      const p = result.peaks[0];
-      // Generate the rigor matrix
+      // Pass ALL peaks for rigorous multi-component ensemble analysis
       epiResult = FittingEngine.evaluateEpistemicUncertainty(
         data.wavenumberData, data.intensityData,
-        1, p.center.value || 0, p.fwhm.value || 0, p.amplitude.value || 0,
+        1, 
+        result.peaks.map(p => p.center.value || 0),
+        result.peaks.map(p => p.fwhm.value || 0),
+        result.peaks.map(p => p.amplitude.value || 0),
         minX, maxX,
         10, 5
       );
