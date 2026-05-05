@@ -2336,12 +2336,7 @@ function renderFitResults() {
 
   // Transform workspace into a spacious scrolling viewport
   container.innerHTML = '';
-  container.className = 'workspace-grid';
-  container.style.display = 'block';
-  container.style.overflowY = 'auto'; // Enable scrolling for the full suite
-  container.style.height = '100%';
-  container.style.background = '#fafbfc';
-
+  container.className = 'analysis-suite-viewport';
   const root = document.createElement('div');
   root.style.minHeight = '100%';
   container.appendChild(root);
