@@ -126,14 +126,16 @@ export class FittingEngine {
   }
 
   static estimateInitial(x: number[], y: number[], type: 'lorentzian' | 'gaussian' | 'voigt'): number[] {
-    const peaks: number[] = [];
-    const threshold = Math.max(...y) * 0.1;
+    const peaks: { amp: number, center: number, fwhm: number }[] = [];
+    const threshold = Math.max(...y) * 0.05; // Lower threshold to catch small peaks
     
+    // 1. First Pass: Local Maxima (Parabolic Refinement)
     for (let i = 2; i < y.length - 2; i++) {
       if (y[i] > y[i - 1] && y[i] > y[i + 1] && y[i] > threshold) {
         const amp = y[i];
         const center = x[i];
         
+        // Simple FWHM estimate
         const halfMax = amp / 2;
         let left = i;
         while (left > 0 && y[left] > halfMax) left--;
@@ -141,18 +143,39 @@ export class FittingEngine {
         while (right < y.length - 1 && y[right] > halfMax) right++;
         const fwhm = Math.abs(x[right] - x[left]) || 15;
         
-        peaks.push(amp, center, fwhm);
-        if (type === 'voigt') peaks.push(0.5);
+        peaks.push({ amp, center, fwhm });
+      }
+    }
+
+    // 2. Second Pass: Second-Derivative for Hidden Shoulders
+    // We look for regions where d2y/dx2 is significantly negative but no local maximum was found
+    if (y.length > 10) {
+      const d2 = [];
+      for (let i = 2; i < y.length - 2; i++) {
+        // Simple 5-point stencil for second derivative
+        const val = (-y[i-2] + 16*y[i-1] - 30*y[i] + 16*y[i+1] - y[i+2]) / 12;
+        d2.push({ idx: i, val });
+      }
+
+      for (let i = 2; i < d2.length - 2; i++) {
+        // Local minimum in d2 indicates a peak or shoulder
+        if (d2[i].val < d2[i-1].val && d2[i].val < d2[i+1].val && d2[i].val < -threshold * 0.1) {
+          const center = x[d2[i].idx];
+          const exists = peaks.some(p => Math.abs(p.center - center) < 5);
+          if (!exists) {
+            peaks.push({ amp: y[d2[i].idx], center, fwhm: 15 });
+          }
+        }
       }
     }
     
-    // Systematic Selection: Sort by amplitude and keep top 5 major peaks to prevent model overfitting
-    const formattedPeaks = [];
-    for (let i = 0; i < peaks.length; i += (type === 'voigt' ? 4 : 3)) {
-      formattedPeaks.push(peaks.slice(i, i + (type === 'voigt' ? 4 : 3)));
-    }
-    formattedPeaks.sort((a, b) => b[0] - a[0]);
-    const topPeaks = formattedPeaks.slice(0, 5).flat();
+    // Sort and limit to top 5 major components
+    peaks.sort((a, b) => b.amp - a.amp);
+    const topPeaks = peaks.slice(0, 5).flatMap(p => {
+      const pData = [p.amp, p.center, p.fwhm];
+      if (type === 'voigt') pData.push(0.5);
+      return pData;
+    });
     
     if (topPeaks.length === 0) {
       const maxVal = Math.max(...y);
@@ -556,26 +579,37 @@ export class FittingEngine {
     if (validCenters.length > 0) {
       const epistemic_center_min = Math.min(...validCenters);
       const epistemic_center_max = Math.max(...validCenters);
-      const isDegenerateRange = (epistemic_center_max - epistemic_center_min) < DEGENERATE_RANGE_THRESHOLD_CM;
       
       const meanC = Diagnostics.mean(validCenters);
-      const epistemic_standard_deviation = isDegenerateRange ? 0 : Diagnostics.std(validCenters);
+      
+      // Rigorous Epistemic SD: Never allow a hard 0 if the ensemble has variance
+      const epistemic_standard_deviation = Math.max(Diagnostics.std(validCenters), 0.0001);
 
       const baseResult = all_model_results.find(r => r.pert_step === 0 && r.model_type === bestFitModel && r.pert_type === 'symmetric');
       const statErr = baseResult ? baseResult.fitted_center_statistical_error : null;
-      const combined_uncertainty = statErr !== null ? Math.sqrt(Math.pow(statErr, 2) + Math.pow(epistemic_standard_deviation || 0, 2)) : epistemic_standard_deviation;
+      
+      // Accuracy-First Calibration: Add a "Lack-of-Fit" penalty to the combined uncertainty
+      // If R^2 is low or a mismatch is detected, it indicates model inadequacy.
+      const r2 = maxMeanR2 || 0;
+      const fitBias = (r2 < 0.99) ? (baseFwhm * (1 - r2) * 1.0) : 0; 
+
+      const combined_uncertainty = Math.sqrt(
+        Math.pow(statErr || 0, 2) + 
+        Math.pow(epistemic_standard_deviation, 2) + 
+        Math.pow(fitBias, 2)
+      );
 
       // Track multi-peak data for the best fit
       const fitted_peaks = baseResult?.fitted_peaks || [];
 
       // Bimodality Detection
       const range = epistemic_center_max - epistemic_center_min;
-      const sarle = range < DEGENERATE_RANGE_THRESHOLD_CM ? 0 : Diagnostics.calculateSarle(validCenters);
-      const dipP = range < DEGENERATE_RANGE_THRESHOLD_CM ? 1.0 : Diagnostics.dipTest(validCenters);
+      const sarle = Diagnostics.calculateSarle(validCenters);
+      const dipP = Diagnostics.dipTest(validCenters);
       const km = Diagnostics.kMeans2(validCenters);
       const gap = Math.abs(km.clusters[0] - km.clusters[1]);
       
-      const significantGap = gap > (0.15 * baseFwhm); // 15% of FWHM is a decent resolution gap
+      const significantGap = gap > (0.15 * baseFwhm); 
       const detected = (sarle > 0.65 && dipP < 0.05) || (sarle > 0.555 && significantGap);
       
       const validResults = all_model_results.filter(r => r.status === 'valid');
@@ -625,14 +659,16 @@ export class FittingEngine {
       // Residual Analysis on best fit
       const residualAnalysis = baseResult?.residuals ? this.analyzeResiduals(baseResult.residuals) : undefined;
 
-      const POOR_FIT_R2_THRESHOLD = 0.90;
+      const POOR_FIT_R2_THRESHOLD = 0.94; // Increased threshold for scientific rigor
       let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT' = 'STABLE_CONVERGENCE';
       
-      // Accuracy-First Classification: Accuracy MUST take precedence over stability
-      if (maxMeanR2 < 0) classification = 'INVALID_FIT';
-      else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) classification = 'POOR_FIT';
-      else if (isDegenerateRange) classification = 'STABLE_CONVERGENCE';
-      else if (statErr && statErr > 0) {
+      if (detected || interpretation !== 'STABLE_UNIMODAL') {
+        classification = 'POOR_FIT';
+      } else if (r2 <= 0) {
+        classification = 'INVALID_FIT';
+      } else if (r2 < POOR_FIT_R2_THRESHOLD) {
+        classification = 'POOR_FIT';
+      } else if (statErr && statErr > 0) {
         const spread = epistemic_center_max - epistemic_center_min;
         if (spread > (3 * statErr)) classification = 'HIGH_SENSITIVITY';
       }
@@ -657,7 +693,6 @@ export class FittingEngine {
         combined_uncertainty,
         convergence_status: 'converged',
         all_model_results,
-        isDegenerateRange,
         epistemic_classification: classification,
         ensembleModelCounts,
         ensembleN,
