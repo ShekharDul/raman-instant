@@ -579,6 +579,7 @@ export class FittingEngine {
     if (validCenters.length > 0) {
       const epistemic_center_min = Math.min(...validCenters);
       const epistemic_center_max = Math.max(...validCenters);
+      const isDegenerateRange = (epistemic_center_max - epistemic_center_min) < DEGENERATE_RANGE_THRESHOLD_CM;
       
       const meanC = Diagnostics.mean(validCenters);
       
@@ -693,6 +694,7 @@ export class FittingEngine {
         combined_uncertainty,
         convergence_status: 'converged',
         all_model_results,
+        isDegenerateRange,
         epistemic_classification: classification,
         ensembleModelCounts,
         ensembleN,
