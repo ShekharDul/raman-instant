@@ -13,6 +13,9 @@ import { FittingEngine, type FitResult, formatStatisticalError } from './engine/
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
 import { ProtocolManager, type InstantRamanProtocol } from './engine/protocol.ts';
 import * as XLSX from 'xlsx';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { DiagnosticDashboard } from './components/DiagnosticDashboard.tsx';
 
 // ── Types ──
 interface ProcessedFile {
@@ -2365,8 +2368,16 @@ function renderFitResults() {
 
   const rightBottom = document.createElement('div');
   rightBottom.className = 'unc-right-bottom';
-  rightBottom.innerHTML = generateInterpretationHtml(epi, active.protocolId || 'UNSET');
+  // Use a unique ID for the React root to ensure clean mounting if needed, 
+  // but since we append to a fresh div each time it's fine.
   rightPane.appendChild(rightBottom);
+
+  // Mount React Dashboard
+  const diagRoot = ReactDOM.createRoot(rightBottom);
+  diagRoot.render(React.createElement(DiagnosticDashboard, { 
+    epi: epi, 
+    protocolId: active.protocolId || 'UNSET' 
+  }));
 
   if (!isValidUncertaintyResult(epi)) {
     rightTop.innerHTML = `

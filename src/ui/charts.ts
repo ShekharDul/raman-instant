@@ -1405,4 +1405,84 @@ export class ChartRenderer {
 
     Plotly.react(container, traces, layout, { displayModeBar: false, responsive: true });
   }
+
+  static renderEnsembleHistogram(container: HTMLElement | string, centers: number[], bestCenter: number) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const traces: any[] = [{
+      x: centers,
+      type: 'histogram',
+      name: 'Ensemble Centers',
+      marker: { color: 'rgba(15, 23, 42, 0.5)', line: { color: '#0f172a', width: 1 } },
+      nbinsx: 20
+    }];
+
+    const layout = {
+      ...GRID_LAYOUT,
+      title: { text: 'Ensemble Distribution', font: { size: 12 } },
+      margin: { l: 40, r: 20, t: 30, b: 40 },
+      xaxis: { ...GRID_LAYOUT.xaxis, title: { text: 'Center (cm⁻¹)' } },
+      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Count' } },
+      shapes: [{
+        type: 'line', xref: 'x', yref: 'paper',
+        x0: bestCenter, x1: bestCenter, y0: 0, y1: 1,
+        line: { color: '#be123c', width: 2, dash: 'dot' }
+      }]
+    };
+
+    Plotly.react(container, traces, layout, { displayModeBar: false });
+  }
+
+  static renderResidualScatter(container: HTMLElement | string, x: number[], residuals: number[]) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const traces: any[] = [{
+      x: x,
+      y: residuals,
+      mode: 'markers',
+      type: 'scatter',
+      marker: { color: '#be123c', size: 6, opacity: 0.6 },
+      name: 'Residuals'
+    }];
+
+    const layout = {
+      ...GRID_LAYOUT,
+      title: { text: 'Residual Analysis', font: { size: 12 } },
+      margin: { l: 50, r: 20, t: 30, b: 40 },
+      xaxis: { ...GRID_LAYOUT.xaxis, title: { text: 'Shift (cm⁻¹)' } },
+      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Δ' } },
+      shapes: [{
+        type: 'line', xref: 'paper', yref: 'y',
+        x0: 0, x1: 1, y0: 0, y1: 0,
+        line: { color: '#94a3b8', width: 1, dash: 'dash' }
+      }]
+    };
+
+    Plotly.react(container, traces, layout, { displayModeBar: false });
+  }
+
+  static renderMonteCarloDist(container: HTMLElement | string, samples: number[], title: string) {
+    if (typeof (window as any).Plotly === 'undefined') return;
+    const Plotly = (window as any).Plotly;
+
+    const traces: any[] = [{
+      x: samples,
+      type: 'histogram',
+      marker: { color: 'rgba(13, 148, 136, 0.4)', line: { color: '#0d9488', width: 1 } },
+      nbinsx: 30,
+      name: 'Monte Carlo Samples'
+    }];
+
+    const layout = {
+      ...GRID_LAYOUT,
+      title: { text: title, font: { size: 12 } },
+      margin: { l: 40, r: 20, t: 30, b: 40 },
+      xaxis: { ...GRID_LAYOUT.xaxis, title: { text: 'Value' } },
+      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Probability Density' } }
+    };
+
+    Plotly.react(container, traces, layout, { displayModeBar: false });
+  }
 }

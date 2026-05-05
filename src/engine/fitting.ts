@@ -5,9 +5,9 @@
  * Includes rigorous SVD pseudo-inverse for statistical uncertainty quantification.
  */
 
-// @ts-ignore
 import { levenbergMarquardt as lm } from 'ml-levenberg-marquardt';
 import { SingularValueDecomposition, Matrix } from 'ml-matrix';
+import { Diagnostics, type BimodalityResult, type ResidualAnalysisResult } from './diagnostics.ts';
 
 export const DEGENERATE_RANGE_THRESHOLD_CM = 0.01;
 
@@ -95,6 +95,14 @@ export interface EpistemicResult {
   epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT';
   ensembleModelCounts: { lorentzian: number; gaussian: number; voigt: number };
   ensembleN: number;
+  bimodality?: BimodalityResult;
+  asymmetric?: {
+    leftEdgeSensitivity: number;
+    rightEdgeSensitivity: number;
+    asymmetryRatio: number;
+    diagnosis: string;
+  };
+  residualAnalysis?: ResidualAnalysisResult;
 }
 
 export class FittingEngine {
@@ -361,6 +369,34 @@ export class FittingEngine {
   }
 
   /**
+   * Analyzes residuals for systematic patterns.
+   */
+  static analyzeResiduals(residuals: number[]): ResidualAnalysisResult {
+    const autocorr = Diagnostics.autocorrelation(residuals);
+    const runsP = Diagnostics.runsTest(residuals);
+    const skew = Diagnostics.skewness(residuals);
+    
+    let diagnosis: 'GOOD_FIT' | 'ASYMMETRIC_PEAK' | 'BASELINE_ARTIFACT' | 'INSTRUMENT_ARTIFACT' = 'GOOD_FIT';
+    const isWhiteNoise = Math.abs(autocorr) < 0.3 && runsP > 0.05;
+    
+    if (Math.abs(skew) > 0.5) {
+      diagnosis = 'ASYMMETRIC_PEAK';
+    } else if (autocorr > 0.4) {
+      diagnosis = 'INSTRUMENT_ARTIFACT';
+    } else if (!isWhiteNoise) {
+      diagnosis = 'BASELINE_ARTIFACT';
+    }
+
+    return {
+      isWhiteNoise,
+      autocorrelation: autocorr,
+      runsTestPvalue: runsP,
+      skewness: skew,
+      diagnosis
+    };
+  }
+
+  /**
    * Performs the full Step 3 & Step 4 rigorous multi-model boundary perturbation matrix calculation.
    * Returns a complete IrpPeakFittingRecord.
    */
@@ -373,17 +409,45 @@ export class FittingEngine {
     nominalAmplitude: number,
     baseBoundaryLeft: number,
     baseBoundaryRight: number,
-    perturbationRangePct: number = 10, // e.g. 10 means +/- 10%
-    perturbationStepPct: number = 5
+    perturbationRangePct: number = 10,
+    perturbationStepPct: number = 5,
+    extendedAnalysis: boolean = false
   ): EpistemicResult {
     const models: ("lorentzian" | "gaussian" | "voigt")[] = ["lorentzian", "gaussian", "voigt"];
-    const steps = [];
-    for (let s = -perturbationRangePct; s <= perturbationRangePct; s += perturbationStepPct) {
-      steps.push(s);
+    
+    interface Perturbation {
+      step: number;
+      left: number;
+      right: number;
+      type: 'symmetric' | 'left_only' | 'right_only';
+    }
+
+    const perturbations: Perturbation[] = [];
+    const steps = [-10, -5, 0, 5, 10]; // Fixed steps for defensibility
+
+    // Mode A: Symmetric
+    for (const s of steps) {
+      const shift = baseFwhm * (s / 100);
+      perturbations.push({ step: s, left: baseBoundaryLeft - shift, right: baseBoundaryRight + shift, type: 'symmetric' });
+    }
+
+    // Mode B: Asymmetric (Optional)
+    if (extendedAnalysis) {
+      for (const s of steps) {
+        if (s === 0) continue;
+        const shift = baseFwhm * (s / 100);
+        // Left edge scan
+        perturbations.push({ step: s, left: baseBoundaryLeft - shift, right: baseBoundaryRight, type: 'left_only' });
+        // Right edge scan
+        perturbations.push({ step: s, left: baseBoundaryLeft, right: baseBoundaryRight + shift, type: 'right_only' });
+      }
     }
 
     const all_model_results: any[] = [];
     const validCenters: number[] = [];
+    const leftEdgeCenters: number[] = [];
+    const rightEdgeCenters: number[] = [];
+    
     let maxMeanR2 = -Infinity;
     let bestFitModel: "lorentzian" | "gaussian" | "voigt" | null = null;
 
@@ -392,127 +456,67 @@ export class FittingEngine {
     const ensembleModelCounts = { lorentzian: 0, gaussian: 0, voigt: 0 };
     let ensembleN = 0;
 
-    for (const step of steps) {
-      const shift = (baseFwhm * (step / 100));
-      const boundLeft = baseBoundaryLeft - shift;
-      const boundRight = baseBoundaryRight + shift;
-
+    for (const pert of perturbations) {
       // Extract ROI
       const roiX: number[] = [];
       const roiY: number[] = [];
       for (let i = 0; i < x.length; i++) {
-        if (x[i] >= boundLeft && x[i] <= boundRight) {
+        if (x[i] >= pert.left && x[i] <= pert.right) {
           roiX.push(x[i]);
           roiY.push(y[i]);
         }
       }
 
       for (const model of models) {
-        if (roiX.length < 5) {
-          // Failure due to too few points
-          all_model_results.push({
-            model_type: model,
-            boundary_perturbation_step: step,
-            boundary_left: boundLeft,
-            boundary_right: boundRight,
-            fitted_center: null,
-            fitted_fwhm: null,
-            fitted_amplitude: null,
-            fitted_center_statistical_error: null,
-            fitted_fwhm_statistical_error: null,
-            fitted_amplitude_statistical_error: null,
-            statistical_uncertainty_status: null,
-            r_squared: null,
-            reduced_chi_squared: null,
-            convergence_status: "failed"
-          });
-          continue;
-        }
+        if (roiX.length < 5) continue;
 
-        // Warm-start from best fit parameters instead of cold-start estimation
         const initialParams = model === 'voigt' 
           ? [nominalAmplitude, nominalCenter, baseFwhm, 0.5] 
           : [nominalAmplitude, nominalCenter, baseFwhm];
         
         const res = this.fit(roiX, roiY, initialParams, model);
 
-        const shiftVal = shift; // Absolute shift in cm-1
+        if (res.convergence_status === "failed") continue;
 
-        if (res.convergence_status === "failed") {
-          all_model_results.push({
-            model_type: model,
-            boundary_perturbation_step: step,
-            boundary_shift_cm: shiftVal,
-            boundary_left: boundLeft,
-            boundary_right: boundRight,
-            fitted_center: null,
-            fitted_fwhm: null,
-            fitted_amplitude: null,
-            fitted_center_statistical_error: null,
-            fitted_fwhm_statistical_error: null,
-            fitted_amplitude_statistical_error: null,
-            statistical_uncertainty_status: null,
-            r_squared: null,
-            reduced_chi_squared: null,
-            convergence_status: "failed",
-            status: "failed",
-            outlier_excluded: false
-          });
-          continue;
-        }
-
-        // Converged - Apply Sanity Check (Outlier Detection)
         const peak = res.peaks[0];
         const centerVal = peak.center.value as number;
-        const statErr = peak.center.error;
-
-        const isFiniteCenter = isFinite(centerVal);
-        const isFiniteCov = statErr !== null && isFinite(statErr);
-
-        if (isFiniteCenter && isFiniteCov) {
-          ensembleModelCounts[model]++;
-          ensembleN++;
-        }
-
         const centerShift = Math.abs(centerVal - nominalCenter);
         const isOutlier = centerShift > (3 * baseFwhm);
 
         if (!isOutlier) {
           validCenters.push(centerVal);
+          if (pert.type === 'left_only') leftEdgeCenters.push(centerVal);
+          if (pert.type === 'right_only') rightEdgeCenters.push(centerVal);
           
           if (res.r2 !== null && !isNaN(res.r2)) {
              r2Sums[model] += res.r2;
              r2Counts[model] += 1;
           }
+          
+          ensembleModelCounts[model]++;
+          ensembleN++;
         }
 
-        const modelResult = {
+        all_model_results.push({
           model_type: model,
-          boundary_perturbation_step: step,
-          boundary_shift_cm: shiftVal,
-          boundary_left: boundLeft,
-          boundary_right: boundRight,
+          pert_type: pert.type,
+          pert_step: pert.step,
+          boundary_left: pert.left,
+          boundary_right: pert.right,
           fitted_center: centerVal,
           fitted_fwhm: peak.fwhm.value,
           fitted_amplitude: peak.amplitude.value,
           fitted_center_statistical_error: peak.center.error,
-          fitted_fwhm_statistical_error: peak.fwhm.error,
-          fitted_amplitude_statistical_error: peak.amplitude.error,
-          statistical_uncertainty_status: res.statistical_uncertainty_status,
           r_squared: res.r2,
           reduced_chi_squared: res.reducedChi2,
           convergence_status: "converged",
           status: isOutlier ? "outlier" : "valid",
-          center: centerVal, // Alias for KDE strictly matching requested filter
-          outlier_excluded: isOutlier,
-          exclusion_reason: isOutlier ? `Center shift (${centerShift.toFixed(2)} cm-1) exceeds 3x FWHM (${(3 * baseFwhm).toFixed(2)} cm-1)` : null
-        };
-
-        all_model_results.push(modelResult);
+          residuals: res.residuals // Store for best fit analysis
+        });
       }
     }
 
-    // Determine Best Fit Model by highest mean R2
+    // Determine Best Fit Model
     for (const model of models) {
       if (r2Counts[model] > 0) {
         const meanR2 = r2Sums[model] / r2Counts[model];
@@ -523,62 +527,85 @@ export class FittingEngine {
       }
     }
 
-    // Epistemic properties
-    let epistemic_center_min: number | null = null;
-    let epistemic_center_max: number | null = null;
-    let epistemic_standard_deviation: number | null = null;
-    let combined_uncertainty: number | null = null;
-    let isDegenerateRange = false;
-
     if (validCenters.length > 0) {
-      epistemic_center_min = Math.min(...validCenters);
-      epistemic_center_max = Math.max(...validCenters);
+      const epistemic_center_min = Math.min(...validCenters);
+      const epistemic_center_max = Math.max(...validCenters);
+      const isDegenerateRange = (epistemic_center_max - epistemic_center_min) < DEGENERATE_RANGE_THRESHOLD_CM;
       
-      if (epistemic_center_max - epistemic_center_min < DEGENERATE_RANGE_THRESHOLD_CM) {
-        isDegenerateRange = true;
-        epistemic_center_min = null;
-        epistemic_center_max = null;
-      }
+      const meanC = Diagnostics.mean(validCenters);
+      const epistemic_standard_deviation = isDegenerateRange ? 0 : Diagnostics.std(validCenters);
 
-      if (!isDegenerateRange) {
-        const meanC = validCenters.reduce((a, b) => a + b, 0) / validCenters.length;
-        const variance = validCenters.reduce((a, b) => a + Math.pow(b - meanC, 2), 0) / validCenters.length;
-        epistemic_standard_deviation = Math.sqrt(variance);
-      } else {
-        epistemic_standard_deviation = 0;
-      }
-
-      // Combined uncertainty: RSS of statistical error of best fit and epistemic SD
-      // Find best fit result at step 0
-      const baseResult = all_model_results.find(r => r.boundary_perturbation_step === 0 && r.model_type === bestFitModel);
+      const baseResult = all_model_results.find(r => r.pert_step === 0 && r.model_type === bestFitModel && r.pert_type === 'symmetric');
       const statErr = baseResult ? baseResult.fitted_center_statistical_error : null;
+      const combined_uncertainty = statErr !== null ? Math.sqrt(Math.pow(statErr, 2) + Math.pow(epistemic_standard_deviation || 0, 2)) : epistemic_standard_deviation;
+
+      // Bimodality Detection
+      const range = epistemic_center_max - epistemic_center_min;
+      const sarle = range < DEGENERATE_RANGE_THRESHOLD_CM ? 0 : Diagnostics.calculateSarle(validCenters);
+      const dipP = range < DEGENERATE_RANGE_THRESHOLD_CM ? 1.0 : Diagnostics.dipTest(validCenters);
+      const km = Diagnostics.kMeans2(validCenters);
+      const gap = Math.abs(km.clusters[0] - km.clusters[1]);
       
-      if (statErr !== null) {
-        combined_uncertainty = Math.sqrt(Math.pow(statErr, 2) + Math.pow(epistemic_standard_deviation || 0, 2));
-      } else {
-        combined_uncertainty = epistemic_standard_deviation;
+      const significantGap = gap > (0.15 * baseFwhm); // 15% of FWHM is a decent resolution gap
+      const detected = (sarle > 0.65 && dipP < 0.05) || (sarle > 0.555 && significantGap);
+      
+      const validResults = all_model_results.filter(r => r.status === 'valid');
+      const widthVals = validResults.map(r => r.fitted_fwhm).filter(v => v !== null) as number[];
+      const widthVariance = widthVals.length > 0 ? Diagnostics.std(widthVals) : 0;
+      
+      let interpretation: 'UNRESOLVED_DOUBLET' | 'PHASE_MIXTURE' | 'LINESHAPE_MISMATCH' | 'STABLE_UNIMODAL' = 'STABLE_UNIMODAL';
+      
+      if (detected) {
+        if (widthVariance < (0.2 * baseFwhm)) interpretation = 'UNRESOLVED_DOUBLET';
+        else interpretation = 'PHASE_MIXTURE';
+      } else if (epistemic_standard_deviation > (3 * (statErr || 0.05))) {
+        interpretation = 'LINESHAPE_MISMATCH';
       }
+
+      const bimodality: BimodalityResult = {
+        detected,
+        confidence: sarle > 0.7 ? 'high' : sarle > 0.6 ? 'medium' : 'low',
+        sarleCoefficient: sarle,
+        dipTestPvalue: dipP,
+        clusters: {
+          cluster1: { center: km.clusters[0], std: 0, count: km.assignments.filter(a => a === 0).length },
+          cluster2: { center: km.clusters[1], std: 0, count: km.assignments.filter(a => a === 1).length },
+          separation: gap
+        },
+        interpretation
+      };
+
+      // Asymmetric Sensitivity
+      let asymmetric = undefined;
+      if (extendedAnalysis && leftEdgeCenters.length > 0 && rightEdgeCenters.length > 0) {
+        const leftSens = Diagnostics.std(leftEdgeCenters);
+        const rightSens = Diagnostics.std(rightEdgeCenters);
+        const ratio = leftSens / (rightSens || 0.001);
+        let diagnosis = "Symmetric uncertainty, well-isolated peak";
+        if (ratio > 2) diagnosis = "Neighboring peak or baseline artifact on left side";
+        if (ratio < 0.5) diagnosis = "Neighboring peak or baseline artifact on right side";
+        
+        asymmetric = {
+          leftEdgeSensitivity: leftSens,
+          rightEdgeSensitivity: rightSens,
+          asymmetryRatio: ratio,
+          diagnosis
+        };
+      }
+
+      // Residual Analysis on best fit
+      const residualAnalysis = baseResult?.residuals ? this.analyzeResiduals(baseResult.residuals) : undefined;
 
       const POOR_FIT_R2_THRESHOLD = 0.95;
-      const INVALID_FIT_R2_THRESHOLD = 0;
       let classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT' = 'STABLE_CONVERGENCE';
-
-      if (isDegenerateRange) {
-        classification = 'STABLE_CONVERGENCE';
-      } else if (maxMeanR2 < INVALID_FIT_R2_THRESHOLD) {
-        classification = 'INVALID_FIT';
-      } else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) {
-        classification = 'POOR_FIT';
-      } else if (statErr && statErr > 0 && !isNaN(statErr) && isFinite(statErr)) {
-        const epistemicSpread = Math.max(...validCenters) - Math.min(...validCenters);
-        const ratio = epistemicSpread / (2 * statErr);
-        if (ratio > 3) {
-          classification = 'HIGH_SENSITIVITY';
-        } else {
-          classification = 'STABLE_CONVERGENCE';
-        }
-      } else {
-        classification = 'STABLE_CONVERGENCE';
+      
+      if (isDegenerateRange) classification = 'STABLE_CONVERGENCE';
+      else if (maxMeanR2 < 0) classification = 'INVALID_FIT';
+      else if (maxMeanR2 < POOR_FIT_R2_THRESHOLD) classification = 'POOR_FIT';
+      else if (statErr && statErr > 0) {
+        const spread = epistemic_center_max - epistemic_center_min;
+        // If epistemic spread is > 3x the statistical error (2*statErr is the 95% CI roughly)
+        if (spread > (3 * statErr)) classification = 'HIGH_SENSITIVITY';
       }
 
       return {
@@ -586,7 +613,7 @@ export class FittingEngine {
         nominal_center: nominalCenter,
         boundary_left: baseBoundaryLeft,
         boundary_right: baseBoundaryRight,
-        boundary_perturbation_range: perturbationRangePct,
+        boundary_perturbation_range: 10,
         best_fit_model: bestFitModel,
         fitted_center: baseResult ? baseResult.fitted_center : validCenters[0],
         fitted_center_statistical_error: statErr,
@@ -603,7 +630,10 @@ export class FittingEngine {
         isDegenerateRange,
         epistemic_classification: classification,
         ensembleModelCounts,
-        ensembleN
+        ensembleN,
+        bimodality,
+        asymmetric,
+        residualAnalysis
       };
     }
 
@@ -612,7 +642,7 @@ export class FittingEngine {
       nominal_center: nominalCenter,
       boundary_left: baseBoundaryLeft,
       boundary_right: baseBoundaryRight,
-      boundary_perturbation_range: perturbationRangePct,
+      boundary_perturbation_range: 10,
       best_fit_model: null,
       fitted_center: null,
       fitted_center_statistical_error: null,
