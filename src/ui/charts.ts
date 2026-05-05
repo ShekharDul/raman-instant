@@ -1442,9 +1442,15 @@ export class ChartRenderer {
     const layout = {
       ...GRID_LAYOUT,
       title: { text: 'Ensemble Distribution', font: { size: 12 } },
-      margin: { l: 40, r: 20, t: 30, b: 40 },
-      xaxis: { ...GRID_LAYOUT.xaxis, title: { text: 'Center (cm⁻¹)' } },
-      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Count' } },
+      margin: { l: 40, r: 20, t: 30, b: 60 },
+      xaxis: { 
+        ...GRID_LAYOUT.xaxis, 
+        title: { text: 'Center (cm⁻¹)', font: { size: 11 } },
+        tickfont: { size: 10 },
+        tickangle: -45,
+        nticks: 10
+      },
+      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Count', font: { size: 11 } }, tickfont: { size: 10 } },
       shapes: [{
         type: 'line', xref: 'x', yref: 'paper',
         x0: bestCenter, x1: bestCenter, y0: 0, y1: 1,
@@ -1499,9 +1505,15 @@ export class ChartRenderer {
     const layout = {
       ...GRID_LAYOUT,
       title: { text: title, font: { size: 12 } },
-      margin: { l: 40, r: 20, t: 30, b: 40 },
-      xaxis: { ...GRID_LAYOUT.xaxis, title: { text: 'Value' } },
-      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Probability Density' } }
+      margin: { l: 40, r: 20, t: 30, b: 60 },
+      xaxis: { 
+        ...GRID_LAYOUT.xaxis, 
+        title: { text: 'Value', font: { size: 11 } },
+        tickfont: { size: 10 },
+        tickangle: -45,
+        nticks: 10
+      },
+      yaxis: { ...GRID_LAYOUT.yaxis, title: { text: 'Probability Density', font: { size: 11 } }, tickfont: { size: 10 } }
     };
 
     Plotly.react(container, traces, layout, { displayModeBar: false });
