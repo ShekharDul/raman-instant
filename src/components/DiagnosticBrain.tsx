@@ -252,7 +252,6 @@ const DiagnosticBrain: React.FC = () => {
                 className="insight-card"
               >
                 <div>
-                  <div className="insight-badge">Scientific Verdict</div>
                   <h3 className="insight-title">{selectedOutput.insight.title}</h3>
                   <p className="insight-desc">{selectedOutput.insight.desc}</p>
                 </div>
