@@ -158,7 +158,7 @@ const DiagnosticBrain: React.FC = () => {
               // This is a simplified positioning for the SVG paths
               // In a real app we would use ref-based coordinates, 
               // but for a landing page we can use normalized flex positions.
-              const getX = (layer: string) => layer === 'input' ? 150 : (layer === 'hidden' ? 450 : 750);
+              const getX = (layer: string) => layer === 'input' ? 140 : (layer === 'hidden' ? 440 : 740);
               const getY = (id: string, layer: string) => {
                 const arr = layer === 'input' ? INPUTS : (layer === 'hidden' ? HIDDEN : OUTPUTS);
                 const idx = arr.findIndex(n => n.id === id);
