@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Beaker, Binary, Zap, ShieldCheck, Activity, Search } from 'lucide-react';
+import { Beaker, Binary, Zap, ShieldCheck, Activity, Search, ArrowDown } from 'lucide-react';
 import './DiagnosticBrain.css';
 
 interface Node {
@@ -213,6 +213,8 @@ const DiagnosticBrain: React.FC = () => {
             ))}
           </div>
 
+          <div className="mobile-only-arrow"><ArrowDown size={24} color="#2dd4bf" /></div>
+
           <div className="brain-layer layer-hidden">
             {HIDDEN.map(node => (
               <div 
@@ -228,6 +230,8 @@ const DiagnosticBrain: React.FC = () => {
               </div>
             ))}
           </div>
+
+          <div className="mobile-only-arrow"><ArrowDown size={24} color="#2dd4bf" /></div>
 
           <div className="brain-layer layer-output">
             {OUTPUTS.map(node => (

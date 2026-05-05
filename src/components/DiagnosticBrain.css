@@ -111,6 +111,51 @@
   transform: scale(1.05);
 }
 
+@media (max-width: 1200px) {
+  .layer-input { left: 50px; }
+  .layer-hidden { left: 400px; }
+  .layer-output { left: 750px; }
+  .brain-viewport { overflow-x: auto; justify-content: flex-start; padding: 0 50px; }
+}
+
+@media (max-width: 1024px) {
+  .brain-section { padding: 60px 0; min-height: auto; }
+  .brain-title { font-size: 2rem; }
+  
+  .brain-viewport {
+    flex-direction: column;
+    height: auto;
+    gap: 60px;
+    overflow-x: visible;
+  }
+  
+  .brain-layer {
+    position: static;
+    width: 100%;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .brain-svg {
+    display: none;
+  }
+  
+  .brain-node {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .insight-card {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    width: auto;
+    top: auto;
+    margin: 0;
+  }
+}
+
 .node-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
@@ -206,4 +251,18 @@
   left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.mobile-only-arrow {
+  display: none;
+  z-index: 20;
+}
+
+@media (max-width: 1024px) {
+  .mobile-only-arrow {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: -20px 0;
+  }
 }
