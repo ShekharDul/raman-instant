@@ -10,7 +10,7 @@
 }
 
 .brain-container {
-  max-width: 1400px; /* Expanded for side-by-side clarity */
+  max-width: 1600px; /* Ultra-wide for perfect symmetry */
   margin: 0 auto;
   padding: 0 40px;
   position: relative;
@@ -88,9 +88,9 @@
   position: absolute;
 }
 
-.layer-input { left: 320px; }
-.layer-hidden { left: 580px; }
-.layer-output { left: 840px; }
+.layer-input { left: 360px; }
+.layer-hidden { left: 680px; }
+.layer-output { left: 1000px; }
 
 .brain-node {
   background: rgba(15, 23, 42, 0.8);
