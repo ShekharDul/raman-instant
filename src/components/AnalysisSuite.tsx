@@ -10,7 +10,8 @@ import {
   ArrowDown,
   Microscope,
   ShieldCheck,
-  Zap
+  Zap,
+  Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChartRenderer } from '../ui/charts';
@@ -26,11 +27,22 @@ interface AnalysisSuiteProps {
 export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, state, onClose }) => {
   const [mcResult, setMcResult] = useState<PropagationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [ratioMode, setRatioMode] = useState<{ p1Name: string, p2Name: string } | null>(null);
   
   const fitPlotRef = useRef<HTMLDivElement>(null);
   const resPlotRef = useRef<HTMLDivElement>(null);
   const histPlotRef = useRef<HTMLDivElement>(null);
   const mcPlotRef = useRef<HTMLDivElement>(null);
+
+  // Check for ratio selection on mount
+  useEffect(() => {
+    if (state.ratioSelection?.p1 && state.ratioSelection?.p2) {
+      setRatioMode({
+        p1Name: `Peak @ ${state.ratioSelection.p1.x.toFixed(0)}`,
+        p2Name: `Peak @ ${state.ratioSelection.p2.x.toFixed(0)}`
+      });
+    }
+  }, [state.ratioSelection]);
 
   // Initialize Plotly charts after mount
   useEffect(() => {
@@ -47,6 +59,39 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
           epi.all_model_results
         );
 
+        // Add Ratio Labels if active
+        if (state.ratioSelection?.p1 || state.ratioSelection?.p2) {
+          const Plotly = (window as any).Plotly;
+          const annotations: any[] = [];
+          
+          if (state.ratioSelection.p1) {
+            annotations.push({
+              x: state.ratioSelection.p1.x,
+              y: state.ratioSelection.p1.y,
+              text: 'RATIO: NUMERATOR',
+              showarrow: true,
+              arrowhead: 2,
+              ax: 0, ay: -40,
+              font: { color: '#4f46e5', weight: 'bold', size: 10 },
+              arrowcolor: '#4f46e5'
+            });
+          }
+          if (state.ratioSelection.p2) {
+            annotations.push({
+              x: state.ratioSelection.p2.x,
+              y: state.ratioSelection.p2.y,
+              text: 'RATIO: DENOMINATOR',
+              showarrow: true,
+              arrowhead: 2,
+              ax: 0, ay: -40,
+              font: { color: '#0f172a', weight: 'bold', size: 10 },
+              arrowcolor: '#0f172a'
+            });
+          }
+          
+          Plotly.relayout(fitPlotRef.current, { annotations });
+        }
+
         ChartRenderer.renderResidual(
           resPlotRef.current, 
           { wavenumberData: state.fitResult!.fitX, intensityData: state.fitResult!.residuals }, 
@@ -57,29 +102,66 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
 
       if (histPlotRef.current) {
         const centers = epi.all_model_results
-          .filter((r: any) => r.convergence_status === 'converged')
+          .filter((r: any) => r.status === 'valid')
           .map((r: any) => r.fitted_center);
         ChartRenderer.renderEnsembleHistogram(histPlotRef.current, centers, epi.fitted_center || 0);
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [epi]);
+  }, [epi, state.ratioSelection]);
 
   const runMonteCarlo = async () => {
     setIsSimulating(true);
-    await new Promise(r => setTimeout(r, 800));
+    // Simulate thinking time for "Scientific Rigor"
+    await new Promise(r => setTimeout(r, 1200));
     
-    const intensityEnsemble = epi.all_model_results
-      .filter((r: any) => r.convergence_status === 'converged')
-      .map((r: any) => r.fitted_amplitude || 0);
-    
-    const dummyGEnsemble = intensityEnsemble.map((v: number) => v * (1.5 + (Math.random() * 0.2 - 0.1)));
-    
-    const result = UncertaintyPropagator.propagateGeneral(
-      [intensityEnsemble, dummyGEnsemble],
-      (d, g) => d / g
-    );
+    let result: PropagationResult;
+
+    if (state.ratioSelection?.p1 && state.ratioSelection?.p2) {
+      // REAL CONTEXT-AWARE RATIO PROPAGATION
+      const p1Target = state.ratioSelection.p1.x;
+      const p2Target = state.ratioSelection.p2.x;
+
+      const p1Ensemble = epi.all_model_results
+        .filter((r: any) => r.status === 'valid' && r.fitted_peaks)
+        .map((r: any) => {
+          // Find nearest peak to p1Target in this model result
+          const nearest = r.fitted_peaks.reduce((prev: any, curr: any) => 
+            Math.abs(curr.center - p1Target) < Math.abs(prev.center - p1Target) ? curr : prev
+          );
+          return nearest.amplitude;
+        });
+
+      const p2Ensemble = epi.all_model_results
+        .filter((r: any) => r.status === 'valid' && r.fitted_peaks)
+        .map((r: any) => {
+          // Find nearest peak to p2Target in this model result
+          const nearest = r.fitted_peaks.reduce((prev: any, curr: any) => 
+            Math.abs(curr.center - p2Target) < Math.abs(prev.center - p2Target) ? curr : prev
+          );
+          return nearest.amplitude;
+        });
+
+      result = UncertaintyPropagator.propagateGeneral(
+        [p1Ensemble, p2Ensemble],
+        (a, b) => a / (b || 0.001)
+      );
+    } else {
+      // FALLBACK: PROPAGATE AREA OF PRIMARY PEAK
+      const ampEnsemble = epi.all_model_results
+        .filter((r: any) => r.status === 'valid')
+        .map((r: any) => r.fitted_amplitude || 0);
+      
+      const widthEnsemble = epi.all_model_results
+        .filter((r: any) => r.status === 'valid')
+        .map((r: any) => r.fitted_fwhm || 0);
+      
+      result = UncertaintyPropagator.propagateGeneral(
+        [ampEnsemble, widthEnsemble],
+        (a, w) => a * w * 1.5707 // Approx area for Lorentzian
+      );
+    }
     
     setMcResult(result);
     setIsSimulating(false);
@@ -87,13 +169,17 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
 
   useEffect(() => {
     if (mcResult && mcPlotRef.current) {
+      const label = ratioMode 
+        ? `Ratio: ${ratioMode.p1Name} / ${ratioMode.p2Name}`
+        : "Active Peak Area Uncertainty";
+        
       ChartRenderer.renderMonteCarloDist(
         mcPlotRef.current, 
         mcResult.distribution, 
-        "I_D / I_G Ratio Distribution"
+        label
       );
     }
-  }, [mcResult]);
+  }, [mcResult, ratioMode]);
 
   const isStable = epi.epistemic_classification === 'STABLE_CONVERGENCE';
 
@@ -236,7 +322,9 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
         </div>
         <h2 className="suite-lab-title">Monte Carlo Propagation</h2>
         <p style={{ fontSize: 20, color: '#64748b', maxWidth: 700, margin: '0 auto 48px', lineHeight: 1.6 }}>
-          Derived quantities like I<sub>D</sub>/I<sub>G</sub> require rigorous error bars. We perform a 1,000-sample ensemble shuffle to calculate the true probability distribution.
+          {ratioMode 
+            ? `Propagating the uncertainty of the ratio between ${ratioMode.p1Name} and ${ratioMode.p2Name} across the model ensemble.`
+            : "Derived quantities like Integrated Area require rigorous error bars. We perform a 1,000-sample ensemble shuffle to calculate the true probability distribution."}
         </p>
 
         <div style={{ minHeight: 120 }}>
@@ -247,7 +335,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
               className="suite-btn-premium"
             >
               {isSimulating ? <Activity style={{ animation: 'spin 1s linear infinite' }} /> : <Zap size={24} style={{ color: '#facc15' }} />}
-              {isSimulating ? 'Simulating 1,000 Samples...' : 'Initialize Propagation Engine'}
+              {isSimulating ? 'Propagating Uncertainty...' : 'Initialize Propagation Engine'}
             </button>
           ) : (
             <motion.div 
@@ -256,12 +344,12 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
             >
               <div className="suite-mc-grid">
                 <div className="suite-mc-metric">
-                  <div className="suite-meta-label">Calculated Ratio</div>
+                  <div className="suite-meta-label">{ratioMode ? 'Mean Ratio' : 'Mean Area'}</div>
                   <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.mean.toFixed(3)}</div>
                 </div>
                 <div className="suite-mc-metric">
-                  <div className="suite-meta-label">Std. Deviation</div>
-                  <div className="suite-metric-value" style={{ fontSize: 32 }}>±{mcResult.std.toFixed(4)}</div>
+                  <div className="suite-meta-label">Std. Deviation (±)</div>
+                  <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.std.toFixed(4)}</div>
                 </div>
                 <div className="suite-mc-metric suite-mc-success">
                   <div className="suite-meta-label" style={{ color: '#059669' }}>95% Confidence Interval</div>

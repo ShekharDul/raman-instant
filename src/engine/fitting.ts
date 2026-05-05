@@ -63,6 +63,7 @@ export interface ModelResult {
   fitted_center: number | null;
   fitted_fwhm: number | null;
   fitted_amplitude: number | null;
+  fitted_peaks?: { amplitude: number, center: number, fwhm: number }[]; // Multi-peak support
   fitted_center_statistical_error: number | null;
   fitted_fwhm_statistical_error: number | null;
   fitted_amplitude_statistical_error: number | null;
@@ -506,6 +507,11 @@ export class FittingEngine {
           fitted_center: centerVal,
           fitted_fwhm: peak.fwhm.value,
           fitted_amplitude: peak.amplitude.value,
+          fitted_peaks: res.peaks.map(p => ({
+            amplitude: p.amplitude.value || 0,
+            center: p.center.value || 0,
+            fwhm: p.fwhm.value || 0
+          })),
           fitted_center_statistical_error: peak.center.error,
           r_squared: res.r2,
           reduced_chi_squared: res.reducedChi2,
