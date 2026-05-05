@@ -137,12 +137,8 @@ const DiagnosticBrain: React.FC = () => {
       
       <div className="brain-container">
         <div className="brain-header">
-          <span className="brain-mono">Proprietary Inference Logic</span>
-          <h2 className="brain-title">The Diagnostic Synapse</h2>
-          <p style={{ color: '#94a3b8', maxWidth: '600px', margin: '0 auto', fontSize: '18px' }}>
-            We don't just fit curves. We process raw analytical metrics through an 
-            accuracy-first audit engine to reveal the physical truth of your material.
-          </p>
+          <span className="brain-mono">Inference Logic</span>
+          <h2 className="brain-title">How model uncertainty analysis might help</h2>
         </div>
 
         <div className="brain-viewport">
