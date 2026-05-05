@@ -23,10 +23,14 @@ export interface Snapshot {
   uncertaintyData?: {
     epiResult: any;
     interpretationHtml: string;
+    isSuite: boolean; // Flag to distinguish from legacy uncertainty view
+    mcResult?: any;
     plots: {
       fit: { traces: any[], layout: any },
       residual: { traces: any[], layout: any },
-      uncertainty: { traces: any[], layout: any }
+      ensemble?: { traces: any[], layout: any },
+      monteCarlo?: { traces: any[], layout: any },
+      uncertainty?: { traces: any[], layout: any } // Legacy field
     }
   };
 }

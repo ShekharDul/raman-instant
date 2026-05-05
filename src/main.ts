@@ -74,6 +74,7 @@ interface AppState {
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
   epiResult: import('./engine/fitting').EpistemicResult | null;
+  mcResult: any | null; // UncertaintyPropagatorResult
   visibleTableFileId: string | null;
 }
 
@@ -111,6 +112,7 @@ const state: AppState = {
   pendingLabel: null,
   snapshots: [],
   epiResult: null,
+  mcResult: null,
   visibleTableFileId: null
 };
 
@@ -2185,9 +2187,19 @@ async function saveSnapshot(title: string) {
   // 4.5 Capture Uncertainty Metadata
   let uncertaintyData = undefined;
   if (state.fittingMode && (state as any).epiResult) {
-    const fitEl = document.getElementById('plot-fit-large') as any;
-    const resEl = document.getElementById('plot-residual-small') as any;
-    const uncEl = document.getElementById('plot-uncertainty-bars') as any;
+    const isSuite = !!document.getElementById('suite-plot-fit');
+    
+    // Legacy mapping
+    let fitEl = document.getElementById('plot-fit-large') as any;
+    let resEl = document.getElementById('plot-residual-small') as any;
+    let uncEl = document.getElementById('plot-uncertainty-bars') as any;
+    
+    // Suite mapping
+    const sFitEl = document.getElementById('suite-plot-fit') as any;
+    const sResEl = document.getElementById('suite-plot-residual') as any;
+    const sEnsEl = document.getElementById('suite-plot-ensemble') as any;
+    const sMcEl = document.getElementById('suite-plot-mc') as any;
+    
     const interpEl = document.querySelector('.unc-right-bottom');
 
     const clonePlot = (el: any) => {
@@ -2199,8 +2211,8 @@ async function saveSnapshot(title: string) {
           y: Array.isArray(d.y) ? [...d.y] : d.y
         })),
         layout: {
-          xaxis: { range: el._fullLayout?.xaxis?.range },
-          yaxis: { range: el._fullLayout?.yaxis?.range },
+          xaxis: { range: el._fullLayout?.xaxis?.range, title: el._fullLayout?.xaxis?.title?.text },
+          yaxis: { range: el._fullLayout?.yaxis?.range, title: el._fullLayout?.yaxis?.title?.text },
           shapes: el._fullLayout?.shapes || [],
           annotations: el._fullLayout?.annotations || [],
           title: el._fullLayout?.title?.text
@@ -2208,10 +2220,24 @@ async function saveSnapshot(title: string) {
       };
     };
 
-    if (fitEl && resEl && uncEl) {
+    if (isSuite) {
+      uncertaintyData = {
+        epiResult: (state as any).epiResult,
+        interpretationHtml: '', // Narrative is handled by snapshot.narrative
+        isSuite: true,
+        mcResult: (state as any).mcResult,
+        plots: {
+          fit: clonePlot(sFitEl),
+          residual: clonePlot(sResEl),
+          ensemble: clonePlot(sEnsEl),
+          monteCarlo: clonePlot(sMcEl)
+        }
+      };
+    } else if (fitEl && resEl && uncEl) {
       uncertaintyData = {
         epiResult: (state as any).epiResult,
         interpretationHtml: interpEl ? interpEl.innerHTML : '',
+        isSuite: false,
         plots: {
           fit: clonePlot(fitEl),
           residual: clonePlot(resEl),

@@ -209,6 +209,72 @@ export const REPORT_TEMPLATE = `
             font-style: italic;
         }
 
+        /* ── Suite Styles ── */
+        .suite-report-wrap {
+            margin-top: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 48px;
+        }
+        .suite-report-hero {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .suite-report-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+        .suite-report-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 8px;
+        }
+        .suite-report-metric-box {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .suite-report-metric-item {
+            background: #fff;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            text-align: center;
+        }
+        .suite-report-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .suite-report-value {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .suite-report-dark {
+            background: #0f172a;
+            color: #fff;
+            padding: 48px;
+            border-radius: 12px;
+        }
+        .suite-report-mc-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #064e3b;
+            color: #34d399;
+            font-size: 10px;
+            font-weight: 800;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
         .bibliography-section {
             margin-top: 80px;
             padding-top: 40px;
@@ -303,30 +369,111 @@ export const REPORT_TEMPLATE = `
                     block.className = 'snapshot-block';
                     
                     const plotId = \`plot-\${snap.id}\`;
-                    
-                    if (snap.uncertaintyData) {
-                        // SPECIAL UNCERTAINTY LAYOUT (60/40)
-                        block.innerHTML = \`
-                            <div class="snapshot-header">
-                                <h2 class="snapshot-title">\${snap.title}</h2>
-                                <div class="snapshot-meta">
-                                    <span>TYPE: MODEL UNCERTAINTY ANALYSIS</span>
-                                    <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
-                                    <span>BEST MODEL: \${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
+                             if (snap.uncertaintyData) {
+                        if (snap.uncertaintyData.isSuite) {
+                             // ANALYSIS SUITE LAYOUT
+                             block.innerHTML = \`
+                                <div class="snapshot-header">
+                                    <h2 class="snapshot-title">\${snap.title}</h2>
+                                    <div class="snapshot-meta">
+                                        <span>TYPE: ADVANCED SCIENTIFIC AUDIT</span>
+                                        <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                        <span>BEST MODEL: \${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
-                            <div class="unc-report-layout">
-                                <div class="unc-report-left">
-                                    <div id="\${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
-                                    <div id="\${plotId}-residual" class="unc-report-plot" style="height: 150px;"></div>
+                                \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
+                                
+                                <div class="suite-report-wrap">
+                                    <div class="suite-report-hero">
+                                        <div id="\${plotId}-fit" class="unc-report-plot" style="height: 500px; border-radius: 12px; overflow: hidden;"></div>
+                                        <div id="\${plotId}-residual" class="unc-report-plot" style="height: 180px; border-radius: 8px; overflow: hidden;"></div>
+                                    </div>
+
+                                    <div class="suite-report-grid">
+                                        <div class="suite-report-dark">
+                                            <div style="font-size: 10px; font-weight: 800; color: #818cf8; text-transform: uppercase; margin-bottom: 16px;">Ensemble Distribution</div>
+                                            <div id="\${plotId}-ensemble" style="height: 350px;"></div>
+                                        </div>
+                                        <div class="suite-report-card">
+                                            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 24px;">Uncertainty Budget</div>
+                                            <div class="suite-report-metric-box">
+                                                <div class="suite-report-metric-item">
+                                                    <div class="suite-report-label">Statistical (σ)</div>
+                                                    <div class="suite-report-value">±\${snap.uncertaintyData.epiResult.fitted_center_statistical_error?.toFixed(4)}</div>
+                                                </div>
+                                                <div class="suite-report-metric-item">
+                                                    <div class="suite-report-label">Epistemic (Δ)</div>
+                                                    <div class="suite-report-value" style="color: #6366f1;">±\${snap.uncertaintyData.epiResult.epistemic_standard_deviation?.toFixed(4)}</div>
+                                                </div>
+                                                <div class="suite-report-metric-item">
+                                                    <div class="suite-report-label">Combined</div>
+                                                    <div class="suite-report-value">±\${snap.uncertaintyData.epiResult.combined_uncertainty?.toFixed(4)}</div>
+                                                </div>
+                                            </div>
+                                            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+                                                <div style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Epistemic Verdict</div>
+                                                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+                                                    \${snap.uncertaintyData.epiResult.epistemic_classification === 'STABLE_CONVERGENCE' 
+                                                        ? 'The model ensemble converged to a stable, unimodal solution. Results are scientifically defensible.'
+                                                        : 'High sensitivity to boundary conditions detected. Use caution when reporting absolute peak positions.'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    \${snap.uncertaintyData.plots.monteCarlo ? \`
+                                        <div class="suite-report-card" style="border: 2px solid #eef2ff;">
+                                            <div class="suite-report-mc-badge">Monte Carlo Propagation Analysis</div>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;">
+                                                <div>
+                                                    <div id="\${plotId}-mc" style="height: 350px;"></div>
+                                                </div>
+                                                <div>
+                                                    <div style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">Propagation Results</div>
+                                                    <div class="suite-report-metric-box" style="grid-template-columns: 1fr;">
+                                                        <div class="suite-report-metric-item" style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+                                                            <div class="suite-report-label" style="margin: 0;">Mean Value</div>
+                                                            <div class="suite-report-value" style="font-size: 24px;">\${snap.uncertaintyData.mcResult?.mean.toFixed(3)}</div>
+                                                        </div>
+                                                        <div class="suite-report-metric-item" style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+                                                            <div class="suite-report-label" style="margin: 0;">Std Dev (±)</div>
+                                                            <div class="suite-report-value">\${snap.uncertaintyData.mcResult?.std.toFixed(4)}</div>
+                                                        </div>
+                                                        <div class="suite-report-metric-item" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #ecfdf5; border-color: #d1fae5;">
+                                                            <div class="suite-report-label" style="margin: 0; color: #059669;">95% Confidence</div>
+                                                            <div class="suite-report-value" style="color: #064e3b;">[\${snap.uncertaintyData.mcResult?.confidenceInterval95[0].toFixed(2)}, \${snap.uncertaintyData.mcResult?.confidenceInterval95[1].toFixed(2)}]</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    \` : ''}
                                 </div>
-                                <div class="unc-report-right">
-                                    <div id="\${plotId}-uncertainty" class="unc-report-plot" style="height: 300px;"></div>
-                                    <div class="unc-report-text">\${snap.uncertaintyData.interpretationHtml}</div>
+                             \`;
+                        } else {
+                            // LEGACY UNCERTAINTY LAYOUT (60/40)
+                            block.innerHTML = \`
+                                <div class="snapshot-header">
+                                    <h2 class="snapshot-title">\${snap.title}</h2>
+                                    <div class="snapshot-meta">
+                                        <span>TYPE: MODEL UNCERTAINTY ANALYSIS</span>
+                                        <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
+                                        <span>BEST MODEL: \${snap.uncertaintyData.epiResult.best_fit_model?.toUpperCase()}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        \`;
+                                \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
+                                <div class="unc-report-layout">
+                                    <div class="unc-report-left">
+                                        <div id="\${plotId}-fit" class="unc-report-plot" style="height: 450px;"></div>
+                                        <div id="\${plotId}-residual" class="unc-report-plot" style="height: 150px;"></div>
+                                    </div>
+                                    <div class="unc-report-right">
+                                        <div id="\${plotId}-uncertainty" class="unc-report-plot" style="height: 300px;"></div>
+                                        <div class="unc-report-text">\${snap.uncertaintyData.interpretationHtml}</div>
+                                    </div>
+                                </div>
+                            \`;
+                        }
                     } else {
                         // STANDARD LAYOUT
                         block.innerHTML = \`
@@ -367,18 +514,44 @@ export const REPORT_TEMPLATE = `
                         };
 
                         if (snap.uncertaintyData) {
-                            // RENDER UNCERTAINTY TRIO
                             const u = snap.uncertaintyData;
-                            
-                            const fitLayout = { ...layout, ...u.plots.fit.layout, height: 450, margin: { l: 80, r: 40, t: 40, b: 40 } };
-                            const resLayout = { ...layout, ...u.plots.residual.layout, height: 150, margin: { l: 80, r: 40, t: 20, b: 40 } };
-                            const uncLayout = { ...layout, ...u.plots.uncertainty.layout, height: 300, margin: { l: 40, r: 40, t: 40, b: 60 } };
+                            if (u.isSuite) {
+                                // RENDER SUITE PLOTS
+                                const fitLayout = { ...layout, ...u.plots.fit.layout, height: 500, margin: { l: 80, r: 40, t: 40, b: 40 } };
+                                const resLayout = { ...layout, ...u.plots.residual.layout, height: 180, margin: { l: 80, r: 40, t: 20, b: 40 } };
+                                
+                                Plotly.newPlot(\`\${plotId}-fit\`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
+                                Plotly.newPlot(\`\${plotId}-residual\`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
+                                
+                                if (u.plots.ensemble) {
+                                    const ensLayout = { 
+                                        ...layout, ...u.plots.ensemble.layout, 
+                                        height: 350, 
+                                        paper_bgcolor: '#0f172a', 
+                                        plot_bgcolor: '#0f172a',
+                                        font: { color: '#fff' },
+                                        xaxis: { ...u.plots.ensemble.layout.xaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff' },
+                                        yaxis: { ...u.plots.ensemble.layout.yaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff' }
+                                    };
+                                    Plotly.newPlot(\`\${plotId}-ensemble\`, u.plots.ensemble.traces, ensLayout, { responsive: true, displaylogo: false });
+                                }
+                                
+                                if (u.plots.monteCarlo) {
+                                    const mcLayout = { ...layout, ...u.plots.monteCarlo.layout, height: 350 };
+                                    Plotly.newPlot(\`\${plotId}-mc\`, u.plots.monteCarlo.traces, mcLayout, { responsive: true, displaylogo: false });
+                                }
+                            } else {
+                                // RENDER LEGACY UNCERTAINTY TRIO
+                                const fitLayout = { ...layout, ...u.plots.fit.layout, height: 450, margin: { l: 80, r: 40, t: 40, b: 40 } };
+                                const resLayout = { ...layout, ...u.plots.residual.layout, height: 150, margin: { l: 80, r: 40, t: 20, b: 40 } };
+                                const uncLayout = { ...layout, ...u.plots.uncertainty.layout, height: 300, margin: { l: 40, r: 40, t: 40, b: 60 } };
 
-                            Plotly.newPlot(\`\${plotId}-fit\`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
-                            Plotly.newPlot(\`\${plotId}-residual\`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
-                            Plotly.newPlot(\`\${plotId}-uncertainty\`, u.plots.uncertainty.traces, uncLayout, { responsive: true, displaylogo: false });
+                                Plotly.newPlot(\`\${plotId}-fit\`, u.plots.fit.traces, fitLayout, { responsive: true, displaylogo: false });
+                                Plotly.newPlot(\`\${plotId}-residual\`, u.plots.residual.traces, resLayout, { responsive: true, displaylogo: false });
+                                Plotly.newPlot(\`\${plotId}-uncertainty\`, u.plots.uncertainty.traces, uncLayout, { responsive: true, displaylogo: false });
+                            }
                         } else {
-                            // STANDARD RENDERING
+                             // STANDARD RENDERING
                             const layoutMode = snap.settings.layoutMode || 'single';
                             
                             if (layoutMode.startsWith('grid') && snap.gridTraces && snap.gridTraces.length > 1) {

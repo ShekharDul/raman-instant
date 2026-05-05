@@ -164,6 +164,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
     }
     
     setMcResult(result);
+    (window as any).state.mcResult = result; // Global sync for reports
     setIsSimulating(false);
   };
 
@@ -199,7 +200,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
 
         <div className="suite-hero-content">
           <div className="suite-main-plot-container">
-             <div ref={fitPlotRef} style={{ width: '100%', height: '100%' }} />
+             <div id="suite-plot-fit" ref={fitPlotRef} style={{ width: '100%', height: '100%' }} />
              <div className="suite-floating-meta">
                 <div className="suite-meta-label">Winning Model</div>
                 <div className="suite-meta-value">
@@ -209,7 +210,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
           </div>
           
           <div className="suite-residual-plot-container">
-             <div ref={resPlotRef} style={{ width: '100%', height: '100%' }} />
+             <div id="suite-plot-residual" ref={resPlotRef} style={{ width: '100%', height: '100%' }} />
           </div>
         </div>
 
@@ -310,7 +311,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
              </div>
           </div>
           <div className="suite-dark-card">
-             <div ref={histPlotRef} style={{ width: '100%', height: 320 }} />
+             <div id="suite-plot-ensemble" ref={histPlotRef} style={{ width: '100%', height: 320 }} />
           </div>
         </div>
       </section>
@@ -360,7 +361,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
               </div>
 
               <div className="suite-card" style={{ marginTop: 48, padding: 16 }}>
-                 <div ref={mcPlotRef} style={{ width: '100%', height: 350 }} />
+                 <div id="suite-plot-mc" ref={mcPlotRef} style={{ width: '100%', height: 350 }} />
               </div>
             </motion.div>
           )}
