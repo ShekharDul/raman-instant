@@ -52,7 +52,7 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({ epi, p
     const intensities = epi.all_model_results
         .filter(r => r.convergence_status === 'converged')
         .map(r => r.fitted_amplitude)
-        .filter((a): c is number => a !== null);
+        .filter((a): a is number => a !== null);
     
     // Simulate a denominator ensemble (e.g., G peak) with 5% spread
     const gEnsemble = Array.from({ length: 45 }, () => (epi.fitted_amplitude || 100) * (0.95 + Math.random() * 0.1));
@@ -80,7 +80,7 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({ epi, p
         </div>
         <QualityBadge 
           classification={epi.epistemic_classification} 
-          bimodalityDetected={epi.bimodality?.isBimodal} 
+          bimodalityDetected={epi.bimodality?.detected} 
         />
       </div>
 
@@ -108,7 +108,7 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({ epi, p
                     ? "The model ensemble converged to a narrow, unimodal distribution. High confidence in peak parameters." 
                     : "The fitting surface shows high sensitivity to boundary conditions. Model selection may be physically ambiguous."}
                   </p>
-                  {epi.bimodality?.isBimodal && (
+                  {epi.bimodality?.detected && (
                     <p className="text-rose-600 font-medium flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
                       Detected potential phase coexistence or unresolved doublet.
@@ -176,14 +176,14 @@ export const DiagnosticDashboard: React.FC<DiagnosticDashboardProps> = ({ epi, p
                 <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
                   <div className="flex justify-between p-2 bg-slate-50 rounded">
                     <span className="text-slate-400">Runs Test:</span>
-                    <span className={epi.residualAnalysis.runsTestZ > 1.96 ? "text-rose-600 font-bold" : "text-emerald-600"}>
-                      Z = {epi.residualAnalysis.runsTestZ.toFixed(2)}
+                    <span className={epi.residualAnalysis.runsTestPvalue < 0.05 ? "text-rose-600 font-bold" : "text-emerald-600"}>
+                      p = {epi.residualAnalysis.runsTestPvalue.toFixed(3)}
                     </span>
                   </div>
                   <div className="flex justify-between p-2 bg-slate-50 rounded">
                     <span className="text-slate-400">Autocorr:</span>
-                    <span className={Math.abs(epi.residualAnalysis.autocorrLag1) > 0.3 ? "text-rose-600 font-bold" : "text-emerald-600"}>
-                      r = {epi.residualAnalysis.autocorrLag1.toFixed(2)}
+                    <span className={Math.abs(epi.residualAnalysis.autocorrelation) > 0.3 ? "text-rose-600 font-bold" : "text-emerald-600"}>
+                      r = {epi.residualAnalysis.autocorrelation.toFixed(2)}
                     </span>
                   </div>
                 </div>
