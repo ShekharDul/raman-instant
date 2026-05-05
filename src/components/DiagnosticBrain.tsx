@@ -29,7 +29,7 @@ const INPUTS: Node[] = [
 const HIDDEN: Node[] = [
   { id: 'h1', label: 'Lattice Audit', sub: 'Center-Shift Tracking', layer: 'hidden' },
   { id: 'h2', label: 'Domain Audit', sub: 'Width Stability Analysis', layer: 'hidden' },
-  { id: 'h3', label: 'Convergence Audit', sub: 'Boundary Sensitivity', layer: 'hidden' },
+  { id: 'h3', label: 'Inadequacy Audit', sub: 'Model Integrity Scan', layer: 'hidden' },
   { id: 'h4', label: 'Phase Resolver', sub: 'Bimodal Dist Analysis', layer: 'hidden' },
   { id: 'h5', label: 'Signal Audit', sub: 'Residual Pattern Scan', layer: 'hidden' },
 ];
@@ -39,50 +39,50 @@ const OUTPUTS: Node[] = [
     id: 'o1', label: 'Lattice Strain', sub: 'Stress & Distortion', layer: 'output',
     insight: {
       title: 'Lattice Strain & Stress',
-      desc: 'Tracks phonon energy shifts due to lattice distortion, thermal expansion, or doping.',
-      interpretation: 'Physical tracks phonon energy shifts due to distortion.',
+      desc: 'Tracks phonon energy shifts due to lattice distortion. Position shifts > 2 cm⁻¹ suggest significant GPa-scale strain.',
+      interpretation: 'Requires constant temperature; thermal expansion can mimic strain shifts.',
       sensitivity: 'High Sensitivity',
-      specificity: 'Low Specificity (Temp/Doping)'
+      specificity: 'Medium (Temp-Dependent)'
     }
   },
   { 
     id: 'o2', label: 'Crystallinity', sub: 'Domain & Disorder', layer: 'output',
     insight: {
       title: 'Crystallinity & Disorder',
-      desc: 'Broader peaks indicate shorter phonon lifetimes from defects or amorphization.',
-      interpretation: 'Measures structural integrity of the crystal lattice.',
+      desc: 'Broader peaks indicate shorter phonon lifetimes from defects. Symmetric = small domains, Asymmetric = disorder.',
+      interpretation: 'Note: Peaks narrower than instrument resolution (~1.5 cm⁻¹) are hardware-limited.',
       sensitivity: 'Medium Sensitivity',
-      specificity: 'Medium Specificity'
+      specificity: 'High'
     }
   },
   { 
-    id: 'o3', label: 'Structural Ambiguity', sub: 'Model Integrity', layer: 'output',
+    id: 'o3', label: 'Fitting Ambiguity', sub: 'Unresolved Features', layer: 'output',
     insight: {
-      title: 'Structural Ambiguity',
-      desc: 'Flags instability in peak assignment; correlates with overlapping phases.',
-      interpretation: 'Identifies if the current model is physically insufficient.',
+      title: 'Fitting Ambiguity',
+      desc: 'Flags instability in peak assignment. Often signals unresolved doublets or shoulder peak interference.',
+      interpretation: 'High Δ suggests the chosen lineshape (e.g. Gaussian) may be physically inadequate.',
       sensitivity: 'High Diagnostic Value',
-      specificity: 'Low Specificity'
+      specificity: 'Low (General Ambiguity)'
     }
   },
   { 
     id: 'o4', label: 'Phase Integrity', sub: 'Sub-resolution Phase', layer: 'output',
     insight: {
-      title: 'Phase Integrity',
-      desc: 'Suggests sub-resolution phases or distinct bonding environments.',
-      interpretation: 'Detects hidden polymorphs or chemical heterogeneity.',
-      sensitivity: 'Medium Specificity',
-      specificity: 'Context Dependent'
+      title: 'Phase Integrity & Purity',
+      desc: 'Ensemble clusters reveal coexisting phases. Sarle > 0.555 + dip test p < 0.05 indicates high confidence.',
+      interpretation: 'The strongest evidence for polymorph mixtures or phase transitions.',
+      sensitivity: 'Excellent',
+      specificity: 'High (Phase Specific)'
     }
   },
   { 
-    id: 'o5', label: 'Unmodeled Physics', sub: 'Secondary Phonon Modes', layer: 'output',
+    id: 'o5', label: 'Model Inadequacy', sub: 'Lineshape Mismatch', layer: 'output',
     insight: {
-      title: 'Unmodeled Physics',
-      desc: 'Reveals non-random patterns pointing to secondary phonon modes or fluorescence.',
-      interpretation: 'Indicates quantum confinement in nano-materials.',
-      sensitivity: 'High Diagnostic Value',
-      specificity: 'Low Specificity'
+      title: 'Model Inadequacy',
+      desc: 'Non-random residuals indicate the model is failing to capture the real lineshape or baseline.',
+      interpretation: 'Oscillating residuals suggest instrument artifacts; skew suggests Fano/Voigt needs.',
+      sensitivity: 'High (Quality Control)',
+      specificity: 'Low'
     }
   },
 ];
