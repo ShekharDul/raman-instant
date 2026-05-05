@@ -239,7 +239,7 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
             </h2>
             <p className="suite-verdict-p">
               {isStable 
-                ? "The model ensemble converged to a narrow, unimodal distribution across 45 iterations. The fitted center position remains invariant to boundary perturbations, confirming high reproducibility."
+                ? `The model ensemble converged to a narrow, unimodal distribution across ${epi.ensembleTotal || 15} iterations. The fitted center position remains invariant to boundary perturbations, confirming high reproducibility.`
                 : "The fitting surface shows extreme sensitivity to boundary conditions. Minor shifts in local search space result in divergent solutions. Use caution when reporting absolute peak positions."}
             </p>
 
@@ -302,11 +302,11 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
              <div style={{ display: 'flex', gap: 48 }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', marginBottom: 4 }}>Converged Fits</div>
-                  <div style={{ fontSize: 24, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{epi.ensembleN} / 45</div>
+                  <div style={{ fontSize: 24, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{epi.ensembleN} / {epi.ensembleTotal || 15}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', marginBottom: 4 }}>Convergence Rate</div>
-                  <div style={{ fontSize: 24, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{((epi.ensembleN / 45) * 100).toFixed(0)}%</div>
+                  <div style={{ fontSize: 24, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{((epi.ensembleN / (epi.ensembleTotal || 15)) * 100).toFixed(0)}%</div>
                 </div>
              </div>
           </div>

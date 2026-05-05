@@ -409,6 +409,10 @@ export const REPORT_TEMPLATE = `
                                                     <div class="suite-report-label">Combined</div>
                                                     <div class="suite-report-value">±\${snap.uncertaintyData.epiResult.combined_uncertainty?.toFixed(4)}</div>
                                                 </div>
+                                                <div class="suite-report-metric-item" style="border-top: 1px solid #f1f5f9; margin-top: 12px; padding-top: 12px;">
+                                                    <div class="suite-report-label">Ensemble Convergence</div>
+                                                    <div class="suite-report-value" style="font-size: 11px;">\${snap.uncertaintyData.epiResult.ensembleN} / \${snap.uncertaintyData.epiResult.ensembleTotal || 15} (\${((snap.uncertaintyData.epiResult.ensembleN / (snap.uncertaintyData.epiResult.ensembleTotal || 15)) * 100).toFixed(0)}%)</div>
+                                                </div>
                                             </div>
                                             <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
                                                 <div style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Epistemic Verdict</div>

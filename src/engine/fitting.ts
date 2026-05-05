@@ -97,6 +97,7 @@ export interface EpistemicResult {
   epistemic_classification: 'STABLE_CONVERGENCE' | 'HIGH_SENSITIVITY' | 'POOR_FIT' | 'INVALID_FIT';
   ensembleModelCounts: { lorentzian: number; gaussian: number; voigt: number };
   ensembleN: number;
+  ensembleTotal: number;
   bimodality?: BimodalityResult;
   asymmetric?: {
     leftEdgeSensitivity: number;
@@ -455,14 +456,15 @@ export class FittingEngine {
     const validCenters: number[] = [];
     const leftEdgeCenters: number[] = [];
     const rightEdgeCenters: number[] = [];
+    const ensembleModelCounts = { lorentzian: 0, gaussian: 0, voigt: 0 };
+    let ensembleN = 0;
+    const ensembleTotal = perturbations.length * models.length;
     
     let maxMeanR2 = -Infinity;
     let bestFitModel: "lorentzian" | "gaussian" | "voigt" | null = null;
 
     const r2Sums: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
     const r2Counts: Record<string, number> = { lorentzian: 0, gaussian: 0, voigt: 0 };
-    const ensembleModelCounts = { lorentzian: 0, gaussian: 0, voigt: 0 };
-    let ensembleN = 0;
 
     for (const pert of perturbations) {
       // Extract ROI
@@ -651,6 +653,7 @@ export class FittingEngine {
         epistemic_classification: classification,
         ensembleModelCounts,
         ensembleN,
+        ensembleTotal,
         bimodality,
         asymmetric,
         residualAnalysis
@@ -680,7 +683,8 @@ export class FittingEngine {
       isDegenerateRange: false,
       epistemic_classification: 'INVALID_FIT',
       ensembleModelCounts: { lorentzian: 0, gaussian: 0, voigt: 0 },
-      ensembleN: 0
+      ensembleN: 0,
+      ensembleTotal: perturbations.length * models.length
     };
   }
 }
