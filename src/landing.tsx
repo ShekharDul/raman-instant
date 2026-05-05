@@ -14,6 +14,7 @@ import {
   Terminal,
   Briefcase
 } from 'lucide-react';
+import DiagnosticBrain from './components/DiagnosticBrain';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
@@ -98,56 +99,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
-      {/* ── SECTION 3: THE APPROACH ── */}
-      <section className="lp-section">
-        <div className="lp-extra-wide">
-          <div className="lp-section-title-wrapper" style={{ textAlign: 'center' }}>
-            <span className="lp-section-mono">Ensemble Methodology</span>
-            <h2 className="lp-section-h2">Comparing Analysis Outcomes</h2>
-          </div>
-
-          <div className="lp-comparison-grid">
-            {/* No Fit/Unstable Case */}
-            <div className="lp-case-card">
-              <img 
-                src="assets/CaseA.png" 
-                alt="No Fit/Unstable Case" 
-                className="lp-case-img"
-              />
-              <div className="lp-case-content">
-                <div className="lp-case-label error">
-                  <Terminal size={18} />
-                  Case A: Unstable / No Fit Found
-                </div>
-                <p className="lp-case-p">
-                  Ensemble failure or high variance. Boundary perturbations cause the optimizer to 
-                  diverge or settle in local minima, signaling that the chosen model is insufficient 
-                  for the data complexity.
-                </p>
-              </div>
-            </div>
-
-            {/* Stable Fit Case */}
-            <div className="lp-case-card">
-              <img 
-                src="assets/CaseB.png" 
-                alt="Stable Analysis Case" 
-                className="lp-case-img"
-              />
-              <div className="lp-case-content">
-                <div className="lp-case-label success">
-                  <CircleCheck size={18} />
-                  Case B: Stable Fit Analysis
-                </div>
-                <p className="lp-case-p">
-                  Low epistemic uncertainty across the ensemble. The peak position remains robust 
-                  regardless of window perturbations, confirming high confidence in the chemical assignment.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── SECTION 3: THE BRAIN ── */}
+      <DiagnosticBrain />
 
       {/* ── SECTION 4: CAPABILITIES ── */}
       <section className="lp-section bg-white">
