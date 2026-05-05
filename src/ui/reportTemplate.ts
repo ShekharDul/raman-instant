@@ -530,10 +530,15 @@ export const REPORT_TEMPLATE = `
                                         paper_bgcolor: '#0f172a', 
                                         plot_bgcolor: '#0f172a',
                                         font: { color: '#fff' },
-                                        xaxis: { ...u.plots.ensemble.layout.xaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff' },
-                                        yaxis: { ...u.plots.ensemble.layout.yaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff' }
+                                        xaxis: { ...u.plots.ensemble.layout.xaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff', zeroline: false },
+                                        yaxis: { ...u.plots.ensemble.layout.yaxis, gridcolor: 'rgba(255,255,255,0.1)', linecolor: '#fff', zeroline: false }
                                     };
-                                    Plotly.newPlot(\`\${plotId}-ensemble\`, u.plots.ensemble.traces, ensLayout, { responsive: true, displaylogo: false });
+                                    // Override dark bars for dark background visibility
+                                    const ensTraces = u.plots.ensemble.traces.map(t => ({
+                                        ...t,
+                                        marker: { color: 'rgba(45, 212, 191, 0.5)', line: { color: '#2dd4bf', width: 1 } }
+                                    }));
+                                    Plotly.newPlot(\`\${plotId}-ensemble\`, ensTraces, ensLayout, { responsive: true, displaylogo: false });
                                 }
                                 
                                 if (u.plots.monteCarlo) {
