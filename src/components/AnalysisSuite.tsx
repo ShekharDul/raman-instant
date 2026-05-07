@@ -34,13 +34,23 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
   const p1Target = state.ratioSelection?.p1?.x;
   const p2Target = state.ratioSelection?.p2?.x;
 
-  const peak1Fit = p1Target && state.fitResult?.peaks ? state.fitResult.peaks.reduce((prev: any, curr: any) => 
-    Math.abs((curr.center.value || 0) - p1Target) < Math.abs((prev.center.value || 0) - p1Target) ? curr : prev
-  , null) : null;
+  const peak1Fit = p1Target && state.fitResult?.peaks && state.fitResult.peaks.length > 0
+    ? state.fitResult.peaks.reduce((prev: any, curr: any) => {
+        if (!prev) return curr;
+        const currDiff = Math.abs((curr.center?.value || 0) - p1Target);
+        const prevDiff = Math.abs((prev.center?.value || 0) - p1Target);
+        return currDiff < prevDiff ? curr : prev;
+      }, null)
+    : null;
 
-  const peak2Fit = p2Target && state.fitResult?.peaks ? state.fitResult.peaks.reduce((prev: any, curr: any) => 
-    Math.abs((curr.center.value || 0) - p2Target) < Math.abs((prev.center.value || 0) - p2Target) ? curr : prev
-  , null) : null;
+  const peak2Fit = p2Target && state.fitResult?.peaks && state.fitResult.peaks.length > 0
+    ? state.fitResult.peaks.reduce((prev: any, curr: any) => {
+        if (!prev) return curr;
+        const currDiff = Math.abs((curr.center?.value || 0) - p2Target);
+        const prevDiff = Math.abs((prev.center?.value || 0) - p2Target);
+        return currDiff < prevDiff ? curr : prev;
+      }, null)
+    : null;
 
   const r2 = state.fitResult?.r2 ?? epi.r_squared ?? 1.0;
   const p1Err = peak1Fit?.center?.error ?? 0;
