@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChartRenderer } from '../ui/charts';
 import { UncertaintyPropagator, type PropagationResult } from '../engine/propagation';
+import { Diagnostics } from '../engine/diagnostics';
 
 interface AnalysisSuiteProps {
   epi: any;
@@ -28,6 +29,52 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
   const [mcResult, setMcResult] = useState<PropagationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [ratioMode, setRatioMode] = useState<{ p1Name: string, p2Name: string } | null>(null);
+
+  // Upstream Fit Quality Gate
+  const p1Target = state.ratioSelection?.p1?.x;
+  const p2Target = state.ratioSelection?.p2?.x;
+
+  const peak1Fit = p1Target && state.fitResult?.peaks ? state.fitResult.peaks.reduce((prev: any, curr: any) => 
+    Math.abs((curr.center.value || 0) - p1Target) < Math.abs((prev.center.value || 0) - p1Target) ? curr : prev
+  , null) : null;
+
+  const peak2Fit = p2Target && state.fitResult?.peaks ? state.fitResult.peaks.reduce((prev: any, curr: any) => 
+    Math.abs((curr.center.value || 0) - p2Target) < Math.abs((prev.center.value || 0) - p2Target) ? curr : prev
+  , null) : null;
+
+  const r2 = state.fitResult?.r2 ?? epi.r_squared ?? 1.0;
+  const p1Err = peak1Fit?.center?.error ?? 0;
+  const p2Err = peak2Fit?.center?.error ?? 0;
+
+  const failureTriggers: string[] = [];
+  if (r2 < 0.95) {
+    failureTriggers.push(`Overall Fit Quality: R² of ${r2.toFixed(4)} is below the 0.95 threshold.`);
+  }
+  if (p1Err > 2) {
+    failureTriggers.push(`Numerator Peak: Center statistical uncertainty of ${p1Err.toFixed(2)} cm⁻¹ exceeds the 2.0 cm⁻¹ threshold.`);
+  }
+  if (p2Err > 2) {
+    failureTriggers.push(`Denominator Peak: Center statistical uncertainty of ${p2Err.toFixed(2)} cm⁻¹ exceeds the 2.0 cm⁻¹ threshold.`);
+  }
+
+  const hasPoorFitQuality = failureTriggers.length > 0;
+
+  // Downstream Ensemble Bimodality Detection
+  const ensembleCenters = epi.all_model_results
+    ?.filter((r: any) => r.status === 'valid')
+    .map((r: any) => r.fitted_center) || [];
+  const ensembleBimodality = Diagnostics.detectBimodalityKDE(ensembleCenters);
+  const isEnsembleBimodal = ensembleBimodality.isMultimodal;
+
+  // Downstream Ratio Bimodality Detection
+  const ratioBimodality = mcResult ? Diagnostics.detectBimodalityKDE(mcResult.distribution) : null;
+
+  // Log failures
+  useEffect(() => {
+    if (hasPoorFitQuality) {
+      console.warn("⚠️ [Upstream Validation Gate Failed] Ratio Propagation is visually de-emphasised due to:", failureTriggers.join(" | "));
+    }
+  }, [hasPoorFitQuality]);
   
   const fitPlotRef = useRef<HTMLDivElement>(null);
   const resPlotRef = useRef<HTMLDivElement>(null);
@@ -242,7 +289,16 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
               {isStable 
                 ? `The model ensemble converged to a narrow, unimodal distribution across ${epi.ensembleTotal || 15} iterations. The fitted center position remains invariant to boundary perturbations, confirming high reproducibility.`
                 : (isPoorFit 
-                  ? "The selected lineshape model does not adequately describe the experimental data. This typically indicates a complex overlapping peak structure or a non-standard physical process. Multi-peak deconvolution is strongly recommended."
+                  ? (
+                    <>
+                      The selected lineshape model does not adequately describe the experimental data. This typically indicates a complex overlapping peak structure or a non-standard physical process. Multi-peak deconvolution is strongly recommended.
+                      {isEnsembleBimodal && (
+                        <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(225, 29, 72, 0.05)', borderLeft: '3px solid #e11d48', borderRadius: '4px', fontSize: 13, color: '#be123c', fontWeight: 600 }}>
+                          Bimodal ensemble detected. The optimizer is finding two distinct solutions depending on starting conditions, which strongly suggests two overlapping peaks within the selected spectral window. Narrow the fitting window or use multi-peak deconvolution.
+                        </div>
+                      )}
+                    </>
+                  )
                   : "The fitting surface shows extreme sensitivity to boundary conditions. Minor shifts in local search space result in divergent solutions. Use caution when reporting absolute peak positions.")}
             </p>
 
@@ -332,6 +388,33 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
         </p>
 
         <div style={{ minHeight: 120 }}>
+          {hasPoorFitQuality && (
+            <div style={{ 
+              marginBottom: 24, 
+              padding: 20, 
+              background: '#fef2f2', 
+              borderRadius: 12, 
+              border: '1px solid #fee2e2', 
+              display: 'flex', 
+              gap: 16,
+              textAlign: 'left'
+            }}>
+              <AlertTriangle style={{ color: '#ef4444', flexShrink: 0 }} />
+              <div>
+                <h4 style={{ color: '#991b1b', margin: '0 0 4px', fontSize: 14, fontWeight: 700 }}>Poor Fit Quality Warning</h4>
+                <p style={{ color: '#b91c1c', fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                  One or more peaks contributing to this ratio have poor fit quality. Ratio analysis built on unreliable peak fits will produce meaningless results. Resolve the individual peak fits first before attempting ratio quantification.
+                </p>
+                <div style={{ marginTop: 12, padding: 12, background: 'rgba(239, 68, 68, 0.05)', borderRadius: 6, border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
+                  <strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#991b1b' }}>Triggered Failure Reasons:</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 11, color: '#b91c1c', lineHeight: 1.4 }}>
+                    {failureTriggers.map((t, idx) => <li key={idx}>{t}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!mcResult ? (
             <button 
               onClick={runMonteCarlo}
@@ -346,22 +429,55 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="suite-mc-grid">
-                <div className="suite-mc-metric">
-                  <div className="suite-meta-label">{ratioMode ? 'Mean Ratio' : 'Mean Area'}</div>
-                  <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.mean.toFixed(3)}</div>
-                </div>
-                <div className="suite-mc-metric">
-                  <div className="suite-meta-label">Std. Deviation (±)</div>
-                  <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.std.toFixed(4)}</div>
-                </div>
-                <div className="suite-mc-metric suite-mc-success">
-                  <div className="suite-meta-label" style={{ color: '#059669' }}>95% Confidence Interval</div>
-                  <div className="suite-metric-value" style={{ fontSize: 28, color: '#064e3b' }}>
-                    [{mcResult.confidenceInterval95[0].toFixed(2)}, {mcResult.confidenceInterval95[1].toFixed(2)}]
+              {ratioBimodality?.isMultimodal ? (
+                <>
+                  <div className="suite-mc-grid">
+                    {ratioBimodality.modes.map((mode, idx) => (
+                      <div className="suite-mc-metric" key={idx}>
+                        <div className="suite-meta-label">Mode {idx + 1} Location</div>
+                        <div className="suite-metric-value" style={{ fontSize: 32, color: '#4f46e5' }}>{mode.location.toFixed(3)}</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                          {(mode.fraction * 100).toFixed(1)}% of samples
+                        </div>
+                      </div>
+                    ))}
+                    <div className="suite-mc-metric" style={{ background: '#fff1f2', border: '1px solid #ffe4e6' }}>
+                      <div className="suite-meta-label" style={{ color: '#be123c' }}>Distribution Shape</div>
+                      <div className="suite-metric-value" style={{ fontSize: 24, color: '#9f1239', fontWeight: 800 }}>Multimodal / Non-Gaussian</div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div style={{ marginTop: 24, padding: 20, background: '#fff1f2', borderRadius: 12, border: '1px solid #ffe4e6', textAlign: 'left', display: 'flex', gap: 16 }}>
+                    <AlertTriangle style={{ color: '#e11d48', flexShrink: 0 }} />
+                    <p style={{ color: '#9f1239', fontSize: 13, margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                      This ratio distribution is non-Gaussian. The ensemble is converging to multiple distinct solutions. Multi-peak deconvolution is required before ratio quantification is meaningful.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="suite-mc-grid" style={hasPoorFitQuality ? { opacity: 0.5, filter: 'grayscale(100%)' } : {}}>
+                    <div className="suite-mc-metric">
+                      <div className="suite-meta-label">{ratioMode ? 'Mean Ratio' : 'Mean Area'}</div>
+                      <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.mean.toFixed(3)}</div>
+                    </div>
+                    <div className="suite-mc-metric">
+                      <div className="suite-meta-label">Std. Deviation (±)</div>
+                      <div className="suite-metric-value" style={{ fontSize: 32 }}>{mcResult.std.toFixed(4)}</div>
+                    </div>
+                    <div className="suite-mc-metric suite-mc-success">
+                      <div className="suite-meta-label" style={{ color: '#059669' }}>95% Confidence Interval</div>
+                      <div className="suite-metric-value" style={{ fontSize: 28, color: '#064e3b' }}>
+                        [{mcResult.confidenceInterval95[0].toFixed(2)}, {mcResult.confidenceInterval95[1].toFixed(2)}]
+                      </div>
+                    </div>
+                  </div>
+                  {hasPoorFitQuality && (
+                    <div style={{ marginTop: 16, color: '#be123c', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      ⚠️ These numerical results are not trustworthy due to poor upstream peak fits.
+                    </div>
+                  )}
+                </>
+              )}
 
               <div className="suite-card" style={{ marginTop: 48, padding: 16 }}>
                  <div id="suite-plot-mc" ref={mcPlotRef} style={{ width: '100%', height: 350 }} />

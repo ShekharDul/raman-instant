@@ -188,4 +188,106 @@ export class Diagnostics {
     if (sarle > 0.5) return 0.08; // Borderline
     return 0.5; // Likely unimodal
   }
+
+  /**
+   * Performs Kernel Density Estimation (KDE) and counts peaks to detect bimodality.
+   * If a clear valley exists between the two major modes dropping to < 50% of the
+   * smaller peak's height, it returns isMultimodal = true.
+   */
+  static detectBimodalityKDE(samples: number[]): {
+    isMultimodal: boolean;
+    modes: { location: number; fraction: number }[];
+  } {
+    if (samples.length < 10) {
+      return { isMultimodal: false, modes: [] };
+    }
+
+    const n = samples.length;
+    const sorted = [...samples].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const range = max - min;
+
+    if (range === 0) {
+      return { isMultimodal: false, modes: [] };
+    }
+
+    const mean = this.mean(samples);
+    const std = this.std(samples);
+
+    // Silverman's Rule of Thumb for Bandwidth
+    let h = 1.06 * std * Math.pow(n, -0.2);
+    if (h === 0) h = 0.1;
+
+    const numGrid = 100;
+    const gridX: number[] = [];
+    const gridY: number[] = [];
+
+    for (let i = 0; i < numGrid; i++) {
+      const x = min + (i / (numGrid - 1)) * range;
+      gridX.push(x);
+
+      // Evaluate Gaussian KDE
+      let sum = 0;
+      for (let j = 0; j < n; j++) {
+        const u = (x - samples[j]) / h;
+        sum += Math.exp(-u * u / 2) / Math.sqrt(2 * Math.PI);
+      }
+      gridY.push(sum / (n * h));
+    }
+
+    // Find local maxima (peaks)
+    const peakIndices: number[] = [];
+    const maxVal = Math.max(...gridY);
+    for (let i = 1; i < numGrid - 1; i++) {
+      if (gridY[i] > gridY[i - 1] && gridY[i] > gridY[i + 1]) {
+        // Only consider peaks that are at least 5% of global max height
+        if (gridY[i] > 0.05 * maxVal) {
+          peakIndices.push(i);
+        }
+      }
+    }
+
+    // Check for bimodality / multimodality
+    if (peakIndices.length >= 2) {
+      // Sort peaks by height descending to identify top two modes
+      const peaksSorted = [...peakIndices].sort((a, b) => gridY[b] - gridY[a]);
+      const idx1 = peaksSorted[0];
+      const idx2 = peaksSorted[1];
+
+      const idxLeft = Math.min(idx1, idx2);
+      const idxRight = Math.max(idx1, idx2);
+
+      // Find the minimum valley between the two peak modes
+      let minVal = Infinity;
+      let minIdx = -1;
+      for (let i = idxLeft; i <= idxRight; i++) {
+        if (gridY[i] < minVal) {
+          minVal = gridY[i];
+          minIdx = i;
+        }
+      }
+
+      const smallerPeakHeight = Math.min(gridY[idx1], gridY[idx2]);
+      // If valley height drops to less than half the smaller peak height:
+      if (minVal < 0.5 * smallerPeakHeight) {
+        const valleyLocation = gridX[minIdx];
+        const samplesLeft = samples.filter(s => s <= valleyLocation);
+        const samplesRight = samples.filter(s => s > valleyLocation);
+
+        const loc1 = gridX[idx1];
+        const loc2 = gridX[idx2];
+
+        return {
+          isMultimodal: true,
+          modes: [
+            { location: loc1, fraction: samplesLeft.length / n },
+            { location: loc2, fraction: samplesRight.length / n }
+          ].sort((a, b) => a.location - b.location)
+        };
+      }
+    }
+
+    return { isMultimodal: false, modes: [] };
+  }
 }
