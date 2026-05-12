@@ -1,0 +1,9 @@
+Raman Spectrum Export
+Laser: 785 nm at 50 mW
+Integration: 10 seconds
+Model: inVia Raman Microscope
+1000  5200
+1002  5180
+1004  5210
+1006  5195
+1008  5220

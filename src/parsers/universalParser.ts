@@ -194,24 +194,148 @@ export class UniversalParser {
     return this.parseText(content, fileName, 785, 'Bruker DPT');
   }
 
-  private static parseText(content: string, fileName: string, laserWavelength: number, formatLabel = 'Auto-Detected'): NormalizedSpectrum {
-    const lines = content.split(/\r?\n/);
-    let x: number[] = [];
-    let y: number[] = [];
+  public static normalizeDecimals(text: string): string {
+    const lines = text.split('\n');
     
-    const numRegex = /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/g;
+    // Analyze first 100 data lines to detect format
+    const sampleLines = lines
+      .filter(line => /\d/.test(line))  // Has at least one digit
+      .slice(0, 100);
+    
+    let commaAsDecimalCount = 0;
+    let commaAsDelimiterCount = 0;
+    
+    for (const line of sampleLines) {
+      // Pattern: "1000,52" with 1-3 digits after comma = decimal separator
+      if (/\d+,\d{1,3}(?:\s|$)/.test(line)) {
+        commaAsDecimalCount++;
+      }
+      // Pattern: "1000, 5200" with space after comma = CSV delimiter
+      if (/\d+,\s+\d+/.test(line)) {
+        commaAsDelimiterCount++;
+      }
+    }
+    
+    // If commas are predominantly used as decimals (2:1 ratio), normalize them
+    if (commaAsDecimalCount > commaAsDelimiterCount * 2) {
+      // Replace comma with dot ONLY when it's between digits and followed by whitespace or end-of-line
+      // This preserves actual CSV delimiters
+      return text.replace(/(\d+),(\d{1,3})(?=\s|$)/g, '$1.$2');
+    }
+    
+    return text;  // No normalization needed
+  }
 
+  private static calculateMedian(arr: number[]): number {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+  }
+
+  public static parseText(content: string, fileName: string, laserWavelength: number, formatLabel = 'Auto-Detected'): NormalizedSpectrum {
+    content = this.normalizeDecimals(content);
+    
+    const lines = content.split(/\r?\n/);
+    const numRegex = /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/g;
+    
+    const rawData: number[][] = [];
+    
+    // Parse all numeric lines
     for (const line of lines) {
       const matches = line.match(numRegex);
       if (matches && matches.length >= 2) {
-        const valX = parseFloat(matches[0]);
-        const valY = parseFloat(matches[1]);
-        if (!isNaN(valX) && !isNaN(valY)) {
-          x.push(valX);
-          y.push(valY);
-        }
+        const nums = matches.map(m => parseFloat(m));
+        rawData.push(nums);
       }
     }
+    
+    if (rawData.length === 0) {
+      throw new Error(
+        `Failed to parse ${fileName}: No valid numeric data detected.\n\n` +
+        `Supported formats:\n` +
+        `• CSV/TSV (comma or tab separated)\n` +
+        `• Space-delimited text (two or more columns)\n` +
+        `• JCAMP-DX (.jdx, .dx)\n` +
+        `• Horiba LabSpec (.txt, .xml)\n` +
+        `• Ocean Optics (.txt)\n` +
+        `• Bruker OPUS (.dpt)\n\n` +
+        `File preview (first 500 characters):\n${content.slice(0, 500)}...`
+      );
+    }
+    
+    // STEP 0.5: Filter obvious garbage data points
+    let filteredData = rawData.filter(row => {
+      const x = row[0];
+      const y = row[1];
+      
+      // Typical Raman range: 100-4000 cm⁻¹ or 400-1100 nm (for raw nm data)
+      // Allow slightly wider range to be safe
+      if (Math.abs(x) < 5) return false; 
+      
+      // Remove points where Y is exactly zero (often placeholder values)
+      if (y === 0) return false;
+      
+      return true;
+    });
+
+    if (filteredData.length < 5) {
+        // Fallback if filtering was too aggressive
+        filteredData = rawData;
+    }
+
+    // STEP 1: Detect if first column is sequential index
+    const firstCol = filteredData.map(row => row[0]);
+    let isSequentialIndex = false;
+    
+    if (firstCol.length >= 3) {
+      // Check first 10 rows for sequential pattern
+      const sample = firstCol.slice(0, 10);
+      isSequentialIndex = sample.every((val, idx) => Math.abs(val - (firstCol[0] + idx)) < 0.01);
+    }
+    
+    // STEP 2: Choose which columns to extract
+    let xColumnIndex = 0;
+    let yColumnIndex = 1;
+    
+    if (isSequentialIndex) {
+      // First column is index (0, 1, 2, 3...), skip it
+      xColumnIndex = 1;
+      yColumnIndex = 2;
+      
+      // Verify file has enough columns
+      if (filteredData[0].length < 3) {
+        throw new Error(
+          `Column mismatch in ${fileName}.\n` +
+          `First column appears to be row indices (0, 1, 2...), ` +
+          `but only ${filteredData[0].length} total columns found.\n` +
+          `Expected: [Index, Wavenumber, Intensity].\n` +
+          `Check your export settings in the instrument software.`
+        );
+      }
+    }
+    
+    // STEP 3: Extract X and Y from correct columns
+    const extractedY = filteredData.map(row => row[yColumnIndex]);
+    
+    // Remove extreme outliers (likely metadata numbers)
+    const medianY = this.calculateMedian(extractedY);
+    const filteredPoints = filteredData
+      .map(row => ({ x: row[xColumnIndex], y: row[yColumnIndex] }))
+      .filter(point => {
+        // Remove intensities >100× median or <0.01× median (extreme outliers)
+        // Only apply if median is non-zero
+        if (medianY !== 0) {
+           if (Math.abs(point.y) > Math.abs(medianY) * 100) return false;
+           if (Math.abs(point.y) < Math.abs(medianY) / 100) return false;
+        }
+        return true;
+      });
+
+    const x = filteredPoints.map(p => p.x);
+    const y = filteredPoints.map(p => p.y);
 
     return this.finalize(x, y, formatLabel, fileName, laserWavelength);
   }
