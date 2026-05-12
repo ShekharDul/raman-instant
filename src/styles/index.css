@@ -1513,83 +1513,12 @@ body.workstation-active #app { display: grid !important; }
 /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
    LANDING PAGE STYLES (.lp- prefix)
    Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
-.lp-wrapper { background: var(--lp-bg); color: var(--lp-gray-900); font-family: var(--font-sans); }
-.lp-max-width { max-width: var(--lp-grid-width, 1200px); margin: 0 auto; padding: 0 24px; }
-.lp-narrow-width { max-width: 42rem; margin: 0 auto; padding: 0 24px; }
-.lp-extra-wide { max-width: 1760px; margin: 0 auto; padding: 0 48px; }
+/* Landing page styles moved to landing.css */
 
-.lp-section { padding: var(--lp-section-py) 0; }
-.lp-section.bg-white { background: var(--lp-white); border-top: 1px solid var(--lp-gray-100); border-bottom: 1px solid var(--lp-gray-100); }
-.lp-section-mono { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--lp-teal); font-weight: 700; }
-.lp-section-h2 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 12px; }
 
-/* Hero */
-.lp-hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 24px; }
-.lp-hero-h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 32px; }
-.lp-hero-h1 span { color: var(--lp-teal); }
-.lp-hero-p { font-size: 1.25rem; color: var(--lp-gray-600); max-width: 650px; margin: 0 auto 48px; }
-.lp-btn-primary { background: var(--lp-teal); color: white; padding: 16px 32px; border-radius: 8px; font-weight: 700; font-size: 1.125rem; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; transition: all 0.2s; }
-.lp-btn-primary:hover { background: var(--lp-teal-strong); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25); }
 
-/* Comparison Grid */
-.lp-comparison-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 80px; margin-top: 64px; }
-.lp-case-card { flex: 1; min-width: 450px; max-width: 1000px; background: var(--lp-white); border: 1px solid var(--lp-gray-100); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); transition: transform 0.3s ease; }
-.lp-case-card:hover { transform: translateY(-8px); }
-.lp-case-img { width: 100%; height: auto; display: block; border-bottom: 1px solid var(--lp-gray-100); background: #f8fafc; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
-.lp-case-content { padding: 32px; }
-.lp-case-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; }
-.lp-case-label.error { color: #dc2626; }
-.lp-case-label.success { color: var(--lp-teal); }
-.lp-case-p { font-size: 0.95rem; color: var(--lp-gray-600); line-height: 1.6; }
 
-/* Capability Grid */
-.lp-capability-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 64px; }
-.lp-capability-card { padding: 32px; background: var(--lp-gray-50); border: 1px solid var(--lp-gray-100); border-radius: 16px; transition: all 0.2s; }
-.lp-capability-card:hover { background: var(--lp-white); border-color: var(--lp-teal); box-shadow: var(--shadow-md); }
-.lp-card-icon { color: var(--lp-teal); margin-bottom: 20px; }
-.lp-card-h4 { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; }
-.lp-card-p { font-size: 0.95rem; color: var(--lp-gray-600); line-height: 1.6; }
 
-/* About Section (Dossier) */
-.lp-about-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 64px; align-items: start; }
-.lp-dossier-h3 { font-size: 3rem; font-weight: 900; letter-spacing: -0.03em; color: var(--lp-gray-900); margin-bottom: 8px; }
-.lp-about-text { font-size: 1.125rem; color: var(--lp-gray-600); line-height: 1.7; margin-bottom: 24px; }
-.lp-profile-title { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--lp-teal); text-transform: uppercase; margin-bottom: 16px; }
-
-.lp-research-box { background: var(--lp-gray-50); padding: 40px; border-radius: 20px; border: 1px solid var(--lp-gray-100); }
-.lp-research-h4 { font-size: 1.25rem; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
-.lp-research-p { font-size: 1rem; color: var(--lp-gray-600); line-height: 1.6; }
-
-.lp-social-links { display: flex; flex-wrap: wrap; gap: 12px; }
-.lp-social-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1.5px solid var(--lp-gray-200); border-radius: 8px; color: var(--lp-gray-900); font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-.lp-social-btn:hover { border-color: var(--lp-teal); color: var(--lp-teal); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-
-.lp-footer { padding: 48px 24px; border-top: 1px solid var(--lp-gray-100); text-align: center; }
-.lp-footer-p { font-family: var(--font-mono); font-size: 10px; color: var(--lp-gray-400); text-transform: uppercase; letter-spacing: 0.1em; }
-
-/* Utilities */
-.lp-mb-6 { margin-bottom: 24px; }
-.lp-mb-8 { margin-bottom: 32px; }
-.lp-mt-8 { margin-top: 32px; }
-.lp-mt-12 { margin-top: 48px; }
-.lp-text-teal { color: var(--lp-teal); }
-
-@media (max-width: 1024px) {
-  .lp-about-grid { grid-template-columns: 1fr; gap: 48px; }
-  .lp-comparison-grid { grid-template-columns: 1fr; gap: 48px; padding: 0 24px; }
-  .lp-case-card { min-width: 100%; max-width: 100%; }
-  .lp-hero-h1 { font-size: 3rem; }
-  .lp-section { padding: 80px 0; }
-}
-
-@media (max-width: 768px) {
-  .lp-section { padding: 60px 0; }
-  .lp-comparison-grid { gap: 32px; }
-  .lp-case-content { padding: 24px; }
-  .lp-hero-h1 { font-size: 2.5rem; }
-  .lp-hero-p { font-size: 1.1rem; }
-  .lp-extra-wide { padding: 0 20px; }
-}
 
 /* ── Analysis Suite: Premium Scientific Installation ── */
 

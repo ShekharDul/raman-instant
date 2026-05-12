@@ -1,18 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  ArrowDown, 
-  ArrowRight, 
-  Mail, 
-  FileText, 
-  CircleCheck, 
-  ChevronRight, 
-  Binary, 
-  Beaker, 
-  Code, 
-  MessageSquare,
-  Award,
+import React, { useEffect, useState, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
+import {
+  ArrowRight,
+  Mail,
+  Briefcase,
   Terminal,
-  Briefcase
+  Zap,
+  Shield,
+  FileCheck,
+  Brain,
+  Upload,
+  Image,
+  CheckCircle2,
+  Lock,
+  Server,
+  Copy,
+  Heart,
+  ExternalLink,
+  ChevronDown
 } from 'lucide-react';
 import DiagnosticBrain from './components/DiagnosticBrain';
 
@@ -20,181 +25,323 @@ interface LandingProps {
   onEnterWorkstation: () => void;
 }
 
+/* ── Fade-in wrapper ── */
+const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({ children, delay = 0, className = '' }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 32 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+/* ── Capability cards data ── */
+const CAPABILITIES = [
+  {
+    icon: <Zap size={24} />,
+    title: 'Automated Baseline & Deconvolution',
+    desc: 'Adaptive SNIP baseline correction and Levenberg-Marquardt multi-peak fitting. Gaussian, Lorentzian, or Voigt — resolved automatically.'
+  },
+  {
+    icon: <Shield size={24} />,
+    title: 'Split Uncertainty Quantification',
+    desc: 'Statistical error from bootstrap resampling. Epistemic error from boundary perturbation. Both reported separately, never conflated.'
+  },
+  {
+    icon: <FileCheck size={24} />,
+    title: 'Byte-for-Byte Reproducibility',
+    desc: 'Every analysis serializes to a cryptographically hashed .irp protocol. Reload it months later and get the exact same result.'
+  },
+  {
+    icon: <Brain size={24} />,
+    title: 'Diagnostic Intelligence',
+    desc: "Sarle's Bimodality, Wald-Wolfowitz Runs Test, and KDE phase detection — mapped to physical material phenomena in real-time."
+  },
+  {
+    icon: <Upload size={24} />,
+    title: 'Universal File Ingestion',
+    desc: 'Reads JCAMP-DX, Horiba LabSpec, Ocean Optics, Bruker DPT, and any CSV/TXT. European decimal formats handled automatically.'
+  },
+  {
+    icon: <Image size={24} />,
+    title: 'Publication-Ready Exports',
+    desc: '300-DPI PNG, vector SVG, interactive HTML reports, and pre-authored journal methods sections. One click.'
+  }
+];
+
+const METHODS_TEXT = `Raman spectra were processed using Instant Raman (v2.5). Baseline correction employed the SNIP algorithm (25 iterations). Peak detection used 3-point parabolic interpolation with sub-pixel accuracy. Multi-peak deconvolution was performed via Levenberg-Marquardt optimization with Lorentzian line profiles. Uncertainty quantification combined 500-sample bootstrap resampling (statistical) with boundary-dependent ensemble perturbation (epistemic). All processing was performed client-side; no data was transmitted to external servers.`;
+
 const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   const [isDesktop, setIsDesktop] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const checkDevice = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    checkDevice();
-    window.addEventListener('resize', checkDevice);
-    return () => window.removeEventListener('resize', checkDevice);
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  return (
-    <div className="lp-wrapper">
-      
-      {/* ── SECTION 1: HERO ── */}
-      <section className="lp-hero">
-        <div className="lp-max-width">
-          <div className="lp-badge">
-            <span className="lp-dot"></span>
-            Project: Instant Raman v1.4
-          </div>
-          
-          <h1 className="lp-hero-h1">
-            Boundary-Dependent <br/>
-            <span>Uncertainty Analysis</span>
-          </h1>
-          
-          <p className="lp-hero-p">
-            Quantifying epistemic ambiguity in spectroscopic curve-fitting through automated ensemble-based perturbation.
-          </p>
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(METHODS_TEXT);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* fallback silently */ }
+  };
 
-          <div className="lp-hero-actions">
+  return (
+    <div className="lp-root">
+
+      {/* ════════════════════════════════════════════
+          SECTION 1: HERO
+          ════════════════════════════════════════════ */}
+      <section className="lp-hero">
+        {/* Ambient glow effects */}
+        <div className="lp-hero-glow lp-hero-glow--primary" />
+        <div className="lp-hero-glow lp-hero-glow--secondary" />
+
+        {/* Background: DiagnosticBrain at reduced opacity */}
+        {isDesktop && (
+          <div className="lp-hero-brain-bg">
+            <DiagnosticBrain />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="lp-hero-content">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lp-hero-badge"
+          >
+            <span className="lp-hero-dot" />
+            Instant Raman v2.5 · Open Source
+          </motion.div>
+
+          <motion.h1
+            className="lp-hero-h1"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+          >
+            Drop Your Spectrum.{' '}
+            <span className="lp-hero-accent">Get Answers in Seconds.</span>
+          </motion.h1>
+
+          <motion.p
+            className="lp-hero-sub"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.35 }}
+          >
+            Journal-ready deconvolution, uncertainty quantification, and publication exports
+            — entirely in your browser. Your data never leaves your machine.
+          </motion.p>
+
+          <motion.div
+            className="lp-hero-actions"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55 }}
+          >
             {isDesktop ? (
-              <button 
-                onClick={onEnterWorkstation}
-                className="lp-btn-primary"
-              >
-                Launch Spectral Workstation
+              <button onClick={onEnterWorkstation} className="lp-btn-launch">
+                Launch Workstation
                 <ArrowRight size={20} />
               </button>
             ) : (
-              <div className="lp-badge lp-mono">
-                Workstation requires desktop environment.
+              <div className="lp-mobile-notice">
+                <Lock size={14} />
+                Desktop required for the full workstation experience.
               </div>
             )}
-            
-            <div className="lp-scroll-hint lp-mt-12">
-              <span className="lp-mono lp-text-teal" style={{ fontSize: '10px', fontWeight: 700 }}>Research Context</span>
-              <div className="lp-mt-12">
-                <ArrowDown size={16} className="lp-text-teal" />
-              </div>
-            </div>
-          </div>
+            <a
+              href="https://github.com/ShekharDul/raman-instant"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="lp-btn-ghost"
+            >
+              <Terminal size={16} />
+              View on GitHub
+            </a>
+          </motion.div>
+
+          <motion.div
+            className="lp-trust-badges"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+          >
+            <span className="lp-trust-pill">100% Client-Side</span>
+            <span className="lp-trust-pill">Zero Backend</span>
+            <span className="lp-trust-pill">MIT License</span>
+          </motion.div>
+
+          {/* Scroll hint */}
+          <motion.div
+            className="lp-scroll-cue"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
+          >
+            <ChevronDown size={20} className="lp-scroll-bounce" />
+          </motion.div>
         </div>
       </section>
 
-      {/* ── SECTION 2: THE PROBLEM ── */}
-      <section id="problem" className="lp-section bg-white">
-        <div className="lp-narrow-width">
-          <div className="lp-section-mono lp-mb-8" style={{ textAlign: 'center' }}>Problem Definition</div>
-          
-          <div className="lp-copy">
-            <p className="lp-mb-8" style={{ fontSize: '1.25rem', color: 'var(--lp-gray-600)' }}>
-              Traditional Raman spectroscopy software treats peak fitting as a single, fixed result, ignoring how 
-              minor adjustments to analysis boundaries can lead to significant shifts in your data.
-            </p>
-            <p className="lp-mb-8" style={{ paddingLeft: '32px', borderLeft: '4px solid var(--lp-teal)', fontWeight: 700, fontSize: '1.25rem' }}>
-              This "boundary-dependency" is a form of uncertainty that standard workflows systematically overlook, 
-              potentially leading to false assignments of chemical states.
-            </p>
-            <p style={{ fontSize: '1.125rem', color: 'var(--lp-gray-600)' }}>
-              Instant Raman was developed to expose this ambiguity by running multi-fit ensembles across 
-              varying boundaries, providing a verified range instead of a single, potentially biased number.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* ════════════════════════════════════════════
+          SECTION 2: CAPABILITIES
+          ════════════════════════════════════════════ */}
+      <section className="lp-capabilities">
+        <div className="lp-container">
+          <FadeIn>
+            <span className="lp-section-label">Core Capabilities</span>
+            <h2 className="lp-section-heading">
+              Everything You Need for Rigorous Spectral Analysis
+            </h2>
+          </FadeIn>
 
-      {/* ── SECTION 3: THE BRAIN ── */}
-      <DiagnosticBrain />
-
-      {/* ── SECTION 4: CAPABILITIES ── */}
-      <section className="lp-section bg-white">
-        <div className="lp-max-width">
-          <div className="lp-section-title-wrapper">
-            <span className="lp-section-mono">Core Capabilities</span>
-            <h2 className="lp-section-h2">Rigor as a Feature</h2>
-          </div>
-
-          <div className="lp-capability-grid">
-            {[
-              { icon: <Beaker />, title: "Materials Science", desc: "Raman spectroscopy, polymorph ID, and crystallization study workflows." },
-              { icon: <Binary />, title: "Numeric Computation", desc: "Levenberg-Marquardt optimization and SVD covariance analysis." },
-              { icon: <Code />, title: "Software Engineering", desc: "Type-safe scientific computing with TypeScript and Plotly.js." },
-              { icon: <MessageSquare />, title: "Audit Trails", desc: ".irp JSON protocols with SHA-256 hash verification." }
-            ].map((card, i) => (
-              <div key={i} className="lp-capability-card">
-                <div className="lp-card-icon">
-                  {React.cloneElement(card.icon as React.ReactElement<any>, { size: 24 })}
+          <div className="lp-cap-grid">
+            {CAPABILITIES.map((cap, i) => (
+              <FadeIn key={i} delay={i * 0.08}>
+                <div className="lp-cap-card">
+                  <div className="lp-cap-icon">{cap.icon}</div>
+                  <h3 className="lp-cap-title">{cap.title}</h3>
+                  <p className="lp-cap-desc">{cap.desc}</p>
                 </div>
-                <h4 className="lp-card-h4">{card.title}</h4>
-                <p className="lp-card-p">{card.desc}</p>
-              </div>
+              </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 5: ABOUT ── */}
-      <section className="lp-section bg-white">
-        <div className="lp-max-width">
-          <div className="lp-about-grid">
-            {/* Bio Column */}
-            <div>
-              <span className="lp-profile-title">Interested in Material Synthesis and Characterization Roles</span>
-              <h3 className="lp-dossier-h3">Shekhar Dulgach</h3>
-              <p className="lp-section-mono lp-mb-8">Materials Researcher & Engineer</p>
-              
-              <div className="lp-mt-12">
-                <div className="lp-mb-8">
-                  <h4 className="lp-research-h4" style={{ marginBottom: '8px' }}>Technical Focus</h4>
-                  <ul style={{ listStyle: 'none', padding: 0 }}>
-                    <li className="lp-about-text" style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'start' }}>
-                      <Beaker size={20} className="lp-text-teal" style={{ marginTop: '4px' }} />
-                      Designing Active Pharmaceutical Ingredient (API) crystallization experiments.
-                    </li>
-                    <li className="lp-about-text" style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'start' }}>
-                      <Binary size={20} className="lp-text-teal" style={{ marginTop: '4px' }} />
-                      Characterization: P-XRD, SC-XRD, and Raman/Angle-resolved Raman spectroscopy.
-                    </li>
-                    <li className="lp-about-text" style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'start' }}>
-                      <Code size={20} className="lp-text-teal" style={{ marginTop: '4px' }} />
-                      Computational tools: Mercury CCDC and CrystalDiffract.
-                    </li>
-                  </ul>
-                </div>
+      {/* ════════════════════════════════════════════
+          SECTION 3: TRUST — Zero Backend
+          ════════════════════════════════════════════ */}
+      <section className="lp-trust-section">
+        <div className="lp-container">
+          <div className="lp-trust-grid">
+            <FadeIn>
+              <div className="lp-trust-left">
+                <span className="lp-section-label">Privacy Architecture</span>
+                <h2 className="lp-trust-heading">
+                  Your Data.{' '}
+                  <span className="lp-hero-accent">Your Machine.</span>{' '}
+                  Period.
+                </h2>
+                <p className="lp-trust-desc">
+                  Instant Raman processes everything locally using browser-native TypeScript. 
+                  No server round-trips, no cloud uploads, no telemetry on your spectral data. 
+                  Ideal for proprietary pharmaceutical and battery research.
+                </p>
               </div>
-
-              <div className="lp-social-links lp-mt-8">
-                <a href="https://www.linkedin.com/in/shekhardulgach/" target="_blank" rel="noopener noreferrer" className="lp-social-btn">
-                  <Briefcase size={16} />
-                  LinkedIn
-                </a>
-                <a href="https://github.com/ShekharDul/raman-instant" target="_blank" rel="noopener noreferrer" className="lp-social-btn">
-                  <Terminal size={16} />
-                  GitHub
-                </a>
-                <a href="mailto:shekhardulgach19@gmail.com" className="lp-social-btn">
-                  <Mail size={16} />
-                  Contact
-                </a>
+            </FadeIn>
+            <FadeIn delay={0.15}>
+              <div className="lp-trust-right">
+                {[
+                  { icon: <Server size={20} />, text: 'All computation runs in your browser — WebAssembly-speed TypeScript engine' },
+                  { icon: <Lock size={20} />, text: 'No server, no upload, no cloud storage. Files stay on your filesystem.' },
+                  { icon: <CheckCircle2 size={20} />, text: 'SHA-256 hash verification on every .irp protocol for audit compliance' }
+                ].map((item, i) => (
+                  <div key={i} className="lp-trust-item">
+                    <div className="lp-trust-item-icon">{item.icon}</div>
+                    <span>{item.text}</span>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            {/* Background Column */}
-            <div className="lp-research-box">
-              <h4 className="lp-research-h4">Professional Context</h4>
-              <p className="lp-research-p lp-mb-6">
-                <strong>Project Focus:</strong> Investigating the influence of solvents on crystal morphology 
-                via evaporative crystallization (Leeds/AstraZeneca).
-              </p>
-              <p className="lp-research-p">
-                <strong>Current Qualification:</strong> MSc (Eng) in Materials Science & Engineering, University of Leeds.
-              </p>
-            </div>
+            </FadeIn>
           </div>
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* ════════════════════════════════════════════
+          SECTION 4: METHODS COPY
+          ════════════════════════════════════════════ */}
+      <section className="lp-methods-section">
+        <div className="lp-container lp-methods-container">
+          <FadeIn>
+            <span className="lp-section-label">For Your Manuscript</span>
+            <h2 className="lp-section-heading">Pre-Authored Methods Section</h2>
+            <p className="lp-methods-intro">
+              Copy this directly into your journal submission. Every parameter is verifiable via the .irp protocol.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div className="lp-methods-block">
+              <div className="lp-methods-header">
+                <span>methods_section.txt</span>
+                <button onClick={handleCopy} className="lp-copy-btn">
+                  {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <pre className="lp-methods-pre">{METHODS_TEXT}</pre>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════
+          SECTION 5: ABOUT
+          ════════════════════════════════════════════ */}
+      <section className="lp-about-section">
+        <div className="lp-container">
+          <FadeIn>
+            <div className="lp-about-inner">
+              <span className="lp-section-label">Built By</span>
+              <h3 className="lp-about-name">Shekhar Dulgach</h3>
+              <p className="lp-about-role">Materials Researcher & Engineer</p>
+              <p className="lp-about-bio">
+                MSc (Eng) in Materials Science & Engineering, University of Leeds. 
+                Research focus on API crystallization kinetics, Raman characterization, 
+                and computational materials informatics.
+              </p>
+              <div className="lp-about-links">
+                <a href="https://www.linkedin.com/in/shekhardulgach/" target="_blank" rel="noopener noreferrer" className="lp-about-link">
+                  <Briefcase size={16} /> LinkedIn
+                </a>
+                <a href="https://github.com/ShekharDul/raman-instant" target="_blank" rel="noopener noreferrer" className="lp-about-link">
+                  <Terminal size={16} /> GitHub
+                </a>
+                <a href="mailto:shekhardulgach19@gmail.com" className="lp-about-link">
+                  <Mail size={16} /> Contact
+                </a>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════
+          FOOTER
+          ════════════════════════════════════════════ */}
       <footer className="lp-footer">
-        <p className="lp-footer-p">
-          © {new Date().getFullYear()} Instant Raman · Designed for Academic Rigor
-        </p>
+        <div className="lp-container lp-footer-inner">
+          <div className="lp-footer-left">
+            <span className="lp-footer-brand">Instant Raman</span>
+            <span className="lp-footer-copy">© {new Date().getFullYear()} · MIT License</span>
+          </div>
+          <div className="lp-footer-right">
+            <a href="https://github.com/ShekharDul/raman-instant" target="_blank" rel="noopener noreferrer">
+              GitHub <ExternalLink size={12} />
+            </a>
+            <a href="https://www.linkedin.com/in/shekhardulgach/" target="_blank" rel="noopener noreferrer">
+              LinkedIn <ExternalLink size={12} />
+            </a>
+            <a href="https://rzp.io/rzp/3VZL3oi" target="_blank" rel="noopener noreferrer" className="lp-footer-support">
+              <Heart size={12} /> Support Open Science
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );

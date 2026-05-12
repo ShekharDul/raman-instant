@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import Landing from './landing';
 import './styles/index.css';
+import './styles/landing.css';
 
 const container = document.getElementById('landing-root');
 if (container) {
