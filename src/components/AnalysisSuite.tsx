@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChartRenderer } from '../ui/charts';
 import { UncertaintyPropagator, type PropagationResult } from '../engine/propagation';
 import { Diagnostics } from '../engine/diagnostics';
+import { UncertaintyLandscape } from './UncertaintyLandscape';
 
 interface AnalysisSuiteProps {
   epi: any;
@@ -274,6 +275,28 @@ export const AnalysisSuite: React.FC<AnalysisSuiteProps> = ({ epi, protocolId, s
 
         <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', opacity: 0.4 }}>
           <ArrowDown size={20} />
+        </div>
+      </section>
+
+      {/* 1.5. UNCERTAINTY LANDSCAPE: 2D Density Field */}
+      <section className="suite-dark-wrap" style={{ padding: '80px 0' }}>
+        <div className="suite-dark-glow" />
+        <div className="suite-dark-content" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+            <div style={{ width: 48, height: 48, background: 'rgba(34, 211, 238, 0.15)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(34, 211, 238, 0.25)' }}>
+              <Target size={24} color="#22d3ee" style={{ margin: 'auto' }} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Uncertainty Landscape</h3>
+              <p style={{ color: '#94a3b8', fontSize: 14, margin: '4px 0 0' }}>2D density field mapping boundary perturbation to fitted peak center across the model ensemble</p>
+            </div>
+          </div>
+          <UncertaintyLandscape
+            epi={epi}
+            spectrumX={state.fitResult?.fitX || []}
+            spectrumY={state.fitResult ? state.fitResult.fitX.map((_: number, i: number) => (state.fitResult!.fitY[i] + state.fitResult!.residuals[i])) : []}
+            fitResult={state.fitResult}
+          />
         </div>
       </section>
 

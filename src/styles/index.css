@@ -1892,3 +1892,215 @@ body.workstation-active #app { display: grid !important; }
 .suite-return-btn:hover {
   color: var(--accent);
 }
+
+/* ── 2D Uncertainty Landscape ── */
+
+.landscape-container {
+  width: 100%;
+  position: relative;
+}
+
+.landscape-canvas-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 720 / 480;
+  background: #0a0a0f;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5), inset 0 0 80px rgba(34, 211, 238, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.landscape-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.landscape-overlay {
+  cursor: crosshair;
+  z-index: 2;
+}
+
+/* Loading State */
+.landscape-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 10;
+  background: #0a0a0f;
+  border-radius: 20px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.landscape-loading-pulse {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.15);
+  animation: landscape-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes landscape-pulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.4; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Axis Labels */
+.landscape-axis-x {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.landscape-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+}
+
+.landscape-axis-x-label {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.landscape-axis-y {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 48px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.landscape-tick-y {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  text-align: right;
+}
+
+.landscape-axis-y-label {
+  position: absolute;
+  top: 50%;
+  left: -40px;
+  transform: rotate(-90deg) translateX(-50%);
+  transform-origin: center center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Diagnostic Badge */
+.landscape-diagnostic-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  padding: 8px 16px;
+  background: rgba(10, 10, 15, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  flex-wrap: wrap;
+}
+
+.landscape-diag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.landscape-diag-desc {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+/* Tooltip */
+.landscape-tooltip {
+  position: absolute;
+  z-index: 20;
+  background: rgba(10, 10, 20, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 190px;
+  pointer-events: none;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.landscape-tt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.landscape-tt-label {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.landscape-tt-model {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  font-weight: 800;
+  color: #22d3ee;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
