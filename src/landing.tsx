@@ -15,7 +15,6 @@ import {
   ExternalLink,
   ChevronRight,
   GitBranch,
-  Globe
 } from 'lucide-react';
 
 interface LandingProps {
@@ -39,6 +38,44 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
     </motion.div>
   );
 };
+
+/* ── Molecular Diagram ── */
+const MolecularDiagram: React.FC = () => (
+  <div className="mol-diagram">
+    <svg className="mol-bonds" viewBox="0 0 100 100" fill="none">
+      <defs>
+        <filter id="bond-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Bonds */}
+      <line x1="50" y1="20" x2="15" y2="80" className="mol-bond" filter="url(#bond-glow)" />
+      <line x1="50" y1="20" x2="85" y2="80" className="mol-bond" filter="url(#bond-glow)" />
+      <line x1="15" y1="80" x2="85" y2="80" className="mol-bond" filter="url(#bond-glow)" />
+      {/* Midpoint atoms */}
+      <circle cx="32.5" cy="50" r="1.8" className="mol-midpoint" />
+      <circle cx="67.5" cy="50" r="1.8" className="mol-midpoint" />
+      <circle cx="50" cy="80" r="1.8" className="mol-midpoint" />
+    </svg>
+
+    <div className="mol-node mol-node-top">
+      <div className="mol-node-circle"><Activity size={22} /></div>
+      <span className="mol-node-label">Analyse</span>
+    </div>
+    <div className="mol-node mol-node-bl">
+      <div className="mol-node-circle"><Zap size={22} /></div>
+      <span className="mol-node-label">Process</span>
+    </div>
+    <div className="mol-node mol-node-br">
+      <div className="mol-node-circle"><ImageIcon size={22} /></div>
+      <span className="mol-node-label">Plot</span>
+    </div>
+  </div>
+);
 
 const METHODS_TEXT = `Raman spectra were processed using Instant Raman (v2.5). Baseline correction employed the SNIP algorithm (25 iterations). Peak detection used 3-point parabolic interpolation with sub-pixel accuracy. Multi-peak deconvolution was performed via Levenberg-Marquardt optimization with Lorentzian line profiles. Uncertainty quantification combined 500-sample bootstrap resampling (statistical) with boundary-dependent ensemble perturbation (epistemic). All processing was performed client-side.`;
 
@@ -112,7 +149,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             }}>
               <ArrowLeft size={16} /> Back to Homepage
             </button>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent)' }}>Instant Raman Pro</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#14b8a6' }}>Instant Raman Pro</span>
           </div>
         </header>
 
@@ -210,97 +247,86 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   return (
     <div className="lp-root">
       {/* ════════════════════════════════════════════
-          SECTION 1: HERO
+          HERO
           ════════════════════════════════════════════ */}
       <section className="lp-hero">
         <div className="lp-container">
           <div className="lp-hero-content">
-
-
-            <motion.h1
-              className="lp-hero-h1"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              Instant Raman
-            </motion.h1>
-
-            <motion.p
-              className="lp-hero-sub"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              An open-source, client-side workstation designed for high-precision spectral processing, Levenberg-Marquardt fitting, and split statistical/epistemic uncertainty quantification.
-            </motion.p>
-
-            <motion.div
-              className="lp-hero-actions"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              {isDesktop ? (
-                <button onClick={onEnterWorkstation} className="lp-btn-primary">
-                  Launch Workstation (Free)
-                  <ArrowRight size={18} />
-                </button>
-              ) : (
-                <div className="lp-btn-primary" style={{ opacity: 0.7, cursor: 'not-allowed' }}>
-                  <Lock size={16} /> Desktop Required
-                </div>
-              )}
-              <a href="#pricing" className="lp-btn-secondary">
-                Get Pro License
-              </a>
-              <a
-                href="https://github.com/ShekharDul/raman-instant"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="lp-btn-secondary"
+            <div className="lp-hero-text">
+              <motion.h1
+                className="lp-hero-h1"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
               >
-                View Source <ExternalLink size={14} />
-              </a>
-            </motion.div>
+                YOUR RAMAN ASSISTANT
+              </motion.h1>
+
+              <motion.p
+                className="lp-hero-sub"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                Less processing. Less plotting. More analysis.
+              </motion.p>
+
+              <motion.div
+                className="lp-hero-actions"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                {isDesktop ? (
+                  <button onClick={onEnterWorkstation} className="lp-btn-primary">
+                    Launch Workstation
+                    <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <div className="lp-btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                    <Lock size={16} /> Desktop Required
+                  </div>
+                )}
+                <a href="#pricing" className="lp-btn-secondary">
+                  Get Pro License
+                </a>
+                <a
+                  href="https://github.com/ShekharDul/raman-instant"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lp-btn-secondary"
+                >
+                  View Source <ExternalLink size={14} />
+                </a>
+              </motion.div>
+
+              <motion.div
+                className="lp-trust-signals"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
+                <div className="lp-trust-item"><ShieldCheck size={14} className="lp-text-accent" /> 100% Client-Side</div>
+                <div className="lp-trust-item"><CheckCircle2 size={14} className="lp-text-accent" /> SHA-256 Verified</div>
+                <div className="lp-trust-item"><Lock size={14} className="lp-text-accent" /> Zero Backend</div>
+                <div className="lp-trust-item"><GitBranch size={14} className="lp-text-accent" /> Open Source</div>
+              </motion.div>
+            </div>
 
             <motion.div
-              className="lp-trust-signals"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
+              className="lp-hero-visual"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
             >
-              <div className="lp-trust-item"><ShieldCheck size={14} className="lp-text-accent" /> 100% Client-Side</div>
-              <div className="lp-trust-item"><CheckCircle2 size={14} className="lp-text-accent" /> SHA-256 Verified</div>
-              <div className="lp-trust-item"><Lock size={14} className="lp-text-accent" /> Zero Backend</div>
-              <div className="lp-trust-item"><GitBranch size={14} className="lp-text-accent" /> Open source (GitHub)</div>
-              <div className="lp-trust-item"><Globe size={14} className="lp-text-accent" /> 46+ researchers · 7 countries</div>
+              <MolecularDiagram />
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ════════════════════════════════════════════
-          SECTION 2: VACUUM (The Standard)
-          ════════════════════════════════════════════ */}
-      <section className="lp-vacuum">
-        <div className="lp-container">
-          <FadeIn>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#64748b' }}>The Modern Standard for Raman Analysis</h3>
-            <div className="lp-vacuum-logos">
-              <span>JCAMP-DX (.jdx)</span>
-              <span>Horiba LabSpec</span>
-              <span>Renishaw WiRE</span>
-              <span>Ocean Optics</span>
-              <span>Bruker OPUS</span>
-              <span>CSV/TXT</span>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════
-          SECTION 3: FEATURES (Bento Grid)
+          FEATURES
           ════════════════════════════════════════════ */}
       <section className="lp-features" id="features">
         <div className="lp-container">
@@ -310,12 +336,12 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           </div>
 
           <div className="bento-grid lp-features-grid">
-            {/* LM Multi-Peak Deconvolution (First and Most Prominent) */}
-            <FadeIn className="bento-card bento-col-12" style={{ background: '#0f172a', color: '#fff', borderColor: '#1e293b' }}>
-              <div className="bento-icon" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', borderColor: 'rgba(255,255,255,0.15)' }}><Zap size={20} /></div>
-              <h3 className="bento-title" style={{ color: '#fff' }}>LM Multi-Peak Deconvolution</h3>
-              <p className="bento-desc" style={{ color: '#94a3b8', maxWidth: '800px' }}>
-                The only browser-based tool offering true <span className="lp-font-mono" style={{ color: '#fff' }}>Levenberg-Marquardt</span> non-linear optimization. Automatically resolve complex overlapping peaks using <span className="lp-font-mono" style={{ color: '#fff' }}>Lorentzian</span>, <span className="lp-font-mono" style={{ color: '#fff' }}>Gaussian</span>, or <span className="lp-font-mono" style={{ color: '#fff' }}>Voigt</span> lineshapes in milliseconds.
+            {/* LM Multi-Peak Deconvolution (Featured) */}
+            <FadeIn className="bento-card bento-col-12 bento-featured">
+              <div className="bento-icon"><Zap size={20} /></div>
+              <h3 className="bento-title">LM Multi-Peak Deconvolution</h3>
+              <p className="bento-desc" style={{ maxWidth: '800px' }}>
+                The only browser-based tool offering true <span className="lp-font-mono">Levenberg-Marquardt</span> non-linear optimization. Automatically resolve complex overlapping peaks using <span className="lp-font-mono">Lorentzian</span>, <span className="lp-font-mono">Gaussian</span>, or <span className="lp-font-mono">Voigt</span> lineshapes in milliseconds.
               </p>
             </FadeIn>
 
@@ -368,13 +394,13 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       </section>
 
       {/* ════════════════════════════════════════════
-          SECTION 4: PRICING
+          PRICING
           ════════════════════════════════════════════ */}
       <section className="lp-pricing" id="pricing">
         <div className="lp-container">
           <div className="lp-section-header">
             <span className="lp-section-label">Plans</span>
-            <p style={{ color: '#64748b', marginTop: 16, fontSize: '1.1rem' }}>One-time purchase provides lifetime access.</p>
+            <p style={{ color: '#666666', marginTop: 16, fontSize: '1.1rem' }}>One-time purchase provides lifetime access.</p>
           </div>
 
           <div className="lp-pricing-grid">
@@ -420,7 +446,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                 <li className="pro-feature"><CheckCircle2 size={16} /> Reproducibility Protocol (<span className="lp-font-mono">.irp</span>)</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Replicate Analysis (Mean ± SD)</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Batch Comparison (Waterfall mode)</li>
-                <li className="pro-feature"><CheckCircle2 size={16} /> <span className="lp-font-mono">SVG</span> & High-Res Export</li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> <span className="lp-font-mono">SVG</span> &amp; High-Res Export</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Interactive <span className="lp-font-mono">HTML</span> Report Export</li>
               </ul>
               
@@ -437,7 +463,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       </section>
 
       {/* ════════════════════════════════════════════
-          SECTION 5: CITATION & METHODS
+          CITATION & METHODS
           ════════════════════════════════════════════ */}
       <section className="lp-citation">
         <div className="lp-container">
@@ -448,8 +474,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
           <div className="citation-grid">
             <FadeIn>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>METHODS SECTION TEMPLATE</div>
-              <div style={{ marginBottom: 16, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#666666', fontFamily: 'var(--font-mono)' }}>METHODS SECTION TEMPLATE</div>
+              <div style={{ marginBottom: 16, color: '#888888', fontSize: '0.95rem', lineHeight: '1.5' }}>
                 Paste this standard description directly into the experimental methods section of your manuscript:
               </div>
               <div className="code-block">
@@ -465,8 +491,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </FadeIn>
 
             <FadeIn delay={0.2}>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>BIBTEX CITATION</div>
-              <div style={{ marginBottom: 16, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#666666', fontFamily: 'var(--font-mono)' }}>BIBTEX CITATION</div>
+              <div style={{ marginBottom: 16, color: '#888888', fontSize: '0.95rem', lineHeight: '1.5' }}>
                 Cite Instant Raman in your reference manager software:
               </div>
               <div className="code-block">
