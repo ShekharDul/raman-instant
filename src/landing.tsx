@@ -13,12 +13,9 @@ import {
   Copy,
   ExternalLink,
   ChevronRight,
-  Briefcase,
-  Terminal,
-  Mail,
-  Heart
+  GitBranch,
+  Globe
 } from 'lucide-react';
-import DiagnosticBrain from './components/DiagnosticBrain';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
@@ -87,7 +84,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               className="lp-hero-badge"
             >
               <span className="lp-hero-dot" />
-              Instant Raman v2.5
+              Instant Raman v2.5 · Open Source · Browser-based
             </motion.div>
 
             <motion.h1
@@ -96,7 +93,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Processing, Plotting, and Analysis for Raman Spectroscopy.
+              The only browser-based Raman analysis tool with Levenberg-Marquardt deconvolution.
             </motion.h1>
 
             <motion.p
@@ -105,7 +102,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Automate spectroscopy workflows.
+              Replace expensive proprietary software like OriginLab and vendor-locked instrument systems with a high-performance alternative featuring split statistical and epistemic uncertainty quantification.
             </motion.p>
 
             <motion.div
@@ -127,6 +124,14 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               <a href="#pricing" className="lp-btn-secondary">
                 Get Pro License
               </a>
+              <a
+                href="https://github.com/ShekharDul/raman-instant"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="lp-btn-secondary"
+              >
+                View Source <ExternalLink size={14} />
+              </a>
             </motion.div>
 
             <motion.div
@@ -135,25 +140,13 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
-              <div className="lp-trust-item"><ShieldCheck size={16} className="lp-text-accent" /> 100% Client-Side</div>
-              <div className="lp-trust-item"><CheckCircle2 size={16} className="lp-text-accent" /> SHA-256 Verified</div>
-              <div className="lp-trust-item"><Lock size={16} className="lp-text-accent" /> Zero Backend</div>
+              <div className="lp-trust-item"><ShieldCheck size={14} className="lp-text-accent" /> 100% Client-Side</div>
+              <div className="lp-trust-item"><CheckCircle2 size={14} className="lp-text-accent" /> SHA-256 Verified</div>
+              <div className="lp-trust-item"><Lock size={14} className="lp-text-accent" /> Zero Backend</div>
+              <div className="lp-trust-item"><GitBranch size={14} className="lp-text-accent" /> Open source (GitHub)</div>
+              <div className="lp-trust-item"><Globe size={14} className="lp-text-accent" /> 46+ researchers · 7 countries</div>
             </motion.div>
           </div>
-
-          {/* Bento Dashboard Preview */}
-          {isDesktop && (
-            <motion.div
-              className="lp-hero-dashboard"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              <DiagnosticBrain />
-              {/* Overlay shadow to make it look like a framed dashboard */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.05)', pointerEvents: 'none', borderRadius: 16 }} />
-            </motion.div>
-          )}
         </div>
       </section>
 
@@ -187,53 +180,57 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           </div>
 
           <div className="bento-grid lp-features-grid">
-            {/* Priority 1 */}
-            <FadeIn className="bento-card bento-col-8">
-              <div className="bento-icon accent"><Activity size={24} /></div>
+            {/* LM Multi-Peak Deconvolution (First and Most Prominent) */}
+            <FadeIn className="bento-card bento-col-12" style={{ background: '#0f172a', color: '#fff', borderColor: '#1e293b' }}>
+              <div className="bento-icon" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', borderColor: 'rgba(255,255,255,0.15)' }}><Zap size={20} /></div>
+              <h3 className="bento-title" style={{ color: '#fff' }}>LM Multi-Peak Deconvolution</h3>
+              <p className="bento-desc" style={{ color: '#94a3b8', maxWidth: '800px' }}>
+                The only browser-based tool offering true <span className="lp-font-mono" style={{ color: '#fff' }}>Levenberg-Marquardt</span> non-linear optimization. Automatically resolve complex overlapping peaks using <span className="lp-font-mono" style={{ color: '#fff' }}>Lorentzian</span>, <span className="lp-font-mono" style={{ color: '#fff' }}>Gaussian</span>, or <span className="lp-font-mono" style={{ color: '#fff' }}>Voigt</span> lineshapes in milliseconds.
+              </p>
+            </FadeIn>
+
+            {/* Split Uncertainty Quantification */}
+            <FadeIn delay={0.1} className="bento-card bento-col-8">
+              <div className="bento-icon"><Activity size={20} /></div>
               <h3 className="bento-title">Split Uncertainty Quantification</h3>
               <p className="bento-desc">
-                Instant Raman separates statistical error (via SVD/Bootstrap) from epistemic error (via boundary perturbation). Stop conflating random noise with model bias.
+                Instant Raman separates statistical error (via <span className="lp-font-mono">SVD/Bootstrap</span>) from epistemic error (via boundary perturbation). Stop conflating random noise with model bias.
               </p>
             </FadeIn>
             
-            <FadeIn delay={0.1} className="bento-card bento-col-4">
-              <div className="bento-icon"><Binary size={24} /></div>
+            {/* Monte Carlo Propagation */}
+            <FadeIn delay={0.2} className="bento-card bento-col-4">
+              <div className="bento-icon"><Binary size={20} /></div>
               <h3 className="bento-title">Monte Carlo Propagation</h3>
               <p className="bento-desc">
-                Rigorous 95% Confidence Intervals for derived quantities like $I_D/I_G$ ratio.
+                Rigorous <span className="lp-font-mono">95%</span> Confidence Intervals for derived quantities like <span className="lp-font-mono">I_D/I_G</span> ratio.
               </p>
             </FadeIn>
 
-            <FadeIn delay={0.2} className="bento-card bento-col-12" style={{ background: '#0f172a', color: '#fff', borderColor: '#1e293b' }}>
-              <div className="bento-icon" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }}><Zap size={24} /></div>
-              <h3 className="bento-title" style={{ color: '#fff' }}>LM Multi-Peak Deconvolution</h3>
-              <p className="bento-desc" style={{ color: '#94a3b8', maxWidth: '800px' }}>
-                The only browser-based tool offering true Levenberg-Marquardt non-linear optimization. Automatically resolve complex overlapping peaks using Lorentzian, Gaussian, or Voigt lineshapes—in milliseconds.
-              </p>
-            </FadeIn>
-
-            {/* Priority 2 */}
+            {/* Byte-for-Byte Reproducibility */}
             <FadeIn delay={0.1} className="bento-card bento-col-4">
-              <div className="bento-icon"><CheckCircle2 size={24} /></div>
+              <div className="bento-icon"><CheckCircle2 size={20} /></div>
               <h3 className="bento-title">Byte-for-Byte Reproducibility</h3>
               <p className="bento-desc">
-                Every analysis serializes to a cryptographically hashed .irp protocol. Reload it months later for an exact match.
+                Every analysis serializes to a cryptographically hashed <span className="lp-font-mono">.irp</span> protocol. Reload it months later for an exact match.
               </p>
             </FadeIn>
 
+            {/* Universal File Ingestion */}
             <FadeIn delay={0.2} className="bento-card bento-col-4">
-              <div className="bento-icon"><Upload size={24} /></div>
+              <div className="bento-icon"><Upload size={20} /></div>
               <h3 className="bento-title">Universal File Ingestion</h3>
               <p className="bento-desc">
                 Drag and drop proprietary formats from major instrument vendors. European decimal handling is fully automatic.
               </p>
             </FadeIn>
 
+            {/* Publication-Ready Exports */}
             <FadeIn delay={0.3} className="bento-card bento-col-4">
-              <div className="bento-icon"><ImageIcon size={24} /></div>
+              <div className="bento-icon"><ImageIcon size={20} /></div>
               <h3 className="bento-title">Publication-Ready Exports</h3>
               <p className="bento-desc">
-                Export standalone HTML reports, 300-DPI PNG figures, and vector SVG files ready for journal submission.
+                Export standalone <span className="lp-font-mono">HTML</span> reports, <span className="lp-font-mono">300-DPI PNG</span> figures, and vector <span className="lp-font-mono">SVG</span> files ready for journal submission.
               </p>
             </FadeIn>
           </div>
@@ -246,7 +243,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       <section className="lp-pricing" id="pricing">
         <div className="lp-container">
           <div className="lp-section-header">
-            <span className="lp-section-label">Business Model</span>
+            <span className="lp-section-label">Access</span>
             <h2 className="lp-section-heading">Transparent Pricing for Academic Budgets</h2>
             <p style={{ color: '#64748b', marginTop: 16, fontSize: '1.1rem' }}>No subscriptions. No grant approval hurdles. Just software you own.</p>
           </div>
@@ -257,14 +254,14 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               <div className="pricing-tier">Community</div>
               <div className="pricing-price">$0</div>
               <div className="pricing-period">Free forever</div>
-              <p className="pricing-desc">A complete, useful workstation for basic spectral analysis and evaluation.</p>
+              <p className="pricing-desc">A complete tool, not a trial. Fully-featured spectral analysis without time limits or feature degradation.</p>
               
               <ul className="pricing-features">
                 <li><CheckCircle2 size={16} /> Unlimited file ingestion (All formats)</li>
-                <li><CheckCircle2 size={16} /> SNIP baseline correction</li>
+                <li><CheckCircle2 size={16} /> <span className="lp-font-mono">SNIP</span> baseline correction</li>
                 <li><CheckCircle2 size={16} /> Cosmic ray removal</li>
                 <li><CheckCircle2 size={16} /> Peak detection (Parabolic refinement)</li>
-                <li><CheckCircle2 size={16} /> Standard PNG export</li>
+                <li><CheckCircle2 size={16} /> Standard <span className="lp-font-mono">PNG</span> export</li>
                 <li><CheckCircle2 size={16} /> 100% Client-side privacy</li>
               </ul>
               
@@ -288,14 +285,14 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               <p className="pricing-desc">The "publish with confidence" upgrade. Advanced rigor and scientific export tools.</p>
               
               <ul className="pricing-features">
-                <li className="pro-feature"><CheckCircle2 size={16} /> <strong>LM Multi-Peak Deconvolution</strong></li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> <strong><span className="lp-font-mono">LM</span> Multi-Peak Deconvolution</strong></li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> <strong>Uncertainty Quantification Suite</strong></li>
-                <li className="pro-feature"><CheckCircle2 size={16} /> Monte Carlo Ratio Propagation</li>
-                <li className="pro-feature"><CheckCircle2 size={16} /> Reproducibility Protocol (.irp)</li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> <span className="lp-font-mono">Monte Carlo</span> Ratio Propagation</li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> Reproducibility Protocol (<span className="lp-font-mono">.irp</span>)</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Replicate Analysis (Mean ± SD)</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Batch Comparison (Waterfall mode)</li>
-                <li className="pro-feature"><CheckCircle2 size={16} /> SVG & High-Res Export</li>
-                <li className="pro-feature"><CheckCircle2 size={16} /> Interactive HTML Report Export</li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> <span className="lp-font-mono">SVG</span> & High-Res Export</li>
+                <li className="pro-feature"><CheckCircle2 size={16} /> Interactive <span className="lp-font-mono">HTML</span> Report Export</li>
               </ul>
               
               <a href="#" className="lp-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
@@ -318,7 +315,10 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
           <div className="citation-grid">
             <FadeIn>
-              <div style={{ marginBottom: 16, fontWeight: 700, fontSize: 18 }}>Pre-Authored Methods Section</div>
+              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>METHODS SECTION TEMPLATE</div>
+              <div style={{ marginBottom: 16, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Paste this standard description directly into the experimental methods section of your manuscript:
+              </div>
               <div className="code-block">
                 <div className="code-header">
                   <span>methods_section.txt</span>
@@ -332,7 +332,10 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </FadeIn>
 
             <FadeIn delay={0.2}>
-              <div style={{ marginBottom: 16, fontWeight: 700, fontSize: 18 }}>Cite Instant Raman</div>
+              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>BIBTEX CITATION</div>
+              <div style={{ marginBottom: 16, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Cite Instant Raman in your reference manager software:
+              </div>
               <div className="code-block">
                 <div className="code-header">
                   <span>citation.bib</span>
@@ -347,8 +350,6 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           </div>
         </div>
       </section>
-
-
 
       {/* ════════════════════════════════════════════
           FOOTER
