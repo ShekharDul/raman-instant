@@ -102,7 +102,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Replace expensive proprietary software like OriginLab and vendor-locked instrument systems with a high-performance alternative featuring split statistical and epistemic uncertainty quantification.
+              An open-source, client-side workstation designed for high-precision spectral processing, Levenberg-Marquardt fitting, and split statistical/epistemic uncertainty quantification.
             </motion.p>
 
             <motion.div
