@@ -215,15 +215,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       <section className="lp-hero">
         <div className="lp-container">
           <div className="lp-hero-content">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="lp-hero-badge"
-            >
-              <span className="lp-hero-dot" />
-              Instant Raman v2.5 · Open Source · Browser-based
-            </motion.div>
+
 
             <motion.h1
               className="lp-hero-h1"
@@ -231,7 +223,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              The only browser-based Raman analysis tool with Levenberg-Marquardt deconvolution.
+              Instant Raman
             </motion.h1>
 
             <motion.p
