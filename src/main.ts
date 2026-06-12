@@ -144,7 +144,6 @@ function trackEvent(name: string, params: object = {}) {
 // ── Initialization ──
 initAboutModal();
 initLicensing();
-initSupportModal();
 initDrawerToggle();
 initUpload();
 initSliders();
@@ -1000,23 +999,6 @@ function initAboutModal() {
   });
 }
 
-function initSupportModal() {
-  const modal = UI.get('modal-support');
-  const btn = UI.get('btn-support');
-  if (!modal || !btn) return;
-
-  btn.addEventListener('click', () => modal.classList.add('active'));
-  UI.get('btn-close-support')?.addEventListener('click', () => modal.classList.remove('active'));
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.classList.remove('active');
-  });
-
-  // Track support link click
-  const supportLink = modal.querySelector('a[href*="rzp.io"]');
-  supportLink?.addEventListener('click', () => {
-    trackEvent('donation_button_clicked');
-  });
-}
 
 function initLicensing() {
   const licenseState = LicenseManager.get();
