@@ -295,7 +295,13 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                 <li className="pro-feature"><CheckCircle2 size={16} /> Interactive <span className="lp-font-mono">HTML</span> Report Export</li>
               </ul>
               
-              <a href="#" className="lp-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <a
+                href="https://raman-instant.lemonsqueezy.com/buy/license"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="lp-btn-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
                 Get Pro License <ChevronRight size={18} />
               </a>
             </FadeIn>

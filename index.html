@@ -92,6 +92,8 @@
         <h1>Instant Raman</h1>
       </div>
       <div class="status">
+        <button id="btn-activate-license"
+          style="background: var(--accent); border: 1px solid var(--accent); cursor: pointer; color: white; font-weight: 600; font-size: 11px; padding: 5px 12px; border-radius: var(--radius-sm); margin-right: 12px; transition: background 0.15s;">Activate Pro License</button>
         <button id="btn-support"
           style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-weight: 500; font-size: 12px;">Support</button>
         <button id="btn-about"
@@ -693,6 +695,47 @@
       <button id="btn-close-verification" class="btn-primary" style="width: 100%;">Close</button>
     </div>
   </div>
+
+  <!-- Modal: License Gating / Activation -->
+  <div id="modal-paywall" class="modal-overlay centered">
+    <div class="modal-center-box" style="max-width: 460px; width: 90%; text-align: left; padding: 28px; border-radius: var(--radius-sm); position: relative;">
+      <button class="modal-close" id="btn-close-paywall" style="border: none; background: none; font-size: 16px; cursor: pointer; position: absolute; right: 20px; top: 20px; color: var(--text-dim);">✕</button>
+      
+      <div id="paywall-feature-desc" style="display: none; margin-bottom: 20px; padding: 12px; background: var(--bg-panel); border-left: 4px solid var(--accent); border-radius: var(--radius-sm);">
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.05em;">Pro Capability Activated Only</div>
+        <p id="paywall-feature-text" style="font-size: 12px; line-height: 1.5; color: var(--text-primary); margin: 0;"></p>
+      </div>
+
+      <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">
+        Unlock Professional Workstation Rigor
+      </div>
+      
+      <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">
+        Advanced deconvolution, Monte Carlo error propagation, compliance reporting, and vector export features are part of the **Pro License**.
+      </p>
+
+      <div style="margin-bottom: 24px;">
+        <label for="input-license-key" style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.04em;">Activate License Key</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="input-license-key" placeholder="e.g. LS-XXXX-XXXX-XXXX-XXXX"
+            style="flex: 1; background: var(--bg-panel); border: 1px solid var(--border); padding: 10px 12px; color: var(--text-primary); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-mono); outline: none;">
+          <button id="btn-validate-license" class="btn-primary" style="padding: 10px 20px; font-size: 12px; white-space: nowrap;">Validate</button>
+        </div>
+        <div id="license-validation-status" class="hidden" style="margin-top: 8px; font-size: 11px; font-weight: 500;"></div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border); padding-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div style="flex: 1;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">$39 <span style="font-size: 10px; font-weight: 500; color: var(--text-dim); text-transform: uppercase;">One-time</span></div>
+          <div style="font-size: 11px; color: var(--text-dim); line-height: 1.3;">No subscriptions. Permanent license.</div>
+        </div>
+        <a href="https://raman-instant.lemonsqueezy.com/buy/license" target="_blank" id="btn-buy-license-paywall" class="btn-primary" style="text-align: center; padding: 10px 18px; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap; border-radius: var(--radius-sm);">
+          Purchase License
+        </a>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 
