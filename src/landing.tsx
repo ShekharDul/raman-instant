@@ -296,7 +296,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               </ul>
               
               <a
-                href="https://raman-instant.lemonsqueezy.com/buy/license"
+                href="https://rzp.io/l/raman_pro"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="lp-btn-primary"
