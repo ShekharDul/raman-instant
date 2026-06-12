@@ -120,7 +120,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <div className="lp-signup-features">
             <div className="lp-signup-features-header">
               <span className="lp-signup-badge">PRO EDITION</span>
-              <h2 className="lp-signup-title">Elevate Your Spectral Workflows</h2>
+              <h2 className="lp-signup-title">Make Spectral Workflows Smarter</h2>
             </div>
 
             <div className="lp-signup-feature-item">
