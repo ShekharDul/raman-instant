@@ -41,6 +41,139 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
 
 
 
+/* ── Spectral Deconvolution Visual (SVG) ── */
+const SpectralDeconvolutionVisual: React.FC = () => {
+  const width = 500;
+  const height = 340;
+  const padding = 20;
+
+  // Define 5 Lorentzian peaks
+  const peaks = [
+    { xc: 100, w: 20, h: 100 }, // Peak 1
+    { xc: 180, w: 28, h: 200 }, // Peak 2
+    { xc: 260, w: 22, h: 290 }, // Peak 3 (tallest)
+    { xc: 340, w: 32, h: 140 }, // Peak 4
+    { xc: 410, w: 18, h: 80 }   // Peak 5
+  ];
+
+  // Calculate Lorentzian value at x
+  const lorentzian = (x: number, xc: number, w: number, h: number) => {
+    return h * (w * w) / ((x - xc) * (x - xc) + w * w);
+  };
+
+  // Generate points for the main envelope (sum of all lorentzians + small baseline)
+  const mainPoints: [number, number][] = [];
+  const componentPoints: [number, number][][] = peaks.map(() => []);
+
+  for (let x = padding; x <= width - padding; x += 2) {
+    let ySum = 0;
+    peaks.forEach((p, idx) => {
+      const yVal = lorentzian(x, p.xc, p.w, p.h);
+      ySum += yVal;
+      componentPoints[idx].push([x, height - padding - yVal]);
+    });
+
+    const baseline = Math.sin(x / 60) * 8 + 10;
+    const totalY = ySum + baseline;
+    mainPoints.push([x, height - padding - totalY]);
+  }
+
+  // Create SVG path strings
+  const createPathD = (pts: [number, number][]) => {
+    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+  };
+
+  const createAreaD = (pts: [number, number][]) => {
+    if (pts.length === 0) return '';
+    const startX = pts[0][0];
+    const endX = pts[pts.length - 1][0];
+    const basePath = `M ${startX} ${height - padding}`;
+    const linePath = pts.map(p => `L ${p[0]} ${p[1]}`).join(' ');
+    const closePath = `L ${endX} ${height - padding} Z`;
+    return `${basePath} ${linePath} ${closePath}`;
+  };
+
+  const mainPathD = createPathD(mainPoints);
+
+  return (
+    <div className="spectral-visual-container">
+      <svg viewBox={`0 0 ${width} ${height}`} className="spectral-svg">
+        <defs>
+          {/* Gradients and Filters */}
+          <linearGradient id="teal-glow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.0" />
+          </linearGradient>
+          <filter id="glow-light" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <filter id="glow-strong" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        {/* Component Peaks (Teal curves with gradients) */}
+        {componentPoints.map((pts, idx) => (
+          <g key={idx}>
+            {/* Filled area */}
+            <path
+              d={createAreaD(pts)}
+              fill="url(#teal-glow)"
+              opacity="0.25"
+            />
+            {/* Outline curve */}
+            <path
+              d={createPathD(pts)}
+              fill="none"
+              stroke="#14b8a6"
+              strokeWidth="1.5"
+              opacity="0.8"
+              style={{ filter: 'url(#glow-light)' }}
+            />
+          </g>
+        ))}
+
+        {/* Main Envelope Curve (Glowing White Line) */}
+        <path
+          d={mainPathD}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="3.5"
+          opacity="0.4"
+          style={{ filter: 'url(#glow-strong)' }}
+        />
+        <path
+          d={mainPathD}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="2"
+        />
+
+        {/* Dynamic Peak Fit Indicators (Vertical dashed line for the tallest peak center) */}
+        <line
+          x1={260}
+          y1={height - padding - 310}
+          x2={260}
+          y2={height - padding}
+          stroke="#14b8a6"
+          strokeDasharray="4,4"
+          strokeWidth="1"
+          opacity="0.4"
+        />
+        <circle
+          cx={260}
+          cy={height - padding - 305}
+          r="3"
+          fill="#14b8a6"
+          style={{ filter: 'url(#glow-light)' }}
+        />
+      </svg>
+    </div>
+  );
+};
+
 const METHODS_TEXT = `Raman spectra were processed using Instant Raman (v2.5). Baseline correction employed the SNIP algorithm (25 iterations). Peak detection used 3-point parabolic interpolation with sub-pixel accuracy. Multi-peak deconvolution was performed via Levenberg-Marquardt optimization with Lorentzian line profiles. Uncertainty quantification combined 500-sample bootstrap resampling (statistical) with boundary-dependent ensemble perturbation (epistemic). All processing was performed client-side.`;
 
 const BIBTEX_TEXT = `@software{instant_raman,
@@ -283,11 +416,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3 }}
             >
-              <img
-                src="hero-curves-only.png"
-                alt="Raman spectral deconvolution visualization"
-                className="lp-hero-img"
-              />
+              <SpectralDeconvolutionVisual />
             </motion.div>
           </div>
         </div>

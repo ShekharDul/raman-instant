@@ -149,13 +149,29 @@
 }
 
 /* ══════════════════════════════════════
-   HERO IMAGE
+   SPECTRAL DECONVOLUTION VISUAL
    ══════════════════════════════════════ */
-.lp-hero-img {
+.spectral-visual-container {
   width: 100%;
   max-width: 480px;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  animation: spectralFloat 6s ease-in-out infinite;
+}
+
+.spectral-svg {
+  width: 100%;
   height: auto;
   display: block;
+}
+
+@keyframes spectralFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 /* ══════════════════════════════════════
@@ -774,7 +790,7 @@
     justify-content: center;
   }
 
-  .lp-hero-img {
+  .spectral-visual-container {
     max-width: 380px;
     margin: 0 auto;
   }
