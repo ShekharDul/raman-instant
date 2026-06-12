@@ -25,7 +25,7 @@ interface LandingProps {
 }
 
 /* ── Fade-in wrapper ── */
-const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({ children, delay = 0, className = '' }) => {
+const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties }> = ({ children, delay = 0, className = '', style }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-40px' });
   return (
@@ -35,6 +35,7 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={className}
+      style={style}
     >
       {children}
     </motion.div>
