@@ -284,7 +284,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               transition={{ duration: 1, delay: 0.3 }}
             >
               <img
-                src="/hero-visual.png"
+                src="hero-visual.png"
                 alt="Raman spectral deconvolution visualization"
                 className="lp-hero-img"
               />
