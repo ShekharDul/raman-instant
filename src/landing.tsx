@@ -184,6 +184,134 @@ const BIBTEX_TEXT = `@software{instant_raman,
   version = {2.5}
 }`;
 
+/* ── Workstation UI Mockup (Coded Option 1) ── */
+const WorkstationMockup: React.FC = () => {
+  return (
+    <div className="workstation-mockup">
+      {/* Mock Header */}
+      <div className="mock-header">
+        <div className="mock-header-left">
+          <span className="mock-dot red" />
+          <span className="mock-dot yellow" />
+          <span className="mock-dot green" />
+          <span className="mock-filename">sample_Si_calibration.txt</span>
+        </div>
+        <div className="mock-header-right">
+          <span className="mock-pro-badge">PRO ACTIVE</span>
+        </div>
+      </div>
+
+      <div className="mock-body">
+        {/* Mock Sidebar */}
+        <div className="mock-sidebar">
+          {/* Section: Ingestion */}
+          <div className="mock-sidebar-section">
+            <div className="mock-section-title">INGESTION</div>
+            <div className="mock-dropzone">
+              <Upload size={14} className="mock-icon-accent" />
+              <span>Drag files here</span>
+              <span className="mock-dropzone-sub">.dx · .txt · .csv</span>
+            </div>
+            <div className="mock-checkbox-row">
+              <span className="mock-checkbox-checked">✓</span>
+              <span>Auto cosmic ray removal</span>
+            </div>
+          </div>
+
+          {/* Section: Baseline */}
+          <div className="mock-sidebar-section">
+            <div className="mock-section-title">BASELINE CORRECTION</div>
+            <div className="mock-btn-row">
+              <div className="mock-btn active">Auto (SNIP)</div>
+              <div className="mock-btn">Manual</div>
+            </div>
+            <div className="mock-slider-row">
+              <div className="mock-slider-label">
+                <span>Iterations</span>
+                <span className="mock-text-accent">25</span>
+              </div>
+              <div className="mock-slider-track">
+                <div className="mock-slider-fill" style={{ width: '50%' }} />
+                <div className="mock-slider-thumb" style={{ left: '50%' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Fitting */}
+          <div className="mock-sidebar-section">
+            <div className="mock-section-title">PEAK FITTING (LM)</div>
+            <div className="mock-select-row">
+              <span>Profile</span>
+              <div className="mock-select">
+                <span>Lorentzian</span>
+                <span className="mock-select-arrow">▼</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mock Main Workspace */}
+        <div className="mock-workspace">
+          {/* Mock Plot Canvas */}
+          <div className="mock-plot-area">
+            {/* The SVG Spectral curve deconvolution visual */}
+            <SpectralDeconvolutionVisual />
+
+            {/* Pointers floating over the mockup */}
+            <div className="visual-pointer pointer-ingestion">
+              <div className="pointer-card">
+                <div className="pointer-card-title">100% Client-Side Ingestion</div>
+                <div className="pointer-card-text">Reads data locally. Zero servers. Universal format support.</div>
+              </div>
+            </div>
+
+            <div className="visual-pointer pointer-baseline">
+              <div className="pointer-dot" />
+              <div className="pointer-card">
+                <div className="pointer-card-title">SNIP Background Correction</div>
+                <div className="pointer-card-text">Adaptive automated baseline subtraction runs locally.</div>
+              </div>
+            </div>
+
+            <div className="visual-pointer pointer-fitting">
+              <div className="pointer-dot" />
+              <div className="pointer-card">
+                <div className="pointer-card-title">Levenberg-Marquardt Fitting</div>
+                <div className="pointer-card-text">Simultaneous multi-peak deconvolution into component bands.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mock Peak Data Grid */}
+          <div className="mock-data-grid">
+            <div className="mock-grid-header">
+              <span>Peak</span>
+              <span>Centroid (cm⁻¹)</span>
+              <span>Height</span>
+              <span>FWHM (cm⁻¹)</span>
+              <span>Area</span>
+            </div>
+            <div className="mock-grid-row active">
+              <span className="mock-text-accent">P1</span>
+              <span>520.7</span>
+              <span>290.4</span>
+              <span>2.41</span>
+              <span>1102.1</span>
+            </div>
+            <div className="mock-grid-row">
+              <span>P2</span>
+              <span>340.2</span>
+              <span>140.2</span>
+              <span>3.12</span>
+              <span>687.5</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   const [isDesktop, setIsDesktop] = useState(false);
   const [copiedMethods, setCopiedMethods] = useState(false);
@@ -416,64 +544,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3 }}
             >
-              <SpectralDeconvolutionVisual />
+              <WorkstationMockup />
             </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════
-          CAPABILITIES — THREE PILLARS
-          ════════════════════════════════════════════ */}
-      <section className="lp-features" id="features">
-        <div className="lp-container">
-          <div className="lp-section-header">
-            <span className="lp-section-label">Capabilities</span>
-            <h2 className="lp-section-heading">Process. Plot. Analyse.</h2>
-          </div>
-
-          <div className="pillars-grid">
-            {/* PROCESS */}
-            <FadeIn className="pillar">
-              <div className="pillar-icon"><Zap size={22} /></div>
-              <h3 className="pillar-title">Process</h3>
-              <p className="pillar-desc">Automated spectral preprocessing. Drag your files in and let the corrections run.</p>
-              <div className="pillar-divider" />
-              <ul className="pillar-features">
-                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">SNIP</span> baseline correction</li>
-                <li><CheckCircle2 size={14} /> Cosmic ray removal</li>
-                <li><CheckCircle2 size={14} /> Universal file ingestion (all major formats)</li>
-                <li><CheckCircle2 size={14} /> Peak detection with parabolic refinement</li>
-              </ul>
-            </FadeIn>
-
-            {/* PLOT */}
-            <FadeIn delay={0.15} className="pillar">
-              <div className="pillar-icon"><ImageIcon size={22} /></div>
-              <h3 className="pillar-title">Plot</h3>
-              <p className="pillar-desc">Publication-quality figures and exports. From browser to journal in one click.</p>
-              <div className="pillar-divider" />
-              <ul className="pillar-features">
-                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">300-DPI PNG</span> figures</li>
-                <li><CheckCircle2 size={14} /> Vector <span className="lp-font-mono">SVG</span> export</li>
-                <li><CheckCircle2 size={14} /> Interactive <span className="lp-font-mono">HTML</span> reports</li>
-                <li><CheckCircle2 size={14} /> Excel data tables</li>
-              </ul>
-            </FadeIn>
-
-            {/* ANALYSE */}
-            <FadeIn delay={0.3} className="pillar">
-              <div className="pillar-icon"><Activity size={22} /></div>
-              <h3 className="pillar-title">Analyse</h3>
-              <p className="pillar-desc">Advanced fitting and statistical rigor for results you can publish with confidence.</p>
-              <div className="pillar-divider" />
-              <ul className="pillar-features">
-                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">LM</span> Multi-Peak Deconvolution</li>
-                <li><CheckCircle2 size={14} /> Split Uncertainty Quantification</li>
-                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">Monte Carlo</span> ratio propagation</li>
-                <li><CheckCircle2 size={14} /> Reproducibility Protocol (<span className="lp-font-mono">.irp</span>)</li>
-              </ul>
-            </FadeIn>
           </div>
         </div>
       </section>
