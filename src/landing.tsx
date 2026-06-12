@@ -96,7 +96,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              The only browser-based Raman workstation with LM deconvolution.
+              Processing, Plotting, and Analysis for Raman Spectroscopy.
             </motion.h1>
 
             <motion.p
@@ -105,7 +105,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Automated spectral rigor, uncertainty quantification, and publication-ready exports. Zero installation required.
+              Automate spectroscopy workflows.
             </motion.p>
 
             <motion.div
@@ -182,8 +182,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       <section className="lp-features" id="features">
         <div className="lp-container">
           <div className="lp-section-header">
-            <span className="lp-section-label">Scientific Rigor</span>
-            <h2 className="lp-section-heading">Designed for Publication.</h2>
+            <span className="lp-section-label">Capabilities</span>
+            <h2 className="lp-section-heading">Core Features</h2>
           </div>
 
           <div className="bento-grid lp-features-grid">
@@ -348,36 +348,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════
-          SECTION 6: ABOUT
-          ════════════════════════════════════════════ */}
-      <section className="lp-about-section">
-        <div className="lp-container">
-          <FadeIn>
-            <div className="lp-about-inner">
-              <span className="lp-section-label">Built By</span>
-              <h3 className="lp-about-name">Shekhar Dulgach</h3>
-              <p className="lp-about-role">Materials Researcher & Engineer</p>
-              <p className="lp-about-bio">
-                MSc (Eng) in Materials Science & Engineering, University of Leeds. 
-                Research focus on API crystallization kinetics, Raman characterization, 
-                and computational materials informatics.
-              </p>
-              <div className="lp-about-links">
-                <a href="https://www.linkedin.com/in/shekhardulgach/" target="_blank" rel="noopener noreferrer" className="lp-about-link">
-                  <Briefcase size={16} /> LinkedIn
-                </a>
-                <a href="https://github.com/ShekharDul/raman-instant" target="_blank" rel="noopener noreferrer" className="lp-about-link">
-                  <Terminal size={16} /> GitHub
-                </a>
-                <a href="mailto:shekhardulgach19@gmail.com" className="lp-about-link">
-                  <Mail size={16} /> Contact
-                </a>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
+
 
       {/* ════════════════════════════════════════════
           FOOTER
@@ -386,17 +357,11 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         <div className="lp-container lp-footer-inner">
           <div className="lp-footer-left">
             <span className="lp-footer-brand">Instant Raman</span>
-            <span className="lp-footer-copy">© {new Date().getFullYear()} Shekhar Dulgach</span>
+            <span className="lp-footer-copy">© {new Date().getFullYear()} Instant Raman</span>
           </div>
           <div className="lp-footer-right">
             <a href="https://github.com/ShekharDul/raman-instant" target="_blank" rel="noopener noreferrer">
               GitHub <ExternalLink size={12} />
-            </a>
-            <a href="https://www.linkedin.com/in/shekhardulgach/" target="_blank" rel="noopener noreferrer">
-              LinkedIn <ExternalLink size={12} />
-            </a>
-            <a href="https://rzp.io/rzp/3VZL3oi" target="_blank" rel="noopener noreferrer" className="lp-footer-support">
-              <Heart size={12} /> Support Open Science
             </a>
           </div>
         </div>
