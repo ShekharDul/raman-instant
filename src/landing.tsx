@@ -296,7 +296,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               </ul>
               
               <a
-                href="https://rzp.io/l/raman_pro"
+                href="https://rzp.io/rzp/HMU46eo"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="lp-btn-primary"
