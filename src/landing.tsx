@@ -381,9 +381,9 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       <section className="lp-pricing" id="pricing">
         <div className="lp-container">
           <div className="lp-section-header">
-            <span className="lp-section-label">Access</span>
-            <h2 className="lp-section-heading">Transparent Pricing for Academic Budgets</h2>
-            <p style={{ color: '#64748b', marginTop: 16, fontSize: '1.1rem' }}>No subscriptions. No grant approval hurdles. Just software you own.</p>
+            <span className="lp-section-label">Plans</span>
+            <h2 className="lp-section-heading">Simple, Transparent Pricing</h2>
+            <p style={{ color: '#64748b', marginTop: 16, fontSize: '1.1rem' }}>One-time purchase provides lifetime access.</p>
           </div>
 
           <div className="lp-pricing-grid">
