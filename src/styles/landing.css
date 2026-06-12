@@ -514,3 +514,249 @@
   .lp-footer-inner { flex-direction: column; text-align: center; }
   .lp-footer-right { flex-wrap: wrap; justify-content: center; }
 }
+
+/* ── Pro Sign Up Flow Styles ── */
+.lp-signup-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.lp-signup-nav {
+  border-bottom: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 16px 0;
+}
+
+.lp-signup-nav-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.lp-back-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.lp-signup-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 48px;
+  padding: 60px 0;
+}
+
+.lp-signup-features {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.lp-signup-features-header {
+  margin-bottom: 16px;
+}
+
+.lp-signup-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0f766e;
+  background: #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 2px;
+  margin-bottom: 12px;
+}
+
+.lp-signup-title {
+  font-size: 2.2rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.lp-signup-feature-item {
+  display: flex;
+  gap: 16px;
+}
+
+.lp-signup-feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f766e;
+  flex-shrink: 0;
+}
+
+.lp-signup-feature-content h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.lp-signup-feature-content p {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Right card */
+.lp-signup-card-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.lp-signup-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
+}
+
+.lp-signup-card-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.01em;
+}
+
+.lp-signup-card-desc {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 0 0 28px 0;
+  line-height: 1.5;
+}
+
+.lp-signup-form-group {
+  margin-bottom: 20px;
+}
+
+.lp-signup-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.lp-signup-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.lp-signup-input:focus {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.05);
+}
+
+.lp-signup-error {
+  color: #e11d48;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.lp-signup-submit-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lp-signup-submit-btn:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+.lp-signup-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.lp-signup-pricing-summary {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #cbd5e1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lp-signup-pricing-label {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.lp-signup-price-val {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.lp-signup-privacy-note {
+  margin-top: 24px;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .lp-signup-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 30px 0;
+  }
+}
+
