@@ -1045,7 +1045,7 @@ function initLicensing() {
   const inputKey = UI.get('input-license-key') as HTMLInputElement;
   const statusEl = UI.get('license-validation-status');
 
-  if (btnValidate && inputKey && statusEl) {
+  if (btnValidate && inputKey && statusEl && paywallModal) {
     btnValidate.addEventListener('click', async () => {
       const key = inputKey.value.trim();
       if (!key) {
