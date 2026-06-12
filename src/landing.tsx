@@ -39,43 +39,7 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
   );
 };
 
-/* ── Molecular Diagram ── */
-const MolecularDiagram: React.FC = () => (
-  <div className="mol-diagram">
-    <svg className="mol-bonds" viewBox="0 0 100 100" fill="none">
-      <defs>
-        <filter id="bond-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      {/* Bonds */}
-      <line x1="50" y1="20" x2="15" y2="80" className="mol-bond" filter="url(#bond-glow)" />
-      <line x1="50" y1="20" x2="85" y2="80" className="mol-bond" filter="url(#bond-glow)" />
-      <line x1="15" y1="80" x2="85" y2="80" className="mol-bond" filter="url(#bond-glow)" />
-      {/* Midpoint atoms */}
-      <circle cx="32.5" cy="50" r="1.8" className="mol-midpoint" />
-      <circle cx="67.5" cy="50" r="1.8" className="mol-midpoint" />
-      <circle cx="50" cy="80" r="1.8" className="mol-midpoint" />
-    </svg>
 
-    <div className="mol-node mol-node-top">
-      <div className="mol-node-circle"><Activity size={22} /></div>
-      <span className="mol-node-label">Analyse</span>
-    </div>
-    <div className="mol-node mol-node-bl">
-      <div className="mol-node-circle"><Zap size={22} /></div>
-      <span className="mol-node-label">Process</span>
-    </div>
-    <div className="mol-node mol-node-br">
-      <div className="mol-node-circle"><ImageIcon size={22} /></div>
-      <span className="mol-node-label">Plot</span>
-    </div>
-  </div>
-);
 
 const METHODS_TEXT = `Raman spectra were processed using Instant Raman (v2.5). Baseline correction employed the SNIP algorithm (25 iterations). Peak detection used 3-point parabolic interpolation with sub-pixel accuracy. Multi-peak deconvolution was performed via Levenberg-Marquardt optimization with Lorentzian line profiles. Uncertainty quantification combined 500-sample bootstrap resampling (statistical) with boundary-dependent ensemble perturbation (epistemic). All processing was performed client-side.`;
 
@@ -315,79 +279,71 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
             <motion.div
               className="lp-hero-visual"
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
+              transition={{ duration: 1, delay: 0.3 }}
             >
-              <MolecularDiagram />
+              <img
+                src="/hero-visual.png"
+                alt="Raman spectral deconvolution visualization"
+                className="lp-hero-img"
+              />
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ════════════════════════════════════════════
-          FEATURES
+          CAPABILITIES — THREE PILLARS
           ════════════════════════════════════════════ */}
       <section className="lp-features" id="features">
         <div className="lp-container">
           <div className="lp-section-header">
             <span className="lp-section-label">Capabilities</span>
-            <h2 className="lp-section-heading">Core Features</h2>
+            <h2 className="lp-section-heading">Process. Plot. Analyse.</h2>
           </div>
 
-          <div className="bento-grid lp-features-grid">
-            {/* LM Multi-Peak Deconvolution (Featured) */}
-            <FadeIn className="bento-card bento-col-12 bento-featured">
-              <div className="bento-icon"><Zap size={20} /></div>
-              <h3 className="bento-title">LM Multi-Peak Deconvolution</h3>
-              <p className="bento-desc" style={{ maxWidth: '800px' }}>
-                The only browser-based tool offering true <span className="lp-font-mono">Levenberg-Marquardt</span> non-linear optimization. Automatically resolve complex overlapping peaks using <span className="lp-font-mono">Lorentzian</span>, <span className="lp-font-mono">Gaussian</span>, or <span className="lp-font-mono">Voigt</span> lineshapes in milliseconds.
-              </p>
+          <div className="pillars-grid">
+            {/* PROCESS */}
+            <FadeIn className="pillar">
+              <div className="pillar-icon"><Zap size={22} /></div>
+              <h3 className="pillar-title">Process</h3>
+              <p className="pillar-desc">Automated spectral preprocessing. Drag your files in and let the corrections run.</p>
+              <div className="pillar-divider" />
+              <ul className="pillar-features">
+                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">SNIP</span> baseline correction</li>
+                <li><CheckCircle2 size={14} /> Cosmic ray removal</li>
+                <li><CheckCircle2 size={14} /> Universal file ingestion (all major formats)</li>
+                <li><CheckCircle2 size={14} /> Peak detection with parabolic refinement</li>
+              </ul>
             </FadeIn>
 
-            {/* Split Uncertainty Quantification */}
-            <FadeIn delay={0.1} className="bento-card bento-col-8">
-              <div className="bento-icon"><Activity size={20} /></div>
-              <h3 className="bento-title">Split Uncertainty Quantification</h3>
-              <p className="bento-desc">
-                Instant Raman separates statistical error (via <span className="lp-font-mono">SVD/Bootstrap</span>) from epistemic error (via boundary perturbation). Stop conflating random noise with model bias.
-              </p>
-            </FadeIn>
-            
-            {/* Monte Carlo Propagation */}
-            <FadeIn delay={0.2} className="bento-card bento-col-4">
-              <div className="bento-icon"><Binary size={20} /></div>
-              <h3 className="bento-title">Monte Carlo Propagation</h3>
-              <p className="bento-desc">
-                Rigorous <span className="lp-font-mono">95%</span> Confidence Intervals for derived quantities like <span className="lp-font-mono">I_D/I_G</span> ratio.
-              </p>
+            {/* PLOT */}
+            <FadeIn delay={0.15} className="pillar">
+              <div className="pillar-icon"><ImageIcon size={22} /></div>
+              <h3 className="pillar-title">Plot</h3>
+              <p className="pillar-desc">Publication-quality figures and exports. From browser to journal in one click.</p>
+              <div className="pillar-divider" />
+              <ul className="pillar-features">
+                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">300-DPI PNG</span> figures</li>
+                <li><CheckCircle2 size={14} /> Vector <span className="lp-font-mono">SVG</span> export</li>
+                <li><CheckCircle2 size={14} /> Interactive <span className="lp-font-mono">HTML</span> reports</li>
+                <li><CheckCircle2 size={14} /> Excel data tables</li>
+              </ul>
             </FadeIn>
 
-            {/* Byte-for-Byte Reproducibility */}
-            <FadeIn delay={0.1} className="bento-card bento-col-4">
-              <div className="bento-icon"><CheckCircle2 size={20} /></div>
-              <h3 className="bento-title">Byte-for-Byte Reproducibility</h3>
-              <p className="bento-desc">
-                Every analysis serializes to a cryptographically hashed <span className="lp-font-mono">.irp</span> protocol. Reload it months later for an exact match.
-              </p>
-            </FadeIn>
-
-            {/* Universal File Ingestion */}
-            <FadeIn delay={0.2} className="bento-card bento-col-4">
-              <div className="bento-icon"><Upload size={20} /></div>
-              <h3 className="bento-title">Universal File Ingestion</h3>
-              <p className="bento-desc">
-                Drag and drop proprietary formats from major instrument vendors. European decimal handling is fully automatic.
-              </p>
-            </FadeIn>
-
-            {/* Publication-Ready Exports */}
-            <FadeIn delay={0.3} className="bento-card bento-col-4">
-              <div className="bento-icon"><ImageIcon size={20} /></div>
-              <h3 className="bento-title">Publication-Ready Exports</h3>
-              <p className="bento-desc">
-                Export standalone <span className="lp-font-mono">HTML</span> reports, <span className="lp-font-mono">300-DPI PNG</span> figures, and vector <span className="lp-font-mono">SVG</span> files ready for journal submission.
-              </p>
+            {/* ANALYSE */}
+            <FadeIn delay={0.3} className="pillar">
+              <div className="pillar-icon"><Activity size={22} /></div>
+              <h3 className="pillar-title">Analyse</h3>
+              <p className="pillar-desc">Advanced fitting and statistical rigor for results you can publish with confidence.</p>
+              <div className="pillar-divider" />
+              <ul className="pillar-features">
+                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">LM</span> Multi-Peak Deconvolution</li>
+                <li><CheckCircle2 size={14} /> Split Uncertainty Quantification</li>
+                <li><CheckCircle2 size={14} /> <span className="lp-font-mono">Monte Carlo</span> ratio propagation</li>
+                <li><CheckCircle2 size={14} /> Reproducibility Protocol (<span className="lp-font-mono">.irp</span>)</li>
+              </ul>
             </FadeIn>
           </div>
         </div>
