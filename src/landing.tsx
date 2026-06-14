@@ -231,6 +231,108 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
+      {/* ── FEATURES GRID ── */}
+      <section className="lp-features-section">
+        <div className="lp-section-header">
+          <h2>Uncompromising Capabilities</h2>
+          <p>The quiet tools for high-precision molecular discovery.</p>
+        </div>
+        <div className="lp-bento-grid">
+          <div className="lp-bento-card">
+            <div className="lp-bento-icon">
+              <Zap size={20} />
+            </div>
+            <h3>Universal Spectral Parser</h3>
+            <p>Direct support for CSV, TSV, JCAMP-DX (.jdx, .dx), Horiba LabSpec (.txt, .xml), Bruker DPT, and Ocean Optics files.</p>
+          </div>
+          <div className="lp-bento-card">
+            <div className="lp-bento-icon">
+              <CheckCircle2 size={20} />
+            </div>
+            <h3>Mathematical Baseline & Smoothing</h3>
+            <p>Robust MAD-based Cosmic Ray Spike rejection, Simple Non-Iterative Peak (SNIP) background subtraction, and Savitzky-Golay smoothing.</p>
+          </div>
+          <div className="lp-bento-card">
+            <div className="lp-bento-icon">
+              <BarChart3 size={20} />
+            </div>
+            <h3>Levenberg-Marquardt Deconvolution</h3>
+            <p>Multi-peak fitting of Lorentzian, Gaussian, and Voigt profiles using non-linear least squares optimization (Pro Feature).</p>
+          </div>
+          <div className="lp-bento-card">
+            <div className="lp-bento-icon">
+              <Lock size={20} />
+            </div>
+            <h3>Statistical & Epistemic Error Quantification</h3>
+            <p>Monte Carlo uncertainty propagation and SVD Jacobian analysis for accurate peak assignments and confidence bounds (Pro Feature).</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TECH SPECS & CODE ── */}
+      <section className="lp-tech-section">
+        <div className="lp-tech-content">
+          <div className="lp-tech-text">
+            <h2>Engineered for Technical Rigor.</h2>
+            <p>
+              Our platform executes entirely within your browser environment, ensuring absolute data privacy and immediate responsiveness. No data is uploaded to a remote server.
+            </p>
+            <div className="lp-tech-specs-grid">
+              <div className="lp-tech-spec-item">
+                <h4>100% Client-Side Execution</h4>
+                <p>Private, local data processing with zero cloud latency and complete confidentiality.</p>
+              </div>
+              <div className="lp-tech-spec-item">
+                <h4>Export Formats</h4>
+                <p>Export peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (.xlsx), SVG plots, or IRP protocol files.</p>
+              </div>
+            </div>
+          </div>
+          <div className="lp-tech-code-container">
+            <pre className="lp-tech-code">
+              <code>{`// Example SNIP Baseline implementation
+function calculateSNIP(spectrum, iterations = 25) {
+  let baseline = [...spectrum];
+  for (let p = 1; p <= iterations; p++) {
+    for (let i = p; i < spectrum.length - p; i++) {
+      let a = baseline[i];
+      let b = (baseline[i - p] + baseline[i + p]) / 2;
+      baseline[i] = Math.min(a, b);
+    }
+  }
+  return baseline;
+}`}</code>
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
+      <section className="lp-pricing-section">
+        <div className="lp-pricing-card">
+          <h2>Purchase Pro License</h2>
+          <p>One-time Permanent License: $39. No subscriptions, no recurring costs.</p>
+          <button className="lp-btn-primary" onClick={() => setShowSignUp(true)}>
+            Buy Pro License
+          </button>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="lp-footer">
+        <div className="lp-footer-content">
+          <div className="lp-brand">
+            <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
+          </div>
+          <p className="lp-footer-tagline">
+            Leading the transition to real-time molecular diagnostics through browser-based spectral analysis and deconvolution.
+          </p>
+          <div className="lp-footer-status">
+            <span className="lp-status-dot"></span> SYSTEMS OPERATIONAL
+          </div>
+        </div>
+      </footer>
+
       {showHowItWorks && (
         <div className="lp-modal-overlay" onClick={() => setShowHowItWorks(false)}>
           <div className="lp-modal-content" onClick={(e) => e.stopPropagation()}>
