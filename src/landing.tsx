@@ -200,7 +200,6 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       </header>
 
       <section className="lp-hero">
-        <span className="lp-hero-badge">THE STANDARD FOR RAMAN ANALYSIS</span>
         <h1 className="lp-title">One-Click Raman Processing,<br />Plotting, and Fitting.</h1>
         <p className="lp-subtitle">
           Stop wrestling with clunky software. Automate your SNIP baselines and Levenberg-Marquardt deconvolution directly in your browser. Zero installation required.
