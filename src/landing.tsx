@@ -19,6 +19,7 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   const [showSignUp, setShowSignUp] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [viewMode, setViewMode] = useState<'before' | 'after'>('before');
@@ -194,9 +195,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
         </div>
         <div className="lp-header-actions">
-          <button className="lp-btn-secondary" onClick={() => {
-            document.getElementById('lp-how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-          }}>How it Works</button>
+          <button className="lp-btn-secondary" onClick={() => setShowHowItWorks(true)}>How it Works</button>
           <button className="lp-btn-secondary" onClick={() => setShowSignUp(true)}>Pricing</button>
           <button className="lp-btn-primary" onClick={onEnterWorkstation}>Launch Workstation</button>
         </div>
@@ -232,111 +231,71 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
-      <section id="lp-how-it-works" className="lp-how-section">
-        <h2>How it Works: The Processing & Fitting Pipeline</h2>
-        <p className="lp-how-section-desc">
-          Instant Raman operates entirely inside your browser, combining high-precision preprocessing algorithms with non-linear regression engines and rigorous uncertainty quantification.
-        </p>
-
-        <div className="lp-how-steps">
-          <div className="lp-step-card">
-            <h3><span>Step 1</span> Ingestion & Verification</h3>
-            <p>
-              Upload files in standard <code>.txt</code>, <code>.csv</code>, <code>.tsv</code>, or <code>.irp</code> formats. Wavenumber and intensity columns are automatically parsed. The engine instantly calculates a SHA-256 cryptographic hash of your raw files to serve as a unique fingerprint and guarantee data integrity.
-            </p>
-          </div>
-
-          <div className="lp-step-card">
-            <h3><span>Step 2</span> Preprocessing Pipeline</h3>
-            <p>
-              To prepare your data for deconvolution, the engine executes a three-part preprocessing pipeline:
-            </p>
-            <ul className="lp-step-sublist">
-              <li><strong>Cosmic Ray Filtering:</strong> A sliding-window Median Absolute Deviation (MAD) modified Z-score algorithm isolates and heals narrow, high-intensity spike artifacts.</li>
-              <li><strong>Baseline Correction:</strong> Auto Mode estimates and subtracts fluorescence humps using the recursive SNIP algorithm. Manual Mode allows custom anchor interpolation.</li>
-              <li><strong>Savitzky-Golay Smoothing:</strong> Filters out high-frequency noise using a customizable window size (default 9 points) without shifting or blunting peak shapes.</li>
-            </ul>
-          </div>
-
-          <div className="lp-step-card">
-            <h3><span>Step 3</span> Wavenumber Calibration</h3>
-            <p>
-              Verify system calibration using the Silicon Calibration tool. The engine automatically scans for the standard silicon peak at <strong>520.7 cm⁻¹</strong>, fits the local region, computes the offset/drift, and flags whether your calibration is within acceptable tolerances.
-            </p>
-          </div>
-
-          <div className="lp-step-card">
-            <h3><span>Step 4</span> Multi-Model Peak Deconvolution</h3>
-            <p>
-              For fitting overlapping bands, Instant Raman utilizes a non-linear Levenberg-Marquardt (LM) optimization engine supporting three profiles: Gaussian (for inhomogeneous broadening), Lorentzian (for homogeneous lifetime broadening), and Pseudo-Voigt (which combines both with a tunable mixing parameter).
-            </p>
-          </div>
-
-          <div className="lp-step-card" style={{ gridColumn: '1 / -1' }}>
-            <h3><span>Step 5</span> Statistical & Epistemic Uncertainty</h3>
-            <p>
-              To guarantee publication credibility, the workstation quantifies uncertainty from multiple sources:
-            </p>
-            <ul className="lp-step-sublist">
-              <li><strong>Statistical Error (Fit Precision):</strong> Standard errors (e.g., center uncertainty ±0.02 cm⁻¹) are calculated by computing the Singular Value Decomposition (SVD) of the fit's Jacobian matrix.</li>
-              <li><strong>Epistemic Error (Model Sensitivity):</strong> Randomly perturbs fit boundary limits by up to ±10% across Lorentzian, Gaussian, and Voigt profiles to build a multi-model ensemble and assess sensitivity.</li>
-              <li><strong>Bimodality Diagnostics:</strong> Uses Sarle's coefficient, dip tests, and k-means clustering to warn you if a peak is actually an unresolved doublet or phase mixture.</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="lp-outputs-summary">
-          <h3>Outputs You Get</h3>
-          <div className="lp-outputs-grid">
-            <div className="lp-output-item">
-              <strong>Export-Ready Plots</strong>
-              <span>Download transparent 300-DPI PNGs or scalable vector SVGs matching academic journal standards.</span>
+      {showHowItWorks && (
+        <div className="lp-modal-overlay" onClick={() => setShowHowItWorks(false)}>
+          <div className="lp-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="lp-modal-header">
+              <h2>How it Works: The Processing & Fitting Pipeline</h2>
+              <button className="lp-modal-close" onClick={() => setShowHowItWorks(false)}>✕</button>
             </div>
-            <div className="lp-output-item">
-              <strong>Tabular Data</strong>
-              <span>Export complete peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (<code>.xlsx</code>).</span>
+            
+            <div className="lp-modal-grid">
+              <div className="lp-modal-card">
+                <h3><span>01</span> Data Import & Integrity</h3>
+                <p>
+                  Upload standard <code>.txt</code>, <code>.csv</code>, or <code>.tsv</code> files. Wavenumber and intensity values are parsed instantly. A local SHA-256 hash checks and stamps the raw file, providing a permanent fingerprint to verify file integrity.
+                </p>
+              </div>
+
+              <div className="lp-modal-card">
+                <h3><span>02</span> Baseline & Noise Correction</h3>
+                <p>
+                  Cleans raw data through three automated steps: Cosmic ray spikes are removed using a median filter, background fluorescence is subtracted (via SNIP or manual anchors), and high-frequency noise is smoothed out using a Savitzky-Golay filter.
+                </p>
+              </div>
+
+              <div className="lp-modal-card">
+                <h3><span>03</span> Calibration Check</h3>
+                <p>
+                  Verify calibration accuracy by checking for the standard silicon peak at <strong>520.7 cm⁻¹</strong>. The workstation fits the region, calculates the offset, and reports whether the spectrometer has drifted.
+                </p>
+              </div>
+
+              <div className="lp-modal-card">
+                <h3><span>04</span> Peak Deconvolution</h3>
+                <p>
+                  Fit overlapping bands using non-linear least squares optimization. The workstation deconvolutes peaks using Gaussian, Lorentzian, or Pseudo-Voigt shapes depending on your sample's physics.
+                </p>
+              </div>
+
+              <div className="lp-modal-card" style={{ gridColumn: 'span 2' }}>
+                <h3><span>05</span> Statistical & Epistemic Error Quantification</h3>
+                <p>
+                  Quantifies uncertainties for accurate peak assignments. The tool calculates statistical precision (via SVD Jacobian analysis) alongside structural/model sensitivity (by perturbing boundaries by up to ±10% across Lorentzian, Gaussian, and Voigt profiles) to flag unresolved doublets or phase mixtures.
+                </p>
+              </div>
             </div>
-            <div className="lp-output-item">
-              <strong>IRP File (Instant Raman Protocol)</strong>
-              <span>Save your analysis as a <code>.irp</code> file containing raw data, parameters, and boundaries. Uploading this file reproduces your exact analysis state byte-for-byte.</span>
+
+            <div className="lp-modal-outputs">
+              <h3>Downloadable Outputs</h3>
+              <div className="lp-modal-outputs-grid">
+                <div className="lp-modal-output-item">
+                  <strong>Export-Ready Plots</strong>
+                  <span>Download transparent 300-DPI PNGs or scalable vector SVGs matching academic journal standards.</span>
+                </div>
+                <div className="lp-modal-output-item">
+                  <strong>Tabular Data</strong>
+                  <span>Export complete peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (<code>.xlsx</code>).</span>
+                </div>
+                <div className="lp-modal-output-item">
+                  <strong>IRP File (Instant Raman Protocol)</strong>
+                  <span>Save your analysis settings to reproduce the exact analysis state byte-for-byte.</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="lp-value-section">
-        <div className="lp-grid">
-          <div className="lp-card">
-            <div className="lp-card-icon"><Zap size={24} /></div>
-            <h3>Automated Baselines</h3>
-            <p>Drop your data in and get SNIP baseline correction instantly. No more manually drawing anchors unless you absolutely want to.</p>
-          </div>
-
-          <div className="lp-card">
-            <div className="lp-card-icon"><BarChart3 size={24} /></div>
-            <h3>Advanced Peak Fitting</h3>
-            <p>Built-in Levenberg-Marquardt deconvolution. Fit overlapping bands with Gaussian, Lorentzian, and true Voigt profiles effortlessly.</p>
-          </div>
-
-          <div className="lp-card">
-            <div className="lp-card-icon"><Download size={24} /></div>
-            <h3>Publication Ready</h3>
-            <p>One-click exports to 300-DPI transparent PNGs, fully scalable vector SVGs, and completely formatted Excel data tables.</p>
-          </div>
-
-          <div className="lp-card">
-            <div className="lp-card-icon"><Lock size={24} /></div>
-            <h3>100% Client-Side Privacy</h3>
-            <p>Your unpublished data never leaves your browser. No server uploads, no data harvesting. Absolute security for your research.</p>
-          </div>
-
-          <div className="lp-card" style={{ gridColumn: '1 / -1', background: '#f0f9ff', borderColor: '#bae6fd' }}>
-            <div className="lp-card-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}><CheckCircle2 size={24} /></div>
-            <h3>Standardize Your Lab (Pro)</h3>
-            <p>Save your exact correction, calibration, and fitting state as a cryptographically verifiable <b>.irp (Instant Raman Protocol)</b> file. Share it with your entire team or peer reviewers to guarantee perfect reproducibility.</p>
-          </div>
-        </div>
-      </section>
+      )}
     </div>
   );
 };
