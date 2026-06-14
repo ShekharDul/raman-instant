@@ -10,7 +10,6 @@ import {
   Upload,
   Image as ImageIcon,
   Activity,
-  Binary,
   Copy,
   ExternalLink,
   ChevronRight,
@@ -28,9 +27,9 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{ duration: 0.55, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={className}
       style={style}
     >
@@ -39,29 +38,53 @@ const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; className?: 
   );
 };
 
+/* ── Navigation Bar ── */
+const NavBar: React.FC<{ onEnterWorkstation: () => void; isDesktop: boolean }> = ({ onEnterWorkstation, isDesktop }) => (
+  <nav className="lp-nav">
+    <div className="lp-container lp-nav-inner">
+      <div className="lp-nav-brand">Instant Raman</div>
+      <div className="lp-nav-links">
+        <a href="#features" className="lp-nav-link">Features</a>
+        <a href="#pricing" className="lp-nav-link">Pricing</a>
+        <a
+          href="https://github.com/ShekharDul/raman-instant"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="lp-nav-link"
+        >
+          GitHub <ExternalLink size={12} />
+        </a>
+        {isDesktop ? (
+          <button onClick={onEnterWorkstation} className="lp-nav-cta">
+            Launch Workstation
+          </button>
+        ) : (
+          <span className="lp-nav-cta" style={{ opacity: 0.45, cursor: 'not-allowed' }}>
+            <Lock size={13} /> Desktop Only
+          </span>
+        )}
+      </div>
+    </div>
+  </nav>
+);
 
-
-/* ── Spectral Deconvolution Visual (SVG) ── */
+/* ── Spectral Deconvolution Visual (SVG — Light Theme) ── */
 const SpectralDeconvolutionVisual: React.FC = () => {
-  const width = 500;
-  const height = 340;
-  const padding = 20;
+  const width = 520;
+  const height = 300;
+  const padding = 24;
 
-  // Define 5 Lorentzian peaks
   const peaks = [
-    { xc: 100, w: 20, h: 100 }, // Peak 1
-    { xc: 180, w: 28, h: 200 }, // Peak 2
-    { xc: 260, w: 22, h: 290 }, // Peak 3 (tallest)
-    { xc: 340, w: 32, h: 140 }, // Peak 4
-    { xc: 410, w: 18, h: 80 }   // Peak 5
+    { xc: 100, w: 20, h: 100 },
+    { xc: 180, w: 28, h: 200 },
+    { xc: 260, w: 22, h: 260 },
+    { xc: 340, w: 32, h: 140 },
+    { xc: 420, w: 18, h: 80 },
   ];
 
-  // Calculate Lorentzian value at x
-  const lorentzian = (x: number, xc: number, w: number, h: number) => {
-    return h * (w * w) / ((x - xc) * (x - xc) + w * w);
-  };
+  const lorentzian = (x: number, xc: number, w: number, h: number) =>
+    h * (w * w) / ((x - xc) * (x - xc) + w * w);
 
-  // Generate points for the main envelope (sum of all lorentzians + small baseline)
   const mainPoints: [number, number][] = [];
   const componentPoints: [number, number][][] = peaks.map(() => []);
 
@@ -72,103 +95,59 @@ const SpectralDeconvolutionVisual: React.FC = () => {
       ySum += yVal;
       componentPoints[idx].push([x, height - padding - yVal]);
     });
-
-    const baseline = Math.sin(x / 60) * 8 + 10;
-    const totalY = ySum + baseline;
-    mainPoints.push([x, height - padding - totalY]);
+    const baseline = Math.sin(x / 60) * 6 + 8;
+    mainPoints.push([x, height - padding - (ySum + baseline)]);
   }
 
-  // Create SVG path strings
-  const createPathD = (pts: [number, number][]) => {
-    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
-  };
+  const createPathD = (pts: [number, number][]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
 
   const createAreaD = (pts: [number, number][]) => {
     if (pts.length === 0) return '';
     const startX = pts[0][0];
     const endX = pts[pts.length - 1][0];
-    const basePath = `M ${startX} ${height - padding}`;
-    const linePath = pts.map(p => `L ${p[0]} ${p[1]}`).join(' ');
-    const closePath = `L ${endX} ${height - padding} Z`;
-    return `${basePath} ${linePath} ${closePath}`;
+    return `M ${startX} ${height - padding} ${pts.map(p => `L ${p[0]} ${p[1]}`).join(' ')} L ${endX} ${height - padding} Z`;
   };
-
-  const mainPathD = createPathD(mainPoints);
 
   return (
     <div className="spectral-visual-container">
       <svg viewBox={`0 0 ${width} ${height}`} className="spectral-svg">
         <defs>
-          {/* Gradients and Filters */}
-          <linearGradient id="teal-glow" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.0" />
+          <linearGradient id="sage-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2d8a7e" stopOpacity="0.10" />
+            <stop offset="100%" stopColor="#2d8a7e" stopOpacity="0.0" />
           </linearGradient>
-          <filter id="glow-light" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <filter id="glow-strong" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
+          <filter id="soft-glow" x="-15%" y="-15%" width="130%" height="130%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
         </defs>
 
-        {/* Component Peaks (Teal curves with gradients) */}
+        {/* Subtle axis lines */}
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding}
+          stroke="#e8e4df" strokeWidth="1" />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding}
+          stroke="#e8e4df" strokeWidth="1" />
+
+        {/* Component peaks */}
         {componentPoints.map((pts, idx) => (
           <g key={idx}>
-            {/* Filled area */}
-            <path
-              d={createAreaD(pts)}
-              fill="url(#teal-glow)"
-              opacity="0.25"
-            />
-            {/* Outline curve */}
-            <path
-              d={createPathD(pts)}
-              fill="none"
-              stroke="#14b8a6"
-              strokeWidth="1.5"
-              opacity="0.8"
-              style={{ filter: 'url(#glow-light)' }}
-            />
+            <path d={createAreaD(pts)} fill="url(#sage-fill)" opacity="0.5" />
+            <path d={createPathD(pts)} fill="none" stroke="#7cb5a8" strokeWidth="1.5" opacity="0.7"
+              style={{ filter: 'url(#soft-glow)' }} />
           </g>
         ))}
 
-        {/* Main Envelope Curve (Glowing White Line) */}
-        <path
-          d={mainPathD}
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth="3.5"
-          opacity="0.4"
-          style={{ filter: 'url(#glow-strong)' }}
-        />
-        <path
-          d={mainPathD}
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth="2"
-        />
+        {/* Main envelope */}
+        <path d={createPathD(mainPoints)} fill="none" stroke="#2d8a7e" strokeWidth="2.5" opacity="0.2"
+          style={{ filter: 'url(#soft-glow)' }} />
+        <path d={createPathD(mainPoints)} fill="none" stroke="#2d8a7e" strokeWidth="2" />
 
-        {/* Dynamic Peak Fit Indicators (Vertical dashed line for the tallest peak center) */}
-        <line
-          x1={260}
-          y1={height - padding - 310}
-          x2={260}
-          y2={height - padding}
-          stroke="#14b8a6"
-          strokeDasharray="4,4"
-          strokeWidth="1"
-          opacity="0.4"
-        />
-        <circle
-          cx={260}
-          cy={height - padding - 305}
-          r="3"
-          fill="#14b8a6"
-          style={{ filter: 'url(#glow-light)' }}
-        />
+        {/* Peak indicator */}
+        <line x1={260} y1={height - padding - 275} x2={260} y2={height - padding}
+          stroke="#7cb5a8" strokeDasharray="4,4" strokeWidth="1" opacity="0.35" />
+        <circle cx={260} cy={height - padding - 270} r="3" fill="#2d8a7e" opacity="0.6"
+          style={{ filter: 'url(#soft-glow)' }} />
       </svg>
     </div>
   );
@@ -183,134 +162,6 @@ const BIBTEX_TEXT = `@software{instant_raman,
   year = {2026},
   version = {2.5}
 }`;
-
-/* ── Workstation UI Mockup (Coded Option 1) ── */
-const WorkstationMockup: React.FC = () => {
-  return (
-    <div className="workstation-mockup">
-      {/* Mock Header */}
-      <div className="mock-header">
-        <div className="mock-header-left">
-          <span className="mock-dot red" />
-          <span className="mock-dot yellow" />
-          <span className="mock-dot green" />
-          <span className="mock-filename">sample_Si_calibration.txt</span>
-        </div>
-        <div className="mock-header-right">
-          <span className="mock-pro-badge">PRO ACTIVE</span>
-        </div>
-      </div>
-
-      <div className="mock-body">
-        {/* Mock Sidebar */}
-        <div className="mock-sidebar">
-          {/* Section: Ingestion */}
-          <div className="mock-sidebar-section">
-            <div className="mock-section-title">INGESTION</div>
-            <div className="mock-dropzone">
-              <Upload size={14} className="mock-icon-accent" />
-              <span>Drag files here</span>
-              <span className="mock-dropzone-sub">.dx · .txt · .csv</span>
-            </div>
-            <div className="mock-checkbox-row">
-              <span className="mock-checkbox-checked">✓</span>
-              <span>Auto cosmic ray removal</span>
-            </div>
-          </div>
-
-          {/* Section: Baseline */}
-          <div className="mock-sidebar-section">
-            <div className="mock-section-title">BASELINE CORRECTION</div>
-            <div className="mock-btn-row">
-              <div className="mock-btn active">Auto (SNIP)</div>
-              <div className="mock-btn">Manual</div>
-            </div>
-            <div className="mock-slider-row">
-              <div className="mock-slider-label">
-                <span>Iterations</span>
-                <span className="mock-text-accent">25</span>
-              </div>
-              <div className="mock-slider-track">
-                <div className="mock-slider-fill" style={{ width: '50%' }} />
-                <div className="mock-slider-thumb" style={{ left: '50%' }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Fitting */}
-          <div className="mock-sidebar-section">
-            <div className="mock-section-title">PEAK FITTING (LM)</div>
-            <div className="mock-select-row">
-              <span>Profile</span>
-              <div className="mock-select">
-                <span>Lorentzian</span>
-                <span className="mock-select-arrow">▼</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mock Main Workspace */}
-        <div className="mock-workspace">
-          {/* Mock Plot Canvas */}
-          <div className="mock-plot-area">
-            {/* The SVG Spectral curve deconvolution visual */}
-            <SpectralDeconvolutionVisual />
-
-            {/* Pointers floating over the mockup */}
-            <div className="visual-pointer pointer-ingestion">
-              <div className="pointer-card">
-                <div className="pointer-card-title">100% Client-Side Ingestion</div>
-                <div className="pointer-card-text">Reads data locally. Zero servers. Universal format support.</div>
-              </div>
-            </div>
-
-            <div className="visual-pointer pointer-baseline">
-              <div className="pointer-dot" />
-              <div className="pointer-card">
-                <div className="pointer-card-title">SNIP Background Correction</div>
-                <div className="pointer-card-text">Adaptive automated baseline subtraction runs locally.</div>
-              </div>
-            </div>
-
-            <div className="visual-pointer pointer-fitting">
-              <div className="pointer-dot" />
-              <div className="pointer-card">
-                <div className="pointer-card-title">Levenberg-Marquardt Fitting</div>
-                <div className="pointer-card-text">Simultaneous multi-peak deconvolution into component bands.</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Mock Peak Data Grid */}
-          <div className="mock-data-grid">
-            <div className="mock-grid-header">
-              <span>Peak</span>
-              <span>Centroid (cm⁻¹)</span>
-              <span>Height</span>
-              <span>FWHM (cm⁻¹)</span>
-              <span>Area</span>
-            </div>
-            <div className="mock-grid-row active">
-              <span className="mock-text-accent">P1</span>
-              <span>520.7</span>
-              <span>290.4</span>
-              <span>2.41</span>
-              <span>1102.1</span>
-            </div>
-            <div className="mock-grid-row">
-              <span>P2</span>
-              <span>340.2</span>
-              <span>140.2</span>
-              <span>3.12</span>
-              <span>687.5</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   const [isDesktop, setIsDesktop] = useState(false);
@@ -357,10 +208,13 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
     const baseLink = "https://rzp.io/rzp/HMU46eo";
     const checkoutUrl = `${baseLink}?email=${encodeURIComponent(trimmedEmail)}&prefill[email]=${encodeURIComponent(trimmedEmail)}`;
-    
+
     window.open(checkoutUrl, '_blank');
   };
 
+  /* ════════════════════════════════════
+     SIGN-UP VIEW
+     ════════════════════════════════════ */
   if (showSignUp) {
     return (
       <div className="lp-signup-root">
@@ -374,7 +228,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             }}>
               <ArrowLeft size={16} /> Back to Homepage
             </button>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#14b8a6' }}>Instant Raman Pro</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--lp-accent)' }}>Instant Raman Pro</span>
           </div>
         </header>
 
@@ -386,9 +240,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
 
             <div className="lp-signup-feature-item">
-              <div className="lp-signup-feature-icon">
-                <Zap size={20} />
-              </div>
+              <div className="lp-signup-feature-icon"><Zap size={20} /></div>
               <div className="lp-signup-feature-content">
                 <h4>LM Multi-Peak Deconvolution</h4>
                 <p>Fit overlapping bands with Voigt, Lorentzian, and Gaussian lineshapes using true client-side Levenberg-Marquardt optimization.</p>
@@ -396,9 +248,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
 
             <div className="lp-signup-feature-item">
-              <div className="lp-signup-feature-icon">
-                <ShieldCheck size={20} />
-              </div>
+              <div className="lp-signup-feature-icon"><ShieldCheck size={20} /></div>
               <div className="lp-signup-feature-content">
                 <h4>Split Uncertainty Quantification</h4>
                 <p>Submit with confidence. Quantify and separate statistical noise (bootstrap) from epistemic model bias for your publication.</p>
@@ -406,9 +256,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
 
             <div className="lp-signup-feature-item">
-              <div className="lp-signup-feature-icon">
-                <CheckCircle2 size={20} />
-              </div>
+              <div className="lp-signup-feature-icon"><CheckCircle2 size={20} /></div>
               <div className="lp-signup-feature-content">
                 <h4>Reproducibility Protocol (.irp)</h4>
                 <p>Standardize analyses. Save full correction, fitting, and calibration states as a cryptographically-hashed file to share with peer reviewers or team members.</p>
@@ -416,9 +264,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
 
             <div className="lp-signup-feature-item">
-              <div className="lp-signup-feature-icon">
-                <ImageIcon size={20} />
-              </div>
+              <div className="lp-signup-feature-icon"><ImageIcon size={20} /></div>
               <div className="lp-signup-feature-content">
                 <h4>Publication-Ready Vector Export</h4>
                 <p>Download transparent 300-DPI PNGs, vector SVGs, complete Excel tables, and interactive standalone HTML research reports.</p>
@@ -430,7 +276,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             <div className="lp-signup-card">
               <h3 className="lp-signup-card-title">Access License Sign Up</h3>
               <p className="lp-signup-card-desc">Enter your email to proceed to secure checkout. Your unique access license key will be sent to this email address once payment is completed.</p>
-              
+
               <form onSubmit={handleSignUpSubmit}>
                 <div className="lp-signup-form-group">
                   <label className="lp-signup-label" htmlFor="signup-email">Researcher Email</label>
@@ -469,38 +315,43 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
     );
   }
 
+  /* ════════════════════════════════════
+     MAIN LANDING PAGE
+     ════════════════════════════════════ */
   return (
     <div className="lp-root">
-      {/* ════════════════════════════════════════════
-          HERO
-          ════════════════════════════════════════════ */}
+
+      {/* ── NAVIGATION ── */}
+      <NavBar onEnterWorkstation={onEnterWorkstation} isDesktop={isDesktop} />
+
+      {/* ── HERO ── */}
       <section className="lp-hero">
         <div className="lp-container">
           <div className="lp-hero-content">
             <div className="lp-hero-text">
               <motion.h1
                 className="lp-hero-h1"
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
+                transition={{ duration: 0.55, delay: 0.1 }}
               >
-                YOUR RAMAN ASSISTANT
+                Your Raman Assistant
               </motion.h1>
 
               <motion.p
                 className="lp-hero-sub"
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.55, delay: 0.2 }}
               >
                 Less processing. Less plotting. More analysis.
               </motion.p>
 
               <motion.div
                 className="lp-hero-actions"
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
+                transition={{ duration: 0.55, delay: 0.3 }}
               >
                 {isDesktop ? (
                   <button onClick={onEnterWorkstation} className="lp-btn-primary">
@@ -508,7 +359,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                     <ArrowRight size={18} />
                   </button>
                 ) : (
-                  <div className="lp-btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  <div className="lp-btn-primary" style={{ opacity: 0.45, cursor: 'not-allowed' }}>
                     <Lock size={16} /> Desktop Required
                   </div>
                 )}
@@ -529,7 +380,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                 className="lp-trust-signals"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
+                transition={{ duration: 0.7, delay: 0.55 }}
               >
                 <div className="lp-trust-item"><ShieldCheck size={14} className="lp-text-accent" /> 100% Client-Side</div>
                 <div className="lp-trust-item"><CheckCircle2 size={14} className="lp-text-accent" /> SHA-256 Verified</div>
@@ -540,24 +391,65 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
             <motion.div
               className="lp-hero-visual"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, delay: 0.3 }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
             >
-              <WorkstationMockup />
+              <SpectralDeconvolutionVisual />
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════
-          PRICING
-          ════════════════════════════════════════════ */}
+      {/* ── FEATURES — Built for Researchers ── */}
+      <section className="lp-features" id="features">
+        <div className="lp-container">
+          <div className="lp-section-header">
+            <span className="lp-section-label">Workflow</span>
+            <h2 className="lp-section-heading">Built for Researchers</h2>
+            <p className="lp-section-desc">
+              From raw instrument data to publication-ready figures, without the workflow headache.
+            </p>
+          </div>
+
+          <div className="lp-features-grid">
+            <FadeIn>
+              <div className="lp-feature-card">
+                <div className="lp-feature-icon"><Upload size={22} /></div>
+                <div className="lp-feature-title">Drop in Your Spectra</div>
+                <div className="lp-feature-desc">
+                  Reads Renishaw, Horiba, WITec, Bruker, Ocean Optics, JCAMP-DX, CSV, and TXT — no conversion needed. Universal format support means you spend zero time on file prep.
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <div className="lp-feature-card">
+                <div className="lp-feature-icon"><Activity size={22} /></div>
+                <div className="lp-feature-title">Publication-Ready in Seconds</div>
+                <div className="lp-feature-desc">
+                  Automated SNIP baseline correction, parabolic peak detection, and Levenberg-Marquardt multi-peak deconvolution — all running instantly in your browser.
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div className="lp-feature-card">
+                <div className="lp-feature-icon"><ShieldCheck size={22} /></div>
+                <div className="lp-feature-title">Your Data Stays Private</div>
+                <div className="lp-feature-desc">
+                  100% client-side. Zero servers, zero uploads, zero tracking. Your spectral data never leaves your computer — complete privacy by design.
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
       <section className="lp-pricing" id="pricing">
         <div className="lp-container">
           <div className="lp-section-header">
             <span className="lp-section-label">Plans</span>
-            <p style={{ color: '#666666', marginTop: 16, fontSize: '1.1rem' }}>One-time purchase provides lifetime access.</p>
+            <p className="lp-section-desc" style={{ marginTop: 0 }}>One-time purchase provides lifetime access.</p>
           </div>
 
           <div className="lp-pricing-grid">
@@ -567,7 +459,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               <div className="pricing-price">$0</div>
               <div className="pricing-period">Free forever</div>
               <p className="pricing-desc">A complete tool, not a trial. Fully-featured spectral analysis without time limits or feature degradation.</p>
-              
+
               <ul className="pricing-features">
                 <li><CheckCircle2 size={16} /> Unlimited file ingestion (All formats)</li>
                 <li><CheckCircle2 size={16} /> <span className="lp-font-mono">SNIP</span> baseline correction</li>
@@ -576,7 +468,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                 <li><CheckCircle2 size={16} /> Standard <span className="lp-font-mono">PNG</span> export</li>
                 <li><CheckCircle2 size={16} /> 100% Client-side privacy</li>
               </ul>
-              
+
               {isDesktop ? (
                 <button onClick={onEnterWorkstation} className="lp-btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
                   Launch Free Version
@@ -589,13 +481,13 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </FadeIn>
 
             {/* Pro Tier */}
-            <FadeIn delay={0.2} className="pricing-card pro">
+            <FadeIn delay={0.15} className="pricing-card pro">
               <div className="pricing-badge">Recommended for Publication</div>
               <div className="pricing-tier">Pro License</div>
               <div className="pricing-price">$39</div>
               <div className="pricing-period">One-time purchase</div>
               <p className="pricing-desc">The "publish with confidence" upgrade. Advanced rigor and scientific export tools.</p>
-              
+
               <ul className="pricing-features">
                 <li className="pro-feature"><CheckCircle2 size={16} /> <strong><span className="lp-font-mono">LM</span> Multi-Peak Deconvolution</strong></li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> <strong>Uncertainty Quantification Suite</strong></li>
@@ -606,7 +498,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
                 <li className="pro-feature"><CheckCircle2 size={16} /> <span className="lp-font-mono">SVG</span> &amp; High-Res Export</li>
                 <li className="pro-feature"><CheckCircle2 size={16} /> Interactive <span className="lp-font-mono">HTML</span> Report Export</li>
               </ul>
-              
+
               <button
                 onClick={() => setShowSignUp(true)}
                 className="lp-btn-primary"
@@ -619,9 +511,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════
-          CITATION & METHODS
-          ════════════════════════════════════════════ */}
+      {/* ── CITATION & METHODS ── */}
       <section className="lp-citation">
         <div className="lp-container">
           <div className="lp-section-header">
@@ -631,8 +521,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
 
           <div className="citation-grid">
             <FadeIn>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#666666', fontFamily: 'var(--font-mono)' }}>METHODS SECTION TEMPLATE</div>
-              <div style={{ marginBottom: 16, color: '#888888', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              <div className="citation-block-label">Methods Section Template</div>
+              <div className="citation-block-desc">
                 Paste this standard description directly into the experimental methods section of your manuscript:
               </div>
               <div className="code-block">
@@ -647,9 +537,9 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               </div>
             </FadeIn>
 
-            <FadeIn delay={0.2}>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: '0.9rem', color: '#666666', fontFamily: 'var(--font-mono)' }}>BIBTEX CITATION</div>
-              <div style={{ marginBottom: 16, color: '#888888', fontSize: '0.95rem', lineHeight: '1.5' }}>
+            <FadeIn delay={0.15}>
+              <div className="citation-block-label">BibTeX Citation</div>
+              <div className="citation-block-desc">
                 Cite Instant Raman in your reference manager software:
               </div>
               <div className="code-block">
@@ -667,9 +557,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════════
-          FOOTER
-          ════════════════════════════════════════════ */}
+      {/* ── FOOTER ── */}
       <footer className="lp-footer">
         <div className="lp-container lp-footer-inner">
           <div className="lp-footer-left">
