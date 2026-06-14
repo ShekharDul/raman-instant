@@ -76,8 +76,10 @@ export default {
           });
         }
 
+        const keyNormalized = license_key.trim().toUpperCase();
+
         // Fetch license metadata from KV
-        const rawData = await env.LICENSE_KV.get(license_key);
+        const rawData = await env.LICENSE_KV.get(keyNormalized);
         if (!rawData) {
           return new Response(JSON.stringify({ valid: false, error: 'License key not found.' }), {
             status: 404,
@@ -108,7 +110,7 @@ export default {
 
         // Add new client to active users
         license.active_users.push(client_id);
-        await env.LICENSE_KV.put(license_key, JSON.stringify(license));
+        await env.LICENSE_KV.put(keyNormalized, JSON.stringify(license));
 
         return new Response(JSON.stringify({ valid: true, email: license.email }), {
           status: 200,
@@ -133,9 +135,11 @@ export default {
 // ── Helpers ──
 function generateRandomKey() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const array = new Uint32Array(12);
+  crypto.getRandomValues(array);
   let result = '';
   for (let i = 0; i < 12; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(array[i] % chars.length);
   }
   return result;
 }

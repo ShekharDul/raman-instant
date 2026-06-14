@@ -4,7 +4,7 @@ export interface LicenseState {
   clientId: string;
 }
 
-const PROXY_URL = 'https://license.instantraman.workers.dev/validate';
+const PROXY_URL = 'https://license-worker.shekhardulgach19.workers.dev/validate';
 const STORAGE_KEY = 'instant_raman_license_state';
 const CLIENT_ID_KEY = 'instant_raman_client_id';
 
@@ -36,15 +36,21 @@ export const LicenseManager = {
 
   async validateAndSave(licenseKey: string): Promise<{ success: boolean; error?: string }> {
     const clientId = this.getClientId();
+    const keyNormalized = licenseKey.trim().toUpperCase();
     try {
       const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ license_key: licenseKey, client_id: clientId })
+        body: JSON.stringify({ license_key: keyNormalized, client_id: clientId })
       });
 
       if (!res.ok) {
-        const errData = await res.json();
+        let errData;
+        try {
+          errData = await res.json();
+        } catch {
+          errData = { error: `Server error (${res.status})` };
+        }
         return { success: false, error: errData.error || 'Validation failed.' };
       }
 
@@ -52,7 +58,7 @@ export const LicenseManager = {
       if (data.valid) {
         const newState = {
           isPro: true,
-          licenseKey
+          licenseKey: keyNormalized
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
         return { success: true };

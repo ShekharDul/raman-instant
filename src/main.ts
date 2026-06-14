@@ -1010,6 +1010,20 @@ function initLicensing() {
 
   updateLicenseHeaderUI();
 
+  // Offline-friendly background re-validation on startup when online to check if key has been revoked/exceeded
+  if (navigator.onLine && licenseState.licenseKey) {
+    LicenseManager.validateAndSave(licenseState.licenseKey).then(result => {
+      // ONLY disable if the server explicitly responded and invalidated the key.
+      // Do NOT disable on network timeout or connection errors.
+      if (result.success === false && result.error !== 'Network error contacting validation server.') {
+        state.isPro = false;
+        LicenseManager.clear();
+        updateLicenseHeaderUI();
+        showToast("License key is no longer valid or seat limit exceeded.");
+      }
+    });
+  }
+
   const btnActivate = UI.get('btn-activate-license');
   const paywallModal = UI.get('modal-paywall');
   
