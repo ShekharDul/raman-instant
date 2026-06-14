@@ -229,6 +229,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
           </div>
           <div id="lp-plotly-div"></div>
+        </div>
       </section>
 
       <section id="lp-how-it-works" className="lp-how-section">
