@@ -3,9 +3,9 @@
    ══════════════════════════════════════════════════════ */
 
 .lp-root, .lp-signup-root {
-  --font-sans: 'Inconsolata', monospace;
-  --font-mono: 'Inconsolata', monospace;
+  --font-sans: 'Scope One', serif;
 }
+
 
 /* ── Root & Layout ── */
 .lp-root {
