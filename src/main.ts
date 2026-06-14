@@ -144,6 +144,7 @@ function trackEvent(name: string, params: object = {}) {
 // ── Initialization ──
 initAboutModal();
 initLicensing();
+initNavigation();
 initDrawerToggle();
 initUpload();
 initSliders();
@@ -1001,6 +1002,16 @@ function initAboutModal() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
   });
+}
+
+function initNavigation() {
+  const handleExitWorkstation = () => {
+    document.body.classList.remove('workstation-active');
+    window.scrollTo(0, 0);
+  };
+
+  UI.get('workstation-brand-logo')?.addEventListener('click', handleExitWorkstation);
+  UI.get('btn-back-to-landing')?.addEventListener('click', handleExitWorkstation);
 }
 
 

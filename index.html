@@ -98,13 +98,14 @@
 
   <div id="app">
     <header class="header">
-      <div class="brand" style="display: flex; align-items: center; gap: 10px;">
-        <img src="./Instant%20Raman%20Logo.jpeg" alt="Instant Raman Logo" style="height: 26px; width: auto;">
-        <h1>Instant Raman</h1>
+      <div class="brand" style="display: flex; align-items: center; gap: 4px; font-weight: 800; letter-spacing: -0.04em; user-select: none; cursor: pointer;" id="workstation-brand-logo">
+        <span style="color: var(--accent); font-size: 16px; font-weight: 800;">Instant</span><span style="color: var(--text-primary); font-size: 16px; font-weight: 800; margin-left: 2px;">Raman</span>
       </div>
       <div class="status">
         <button id="btn-activate-license"
           style="background: var(--accent); border: 1px solid var(--accent); cursor: pointer; color: white; font-weight: 600; font-size: 11px; padding: 5px 12px; border-radius: var(--radius-sm); margin-right: 12px; transition: background 0.15s;">Activate Pro License</button>
+        <button id="btn-back-to-landing"
+          style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-weight: 500; font-size: 12px; margin-right: 12px; transition: color 0.15s;">Back to Landing</button>
         <button id="btn-about"
           style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-weight: 500; font-size: 12px;">About</button>
         <span class="status-dot"></span>

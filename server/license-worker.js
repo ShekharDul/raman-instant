@@ -38,16 +38,28 @@ export default {
           // 2. Generate unique key: IR-PRO-XXXXXX
           const uniqueKey = 'IR-PRO-' + generateRandomKey();
 
+          // Determine device seat limit (1 for Individual, 5 for Lab & Team)
+          let maxDevices = 1;
+          const planFromNotes = payment.notes?.plan || payment.notes?.tier || '';
+          if (
+            planFromNotes.toLowerCase().includes('team') || 
+            planFromNotes.toLowerCase().includes('lab') || 
+            payment.amount > 15000
+          ) {
+            maxDevices = 5;
+          }
+
           // 3. Save license to Cloudflare KV Namespace
           const licenseData = {
             email: email,
-            active_users: [], // Array of client IDs (max length: 3)
+            active_users: [], // Array of client IDs
+            max_devices: maxDevices,
             created_at: new Date().toISOString()
           };
           await env.LICENSE_KV.put(uniqueKey, JSON.stringify(licenseData));
 
           // 4. Send email to user using Resend API
-          const emailSent = await sendLicenseEmail(email, uniqueKey, env.RESEND_API_KEY);
+          const emailSent = await sendLicenseEmail(email, uniqueKey, maxDevices, env.RESEND_API_KEY);
           if (!emailSent) {
             console.error(`Failed to send email to ${email}`);
           }
@@ -98,10 +110,12 @@ export default {
         }
 
         // Verify user cap
-        if (license.active_users.length >= 3) {
+        const maxDevices = license.max_devices || 3; // default to 3 for legacy keys
+        if (license.active_users.length >= maxDevices) {
+          const limitText = maxDevices === 1 ? '1 active device' : `${maxDevices} active devices`;
           return new Response(JSON.stringify({ 
             valid: false, 
-            error: 'Activation limit exceeded. This license key is already in use by 3 research group members.' 
+            error: `Activation limit exceeded. This license key is already in use on ${limitText}.` 
           }), {
             status: 403,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -171,10 +185,12 @@ async function verifyRazorpaySignature(bodyText, signature, secret) {
   return generatedSignature === signature;
 }
 
-async function sendLicenseEmail(email, key, apiKey) {
+async function sendLicenseEmail(email, key, maxDevices, apiKey) {
   // resend.dev default sandbox email is "onboarding@resend.dev"
   // If the user domain is verified, they can use "licensing@instantraman.com"
   const fromEmail = 'onboarding@resend.dev'; 
+  
+  const deviceCountText = maxDevices === 1 ? '1 active device' : `${maxDevices} active devices`;
   
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -193,7 +209,7 @@ async function sendLicenseEmail(email, key, apiKey) {
           <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 14px; text-align: center; border-radius: 2px; margin: 24px 0;">
             <code style="font-family: monospace; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: 0.05em;">${key}</code>
           </div>
-          <p style="color: #475569; font-size: 13px; line-height: 1.5;">This key can be activated by up to <strong>3 members</strong> of your research group. To activate, launch the workstation and click "Activate Pro License" in the top header.</p>
+          <p style="color: #475569; font-size: 13px; line-height: 1.5;">This key can be activated on up to <strong>${deviceCountText}</strong>. To activate, launch the workstation and click "Activate Pro License" in the top header.</p>
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
           <p style="color: #94a3b8; font-size: 11px;">Note: If you have an unverified domain on Resend, make sure to add your target emails to your Resend dashboard recipients first.</p>
         </div>

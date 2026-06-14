@@ -23,6 +23,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [viewMode, setViewMode] = useState<'before' | 'after'>('before');
+  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'team'>('individual');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -45,7 +46,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
     }
 
     const baseLink = "https://rzp.io/rzp/HMU46eo";
-    const checkoutUrl = `${baseLink}?email=${encodeURIComponent(trimmedEmail)}&prefill[email]=${encodeURIComponent(trimmedEmail)}`;
+    const checkoutUrl = `${baseLink}?email=${encodeURIComponent(trimmedEmail)}&prefill[email]=${encodeURIComponent(trimmedEmail)}&notes[plan]=${selectedPlan}`;
 
     window.open(checkoutUrl, '_blank');
   };
@@ -145,8 +146,27 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
             
             <p className="lp-signup-card-desc">
-              Standardize your lab's workflow. The Pro license unlocks .irp reproducibility protocols, advanced Monte Carlo error analysis, and vector exports.
+              The Pro license unlocks custom IRP protocols, peak deconvolution uncertainty estimation, and vector exports.
             </p>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              <button 
+                type="button" 
+                className={`lp-toggle-btn ${selectedPlan === 'individual' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid var(--border-color)', borderRadius: '6px', background: selectedPlan === 'individual' ? 'var(--bg-tertiary)' : 'transparent', cursor: 'pointer' }}
+                onClick={() => setSelectedPlan('individual')}
+              >
+                Individual ($79)
+              </button>
+              <button 
+                type="button" 
+                className={`lp-toggle-btn ${selectedPlan === 'team' ? 'active' : ''}`}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid var(--border-color)', borderRadius: '6px', background: selectedPlan === 'team' ? 'var(--bg-tertiary)' : 'transparent', cursor: 'pointer' }}
+                onClick={() => setSelectedPlan('team')}
+              >
+                Lab & Team ($249)
+              </button>
+            </div>
 
             <form onSubmit={handleSignUpSubmit}>
               <div className="lp-signup-form-group">
@@ -172,8 +192,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </form>
 
             <div className="lp-signup-pricing-summary">
-              <span className="lp-signup-pricing-label">Lifetime License (One-time)</span>
-              <span className="lp-signup-price-val">$39</span>
+              <span className="lp-signup-pricing-label">Selected Plan: {selectedPlan === 'individual' ? 'Individual' : 'Lab & Team'}</span>
+              <span className="lp-signup-price-val">{selectedPlan === 'individual' ? '$79' : '$249'}</span>
             </div>
 
             <p className="lp-signup-privacy-note">
@@ -234,57 +254,57 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       {/* ── FEATURES GRID ── */}
       <section className="lp-features-section">
         <div className="lp-section-header">
-          <h2>Uncompromising Capabilities</h2>
-          <p>The quiet tools for high-precision molecular discovery.</p>
+          <h2>Features</h2>
+          <p>Tools to process, fit, and export your spectra.</p>
         </div>
         <div className="lp-bento-grid">
           <div className="lp-bento-card">
             <div className="lp-bento-icon">
               <Zap size={20} />
             </div>
-            <h3>Universal Spectral Parser</h3>
+            <h3>File Import</h3>
             <p>Direct support for CSV, TSV, JCAMP-DX (.jdx, .dx), Horiba LabSpec (.txt, .xml), Bruker DPT, and Ocean Optics files.</p>
           </div>
           <div className="lp-bento-card">
             <div className="lp-bento-icon">
               <CheckCircle2 size={20} />
             </div>
-            <h3>Mathematical Baseline & Smoothing</h3>
-            <p>Robust MAD-based Cosmic Ray Spike rejection, Simple Non-Iterative Peak (SNIP) background subtraction, and Savitzky-Golay smoothing.</p>
+            <h3>Baseline & Noise Correction</h3>
+            <p>Cosmic ray spike rejection, Simple Non-Iterative Peak (SNIP) baseline subtraction, and Savitzky-Golay smoothing.</p>
           </div>
           <div className="lp-bento-card">
             <div className="lp-bento-icon">
               <BarChart3 size={20} />
             </div>
-            <h3>Levenberg-Marquardt Deconvolution</h3>
-            <p>Multi-peak fitting of Lorentzian, Gaussian, and Voigt profiles using non-linear least squares optimization (Pro Feature).</p>
+            <h3>Peak Fitting & Deconvolution</h3>
+            <p>Fit overlapping peaks with Gaussian, Lorentzian, or Voigt profiles using non-linear least squares optimization (Pro Feature).</p>
           </div>
           <div className="lp-bento-card">
             <div className="lp-bento-icon">
               <Lock size={20} />
             </div>
-            <h3>Statistical & Epistemic Error Quantification</h3>
-            <p>Monte Carlo uncertainty propagation and SVD Jacobian analysis for accurate peak assignments and confidence bounds (Pro Feature).</p>
+            <h3>Uncertainty Estimation</h3>
+            <p>Calculate fit confidence bounds using Jacobian analysis and boundary perturbations (Pro Feature).</p>
           </div>
         </div>
       </section>
-
+ 
       {/* ── TECH SPECS & CODE ── */}
       <section className="lp-tech-section">
         <div className="lp-tech-content">
           <div className="lp-tech-text">
-            <h2>Engineered for Technical Rigor.</h2>
+            <h2>Run locally in your browser.</h2>
             <p>
-              Our platform executes entirely within your browser environment, ensuring absolute data privacy and immediate responsiveness. No data is uploaded to a remote server.
+              All processing runs client-side. Your spectral data never leaves your computer.
             </p>
             <div className="lp-tech-specs-grid">
               <div className="lp-tech-spec-item">
-                <h4>100% Client-Side Execution</h4>
-                <p>Private, local data processing with zero cloud latency and complete confidentiality.</p>
+                <h4>100% Client-Side</h4>
+                <p>Process data locally with zero latency and complete privacy.</p>
               </div>
               <div className="lp-tech-spec-item">
-                <h4>Export Formats</h4>
-                <p>Export peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (.xlsx), SVG plots, or IRP protocol files.</p>
+                <h4>Flexible Exports</h4>
+                <p>Download peak lists, baseline coordinates, and fitted parameters as Excel (.xlsx), SVG plots, or custom IRP protocols.</p>
               </div>
             </div>
           </div>
@@ -306,18 +326,59 @@ function calculateSNIP(spectrum, iterations = 25) {
           </div>
         </div>
       </section>
-
+ 
       {/* ── PRICING ── */}
       <section className="lp-pricing-section">
-        <div className="lp-pricing-card">
-          <h2>Purchase Pro License</h2>
-          <p>One-time Permanent License: $39. No subscriptions, no recurring costs.</p>
-          <button className="lp-btn-primary" onClick={() => setShowSignUp(true)}>
-            Buy Pro License
-          </button>
+        <div className="lp-section-header">
+          <h2>Pricing</h2>
+          <p>Choose the license that fits your research needs. All plans are one-time payments with lifetime updates.</p>
+        </div>
+        <div className="lp-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px', maxWidth: '800px', margin: '0 auto' }}>
+          
+          <div className="lp-pricing-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '32px', borderRadius: '12px', background: 'white', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-main)' }}>Individual Researcher</h3>
+            <div className="lp-price" style={{ fontSize: '2.25rem', fontWeight: 800, margin: '16px 0', color: 'var(--text-main)' }}>$79</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '24px', flexGrow: 1, lineHeight: 1.5 }}>
+              Ideal for individual PhD students, postdocs, and independent researchers.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', textAlign: 'left', fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <li>✓ 1 Active Device Session</li>
+              <li>✓ All Pro fitting & deconvolution tools</li>
+              <li>✓ Custom IRP protocols & vector exports</li>
+              <li>✓ Lifetime updates</li>
+            </ul>
+            <button className="lp-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+              setSelectedPlan('individual');
+              setShowSignUp(true);
+            }}>
+              Get Individual Key
+            </button>
+          </div>
+
+          <div className="lp-pricing-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '32px', borderRadius: '12px', background: 'white', border: '1px solid var(--accent-primary)', position: 'relative' }}>
+            <span style={{ position: 'absolute', top: '-12px', right: '24px', background: 'var(--accent-primary)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>MOST POPULAR</span>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-main)' }}>Lab & Team</h3>
+            <div className="lp-price" style={{ fontSize: '2.25rem', fontWeight: 800, margin: '16px 0', color: 'var(--text-main)' }}>$249</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '24px', flexGrow: 1, lineHeight: 1.5 }}>
+              Best for research groups and shared core facilities.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', textAlign: 'left', fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <li>✓ 5 Active Device Sessions</li>
+              <li>✓ All Pro fitting & deconvolution tools</li>
+              <li>✓ Custom IRP protocols & vector exports</li>
+              <li>✓ Priority email support</li>
+            </ul>
+            <button className="lp-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+              setSelectedPlan('team');
+              setShowSignUp(true);
+            }}>
+              Get Lab & Team Key
+            </button>
+          </div>
+
         </div>
       </section>
-
+ 
       {/* ── FOOTER ── */}
       <footer className="lp-footer">
         <div className="lp-footer-content">
@@ -325,14 +386,14 @@ function calculateSNIP(spectrum, iterations = 25) {
             <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
           </div>
           <p className="lp-footer-tagline">
-            Leading the transition to real-time molecular diagnostics through browser-based spectral analysis and deconvolution.
+            A simple browser tool to process, fit, and analyze Raman spectra.
           </p>
           <div className="lp-footer-status">
             <span className="lp-status-dot"></span> SYSTEMS OPERATIONAL
           </div>
         </div>
       </footer>
-
+ 
       {showHowItWorks && (
         <div className="lp-modal-overlay" onClick={() => setShowHowItWorks(false)}>
           <div className="lp-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -343,55 +404,55 @@ function calculateSNIP(spectrum, iterations = 25) {
             
             <div className="lp-modal-grid">
               <div className="lp-modal-card">
-                <h3><span>01</span> Data Import & Integrity</h3>
+                <h3><span>01</span> Data Import</h3>
                 <p>
-                  Upload standard <code>.txt</code>, <code>.csv</code>, or <code>.tsv</code> files. Wavenumber and intensity values are parsed instantly. A local SHA-256 hash checks and stamps the raw file, providing a permanent fingerprint to verify file integrity.
+                  Upload standard <code>.txt</code>, <code>.csv</code>, or <code>.tsv</code> files. The app calculates a SHA-256 hash of your raw file to let you verify data integrity.
                 </p>
               </div>
-
+ 
               <div className="lp-modal-card">
                 <h3><span>02</span> Baseline & Noise Correction</h3>
                 <p>
-                  Cleans raw data through three automated steps: Cosmic ray spikes are removed using a median filter, background fluorescence is subtracted (via SNIP or manual anchors), and high-frequency noise is smoothed out using a Savitzky-Golay filter.
+                  Remove cosmic ray spikes with a median filter, subtract background fluorescence using SNIP or manual anchors, and smooth high-frequency noise using Savitzky-Golay filtering.
                 </p>
               </div>
-
+ 
               <div className="lp-modal-card">
                 <h3><span>03</span> Calibration Check</h3>
                 <p>
-                  Verify calibration accuracy by checking for the standard silicon peak at <strong>520.7 cm⁻¹</strong>. The workstation fits the region, calculates the offset, and reports whether the spectrometer has drifted.
+                  Verify calibration by checking the standard silicon peak at <strong>520.7 cm⁻¹</strong>. The app fits the region, calculates the offset, and reports any spectrometer drift.
                 </p>
               </div>
-
+ 
               <div className="lp-modal-card">
-                <h3><span>04</span> Peak Deconvolution</h3>
+                <h3><span>04</span> Peak Fitting</h3>
                 <p>
-                  Fit overlapping bands using non-linear least squares optimization. The workstation deconvolutes peaks using Gaussian, Lorentzian, or Pseudo-Voigt shapes depending on your sample's physics.
+                  Fit overlapping spectral bands using non-linear least squares. Choose Gaussian, Lorentzian, or Pseudo-Voigt shapes to match your sample physics.
                 </p>
               </div>
-
+ 
               <div className="lp-modal-card" style={{ gridColumn: 'span 2' }}>
-                <h3><span>05</span> Statistical & Epistemic Error Quantification</h3>
+                <h3><span>05</span> Uncertainty Quantification</h3>
                 <p>
-                  Quantifies uncertainties for accurate peak assignments. The tool calculates statistical precision (via SVD Jacobian analysis) alongside structural/model sensitivity (by perturbing boundaries by up to ±10% across Lorentzian, Gaussian, and Voigt profiles) to flag unresolved doublets or phase mixtures.
+                  Calculate statistical precision (using SVD Jacobian analysis) and fit sensitivity by perturbing boundaries by up to ±10% across Lorentzian, Gaussian, and Voigt profiles.
                 </p>
               </div>
             </div>
-
+ 
             <div className="lp-modal-outputs">
               <h3>Downloadable Outputs</h3>
               <div className="lp-modal-outputs-grid">
                 <div className="lp-modal-output-item">
                   <strong>Export-Ready Plots</strong>
-                  <span>Download transparent 300-DPI PNGs or scalable vector SVGs matching academic journal standards.</span>
+                  <span>Export plots as transparent PNGs or scalable vector SVGs.</span>
                 </div>
                 <div className="lp-modal-output-item">
                   <strong>Tabular Data</strong>
-                  <span>Export complete peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (<code>.xlsx</code>).</span>
+                  <span>Export peak lists, baseline coordinates, and fitted parameters directly to Excel (<code>.xlsx</code>).</span>
                 </div>
                 <div className="lp-modal-output-item">
                   <strong>IRP File (Instant Raman Protocol)</strong>
-                  <span>Save your analysis settings to reproduce the exact analysis state byte-for-byte.</span>
+                  <span>Save your baseline anchors and peak parameters to an IRP file to restore your analysis state later.</span>
                 </div>
               </div>
             </div>
