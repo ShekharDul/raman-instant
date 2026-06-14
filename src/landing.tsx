@@ -130,9 +130,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             }}>
               <ArrowLeft size={16} /> Back to Workstation
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="./Instant%20Raman%20Logo.jpeg" alt="Logo" style={{ height: '24px' }} />
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Instant Raman</span>
+            <div className="lp-brand">
+              <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
             </div>
           </div>
         </header>
@@ -192,8 +191,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
     <div className="lp-wrapper">
       <header className="lp-header">
         <div className="lp-brand">
-          <img src="./Instant%20Raman%20Logo.jpeg" alt="Instant Raman Logo" />
-          <span>Instant Raman</span>
+          <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
         </div>
         <div className="lp-header-actions">
           <button className="lp-btn-secondary" onClick={() => setShowSignUp(true)}>Pricing</button>

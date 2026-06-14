@@ -56,14 +56,19 @@ html, body {
 .lp-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--text-main);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  user-select: none;
 }
 
-.lp-brand img {
-  height: 28px;
+.lp-brand-instant {
+  color: var(--accent-primary);
+}
+
+.lp-brand-raman {
+  color: var(--text-main);
+  margin-left: 4px;
 }
 
 .lp-header-actions {
