@@ -2,6 +2,11 @@
    LANDING PAGE v5 — Dark Premium
    ══════════════════════════════════════════════════════ */
 
+.lp-root, .lp-signup-root {
+  --font-sans: 'Inconsolata', monospace;
+  --font-mono: 'Inconsolata', monospace;
+}
+
 /* ── Root & Layout ── */
 .lp-root {
   background: #000000;
@@ -916,7 +921,9 @@
   flex-direction: column;
   background: #000000;
   color: #ffffff;
+  font-family: var(--font-sans);
 }
+
 
 .lp-signup-nav {
   border-bottom: 1px solid #1a1a1a;
