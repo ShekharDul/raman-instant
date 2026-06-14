@@ -2984,7 +2984,7 @@ function showToast(message: string) {
   toast.style.bottom = '40px';
   toast.style.left = '50%';
   toast.style.transform = 'translateX(-50%)';
-  toast.style.background = '#0d9488';
+  toast.style.background = '#0284c7';
   toast.style.color = '#fff';
   toast.style.padding = '10px 20px';
   toast.style.fontSize = '12px';

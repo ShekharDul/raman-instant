@@ -129,7 +129,7 @@ const UncertaintyModel = () => {
             x={data.x} 
             y={yFit} 
             z={(i - 7) * 0.2} 
-            color="#0D9488" 
+            color="#0284c7" 
             opacity={0.15} 
             linewidth={1}
           />

@@ -155,7 +155,7 @@ export const REPORT_TEMPLATE = `
         .ratio-label {
             font-size: 10px;
             font-weight: 800;
-            color: #0d9488;
+            color: #0284c7;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             margin-bottom: 4px;

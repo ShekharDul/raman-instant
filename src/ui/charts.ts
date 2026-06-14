@@ -1497,7 +1497,7 @@ export class ChartRenderer {
     const traces: any[] = [{
       x: samples,
       type: 'histogram',
-      marker: { color: 'rgba(13, 148, 136, 0.4)', line: { color: '#0d9488', width: 1 } },
+      marker: { color: 'rgba(2, 132, 199, 0.4)', line: { color: '#0284c7', width: 1 } },
       nbinsx: 30,
       name: 'Monte Carlo Samples'
     }];
