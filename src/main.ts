@@ -862,6 +862,10 @@ function attachManualBaselineListener(el: HTMLElement) {
         const { x } = data.points[0];
         const activeFile = state.files.get(state.activeFileId || '');
         if (activeFile) {
+          if (activeFile.peaks.length === 0) {
+            showToast("No peaks detected in this spectrum to select.");
+            return;
+          }
           // Find nearest detected peak
           const nearest = activeFile.peaks.reduce((prev, curr) =>
             Math.abs(curr.x - x) < Math.abs(prev.x - x) ? curr : prev
@@ -2462,6 +2466,17 @@ async function runFitting(minX: number, maxX: number) {
   // Run fit in microtask to not block UI immediately
   setTimeout(() => {
     const result = FittingEngine.fit(roiX, roiY, initial, type);
+
+    if (result.convergence_status === 'failed' || result.peaks.length === 0) {
+      showToast(`Fitting failed: ${result.errorMsg || 'Could not converge. Try adjusting the region or peak selection.'}`);
+      state.fitResult = null;
+      (state as any).epiResult = null;
+      state.fittingMode = false;
+      UI.get('btn-exit-fit')?.classList.add('hidden');
+      UI.text('system-status', 'Ready');
+      updateUI();
+      return;
+    }
 
     let epiResult = null;
     if (result.peaks.length > 0) {

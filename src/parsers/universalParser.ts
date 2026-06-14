@@ -320,18 +320,11 @@ export class UniversalParser {
     // STEP 3: Extract X and Y from correct columns
     const extractedY = filteredData.map(row => row[yColumnIndex]);
     
-    // Remove extreme outliers (likely metadata numbers)
-    const medianY = this.calculateMedian(extractedY);
+    // Keep only valid numeric points
     const filteredPoints = filteredData
       .map(row => ({ x: row[xColumnIndex], y: row[yColumnIndex] }))
       .filter(point => {
-        // Remove intensities >100× median or <0.01× median (extreme outliers)
-        // Only apply if median is non-zero
-        if (medianY !== 0) {
-           if (Math.abs(point.y) > Math.abs(medianY) * 100) return false;
-           if (Math.abs(point.y) < Math.abs(medianY) / 100) return false;
-        }
-        return true;
+        return !isNaN(point.x) && isFinite(point.x) && !isNaN(point.y) && isFinite(point.y);
       });
 
     const x = filteredPoints.map(p => p.x);

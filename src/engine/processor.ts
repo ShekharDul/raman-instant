@@ -83,7 +83,8 @@ export class SpectralProcessor {
         let j = 0;
         while (j < sorted.length - 1 && curX > sorted[j + 1].x) j++;
         const p1 = sorted[j], p2 = sorted[j + 1];
-        const t = (curX - p1.x) / (p2.x - p1.x);
+        const dx = p2.x - p1.x;
+        const t = Math.abs(dx) < 1e-9 ? 0 : (curX - p1.x) / dx;
         bslY[i] = p1.y + t * (p2.y - p1.y);
       }
     }
