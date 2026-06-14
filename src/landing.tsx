@@ -11,6 +11,7 @@ import {
   Download
 } from 'lucide-react';
 import rawDataStr from './assets/Sample_Data_2.txt?raw';
+import { SpectralProcessor } from './engine/processor';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
@@ -63,24 +64,20 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
       }
     }
 
-    // Very simple dummy "After" processing: Subtract a rough linear baseline & smooth
-    const yAfter: number[] = [];
-    if (yRaw.length > 0) {
-      const firstY = yRaw[0];
-      const lastY = yRaw[yRaw.length - 1];
-      const slope = (lastY - firstY) / yRaw.length;
-
-      for (let i = 0; i < yRaw.length; i++) {
-        // Linear baseline subtraction
-        const baseline = firstY + slope * i;
-        yAfter.push(yRaw[i] - baseline);
-      }
-
-      // Simple smoothing (moving average window 5)
-      for (let i = 2; i < yAfter.length - 2; i++) {
-        yAfter[i] = (yAfter[i-2] + yAfter[i-1] + yAfter[i] + yAfter[i+1] + yAfter[i+2]) / 5;
-      }
-    }
+    // Apply the exact processing engine used in the workstation
+    const spectralData = { wavenumberData: x, intensityData: yRaw };
+    
+    // 1. Calculate the SNIP baseline (25 iterations is the default in the workstation)
+    const baselineData = SpectralProcessor.baselineSNIP(spectralData, 25);
+    
+    // 2. Subtract the baseline
+    const baselineCorrectedY = yRaw.map((v, i) => v - baselineData.intensityData[i]);
+    
+    // 3. Apply Savitzky-Golay smoothing (window size 9 is the default)
+    const correctedData = { wavenumberData: x, intensityData: baselineCorrectedY };
+    const smoothedData = SpectralProcessor.savitzkyGolay(correctedData, 9);
+    
+    const yAfter = smoothedData.intensityData;
 
     return { x, yRaw, yAfter };
   }, []);
