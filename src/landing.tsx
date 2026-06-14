@@ -10,7 +10,7 @@ import {
   Lock,
   Download
 } from 'lucide-react';
-import rawDataStr from './assets/Sample_Data.txt?raw';
+import rawDataStr from './assets/Sample_Data_2.txt?raw';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
