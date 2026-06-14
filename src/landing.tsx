@@ -194,6 +194,9 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <span className="lp-brand-instant">Instant</span><span className="lp-brand-raman">Raman</span>
         </div>
         <div className="lp-header-actions">
+          <button className="lp-btn-secondary" onClick={() => {
+            document.getElementById('lp-how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+          }}>How it Works</button>
           <button className="lp-btn-secondary" onClick={() => setShowSignUp(true)}>Pricing</button>
           <button className="lp-btn-primary" onClick={onEnterWorkstation}>Launch Workstation</button>
         </div>
@@ -226,6 +229,77 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             </div>
           </div>
           <div id="lp-plotly-div"></div>
+      </section>
+
+      <section id="lp-how-it-works" className="lp-how-section">
+        <h2>How it Works: The Processing & Fitting Pipeline</h2>
+        <p className="lp-how-section-desc">
+          Instant Raman operates entirely inside your browser, combining high-precision preprocessing algorithms with non-linear regression engines and rigorous uncertainty quantification.
+        </p>
+
+        <div className="lp-how-steps">
+          <div className="lp-step-card">
+            <h3><span>Step 1</span> Ingestion & Verification</h3>
+            <p>
+              Upload files in standard <code>.txt</code>, <code>.csv</code>, <code>.tsv</code>, or <code>.irp</code> formats. Wavenumber and intensity columns are automatically parsed. The engine instantly calculates a SHA-256 cryptographic hash of your raw files to serve as a unique fingerprint and guarantee data integrity.
+            </p>
+          </div>
+
+          <div className="lp-step-card">
+            <h3><span>Step 2</span> Preprocessing Pipeline</h3>
+            <p>
+              To prepare your data for deconvolution, the engine executes a three-part preprocessing pipeline:
+            </p>
+            <ul className="lp-step-sublist">
+              <li><strong>Cosmic Ray Filtering:</strong> A sliding-window Median Absolute Deviation (MAD) modified Z-score algorithm isolates and heals narrow, high-intensity spike artifacts.</li>
+              <li><strong>Baseline Correction:</strong> Auto Mode estimates and subtracts fluorescence humps using the recursive SNIP algorithm. Manual Mode allows custom anchor interpolation.</li>
+              <li><strong>Savitzky-Golay Smoothing:</strong> Filters out high-frequency noise using a customizable window size (default 9 points) without shifting or blunting peak shapes.</li>
+            </ul>
+          </div>
+
+          <div className="lp-step-card">
+            <h3><span>Step 3</span> Wavenumber Calibration</h3>
+            <p>
+              Verify system calibration using the Silicon Calibration tool. The engine automatically scans for the standard silicon peak at <strong>520.7 cm⁻¹</strong>, fits the local region, computes the offset/drift, and flags whether your calibration is within acceptable tolerances.
+            </p>
+          </div>
+
+          <div className="lp-step-card">
+            <h3><span>Step 4</span> Multi-Model Peak Deconvolution</h3>
+            <p>
+              For fitting overlapping bands, Instant Raman utilizes a non-linear Levenberg-Marquardt (LM) optimization engine supporting three profiles: Gaussian (for inhomogeneous broadening), Lorentzian (for homogeneous lifetime broadening), and Pseudo-Voigt (which combines both with a tunable mixing parameter).
+            </p>
+          </div>
+
+          <div className="lp-step-card" style={{ gridColumn: '1 / -1' }}>
+            <h3><span>Step 5</span> Statistical & Epistemic Uncertainty</h3>
+            <p>
+              To guarantee publication credibility, the workstation quantifies uncertainty from multiple sources:
+            </p>
+            <ul className="lp-step-sublist">
+              <li><strong>Statistical Error (Fit Precision):</strong> Standard errors (e.g., center uncertainty ±0.02 cm⁻¹) are calculated by computing the Singular Value Decomposition (SVD) of the fit's Jacobian matrix.</li>
+              <li><strong>Epistemic Error (Model Sensitivity):</strong> Randomly perturbs fit boundary limits by up to ±10% across Lorentzian, Gaussian, and Voigt profiles to build a multi-model ensemble and assess sensitivity.</li>
+              <li><strong>Bimodality Diagnostics:</strong> Uses Sarle's coefficient, dip tests, and k-means clustering to warn you if a peak is actually an unresolved doublet or phase mixture.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="lp-outputs-summary">
+          <h3>Outputs You Get</h3>
+          <div className="lp-outputs-grid">
+            <div className="lp-output-item">
+              <strong>Export-Ready Plots</strong>
+              <span>Download transparent 300-DPI PNGs or scalable vector SVGs matching academic journal standards.</span>
+            </div>
+            <div className="lp-output-item">
+              <strong>Tabular Data</strong>
+              <span>Export complete peak lists, fitted parameters, baseline coordinates, and residuals directly to Excel (<code>.xlsx</code>).</span>
+            </div>
+            <div className="lp-output-item">
+              <strong>IRP File (Instant Raman Protocol)</strong>
+              <span>Save your analysis as a <code>.irp</code> file containing raw data, parameters, and boundaries. Uploading this file reproduces your exact analysis state byte-for-byte.</span>
+            </div>
+          </div>
         </div>
       </section>
 
