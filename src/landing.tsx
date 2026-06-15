@@ -3,7 +3,6 @@ import peakFitImg from './assets/peak_fit.png';
 import rawPlotImg from './assets/raw_plot.svg';
 import correctedPlotImg from './assets/corrected_plot.svg';
 import './styles/landing.css';
-import { Github, Mail, Linkedin, ExternalLink } from 'lucide-react';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
@@ -120,7 +119,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
             Instant Raman was built to solve this specific pain point. It bridges the gap between sophisticated analytical chemistry requirements and modern software engineering standards. It demonstrates that scientific software can be fast, private, mathematically rigorous, and exceptionally designed.
           </p>
           <a href="https://linkedin.com/in/author" target="_blank" rel="noopener noreferrer" className="pf-contact-link">
-            <Linkedin size={16} /> View Professional Profile
+            [ LinkedIn Profile ]
           </a>
         </div>
       </section>
@@ -131,8 +130,8 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <strong>Citation:</strong> Author, (2026). Instant Raman: A client-side web application for reproducible Raman spectroscopy data processing. <em>GitHub Repository</em>, https://github.com/raman-instant/core
         </div>
         <div className="pf-footer-links">
-          <a href="https://github.com/raman-instant/core"><Github size={16} /></a>
-          <a href="mailto:author@example.com"><Mail size={16} /></a>
+          <a href="https://github.com/raman-instant/core">GitHub Repo</a>
+          <a href="mailto:author@example.com">Email</a>
         </div>
       </footer>
     </div>
