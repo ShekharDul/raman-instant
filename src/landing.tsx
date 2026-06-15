@@ -17,6 +17,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           Instant Raman <span className="pf-version">v1.2.0-beta</span>
         </div>
         <nav className="pf-nav-links">
+          <button onClick={onEnterWorkstation} className="pf-nav-cta">Launch Workstation</button>
           <a href="https://github.com/raman-instant/core" className="pf-nav-link">GitHub</a>
           <a href="mailto:author@example.com" className="pf-nav-link">Contact</a>
         </nav>
@@ -31,12 +32,15 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <p className="pf-hero-subtitle">
             Engineered entirely in TypeScript for 100% client-side execution. Eliminates manual anchor-point bias and provides rigorous mathematical transparency for peer-reviewed research.
           </p>
+          <div className="pf-hero-actions">
+            <button onClick={onEnterWorkstation} className="pf-primary-btn">Open Workstation</button>
+          </div>
         </div>
         
         <figure className="pf-figure">
-          <img src={peakFitImg} alt="High-wavenumber deconvolution" className="pf-figure-img" />
+          <img src={peakFitImg} alt="Spectral deconvolution of overlapping bands" className="pf-figure-img" />
           <figcaption className="pf-figure-caption">
-            Fig 1. High-wavenumber deconvolution (1000-2000 cm⁻¹) utilizing Levenberg-Marquardt optimization for overlapping Gaussian profiles.
+            Fig 1. Spectral deconvolution utilizing Levenberg-Marquardt optimization to resolve overlapping Gaussian profiles in the 1000-2000 cm⁻¹ region.
           </figcaption>
         </figure>
       </section>
@@ -50,7 +54,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <div className="pf-method-details">
             <h3>Format Agnostic Data Ingestion</h3>
             <p>
-              Analytical instrumentation output is notoriously fragmented. The custom parsing engine dynamically identifies and sanitizes inputs from Horiba LabSpec, Bruker OPUS, and Ocean Optics generic CSV/TXT outputs. This eliminates the preliminary data wrangling phase, standardizing the ingestion vector for the core processing pipeline.
+              Analytical instrumentation output is notoriously fragmented. The custom parsing engine dynamically identifies and sanitizes inputs from proprietary formats (Horiba LabSpec, Bruker OPUS) and generic exports. This eliminates the preliminary data wrangling phase, standardizing the ingestion vector for the core processing pipeline.
             </p>
           </div>
         </div>
@@ -63,7 +67,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
               Traditional manual multi-point baseline correction introduces significant researcher bias. Instant Raman implements the Simple Non-Iterative Peak (SNIP) algorithm alongside Savitzky-Golay smoothing. This ensures a reproducible, mathematically objective subtraction of fluorescence backgrounds without clipping critical signal intensity.
             </p>
             <figure className="pf-figure">
-              <img src={correctedPlotImg} alt="Automated baseline correction" className="pf-figure-img" />
+              <img src={correctedPlotImg} alt="Automated baseline correction via SNIP" className="pf-figure-img" />
               <figcaption className="pf-figure-caption">Fig 2. SNIP baseline subtraction applied to raw acquisition data.</figcaption>
             </figure>
           </div>
@@ -74,7 +78,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
           <div className="pf-method-details">
             <h3>Non-Linear Least Squares Fitting</h3>
             <p>
-              For heavily overlapping spectral regions (such as the 1000-2000 cm⁻¹ fingerprint area), basic peak-picking fails. The engine utilizes a Levenberg-Marquardt algorithm to fit sums of predefined line shapes (Gaussian, Lorentzian, Pseudo-Voigt). Crucially, the system calculates the Jacobian matrix to provide explicit uncertainty bounds (±) for every fitted parameter (center, width, amplitude).
+              For heavily overlapping spectral regions, basic peak-picking fails. The engine utilizes a Levenberg-Marquardt algorithm to fit sums of predefined line shapes (Gaussian, Lorentzian, Pseudo-Voigt). Crucially, the system calculates the Jacobian matrix to provide explicit uncertainty bounds (±) for every fitted parameter (center, width, amplitude).
             </p>
           </div>
         </div>

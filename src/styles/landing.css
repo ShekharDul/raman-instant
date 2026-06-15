@@ -81,6 +81,24 @@ html, body {
   color: var(--accent-color);
 }
 
+.pf-nav-cta {
+  font-family: var(--font-mono);
+  background-color: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 12px;
+}
+
+.pf-nav-cta:hover {
+  background-color: var(--text-main);
+  color: var(--bg-main);
+  border-color: var(--text-main);
+}
+
 /* ── HERO SECTION ── */
 .pf-hero {
   padding: 80px var(--content-padding);
@@ -105,8 +123,28 @@ html, body {
   font-size: 1.25rem;
   color: var(--text-muted);
   max-width: 700px;
-  margin: 0;
+  margin: 0 0 32px 0;
   line-height: 1.5;
+}
+
+.pf-hero-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.pf-primary-btn {
+  font-family: var(--font-mono);
+  background-color: var(--text-main);
+  color: var(--bg-main);
+  border: none;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pf-primary-btn:hover {
+  background-color: var(--accent-color);
 }
 
 .pf-figure {
