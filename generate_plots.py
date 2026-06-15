@@ -92,7 +92,7 @@ except:
 fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
 ax.plot(x_region, y_region, 'o', color=color_corrected, markersize=4, label='Processed Data', alpha=0.8)
 ax.plot(x_region, y_fit, color=color_fit, linewidth=2.5, label='Non-linear Gaussian Fit')
-setup_axes(ax, "High-Wavenumber Deconvolution (1000-2000 cm$^{-1}$)")
+setup_axes(ax, "Spectral Deconvolution of Overlapping Bands")
 ax.legend(frameon=True, facecolor='white', edgecolor=spine_color, labelcolor=text_color)
 ax.fill_between(x_region, y_fit, 0, color=color_fit, alpha=0.08)
 fig.patch.set_facecolor(bg_color)
