@@ -17,7 +17,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { DiagnosticDashboard } from './components/DiagnosticDashboard.tsx';
 import { AnalysisSuite } from './components/AnalysisSuite.tsx';
-import { LicenseManager } from './engine/license.ts';
 
 // ── Types ──
 interface ProcessedFile {
@@ -116,7 +115,7 @@ const state: AppState = {
   epiResult: null,
   mcResult: null,
   visibleTableFileId: null,
-  isPro: false
+  isPro: true
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -143,7 +142,6 @@ function trackEvent(name: string, params: object = {}) {
 
 // ── Initialization ──
 initAboutModal();
-initLicensing();
 initNavigation();
 initDrawerToggle();
 initUpload();
@@ -1014,130 +1012,6 @@ function initNavigation() {
   UI.get('btn-back-to-landing')?.addEventListener('click', handleExitWorkstation);
 }
 
-
-function initLicensing() {
-  const licenseState = LicenseManager.get();
-  state.isPro = licenseState.isPro;
-
-  updateLicenseHeaderUI();
-
-  // Offline-friendly background re-validation on startup when online to check if key has been revoked/exceeded
-  if (navigator.onLine && licenseState.licenseKey) {
-    LicenseManager.validateAndSave(licenseState.licenseKey).then(result => {
-      // ONLY disable if the server explicitly responded and invalidated the key.
-      // Do NOT disable on network timeout or connection errors.
-      if (result.success === false && result.error !== 'Network error contacting validation server.') {
-        state.isPro = false;
-        LicenseManager.clear();
-        updateLicenseHeaderUI();
-        showToast("License key is no longer valid or seat limit exceeded.");
-      }
-    });
-  }
-
-  const btnActivate = UI.get('btn-activate-license');
-  const paywallModal = UI.get('modal-paywall');
-  
-  if (btnActivate && paywallModal) {
-    btnActivate.addEventListener('click', () => {
-      showPaywallModal();
-    });
-  }
-
-  const btnClose = UI.get('btn-close-paywall');
-  if (btnClose && paywallModal) {
-    btnClose.addEventListener('click', () => paywallModal.classList.remove('active'));
-    paywallModal.addEventListener('click', (e) => {
-      if (e.target === paywallModal) paywallModal.classList.remove('active');
-    });
-  }
-
-  const btnValidate = UI.get('btn-validate-license');
-  const inputKey = UI.get('input-license-key') as HTMLInputElement;
-  const statusEl = UI.get('license-validation-status');
-
-  if (btnValidate && inputKey && statusEl && paywallModal) {
-    btnValidate.addEventListener('click', async () => {
-      const key = inputKey.value.trim();
-      if (!key) {
-        statusEl.innerText = 'Please enter a license key.';
-        statusEl.className = 'text-rose-600 font-semibold';
-        statusEl.classList.remove('hidden');
-        return;
-      }
-
-      btnValidate.innerText = 'Validating...';
-      btnValidate.setAttribute('disabled', 'true');
-      statusEl.classList.add('hidden');
-
-      const result = await LicenseManager.validateAndSave(key);
-
-      btnValidate.innerText = 'Validate';
-      btnValidate.removeAttribute('disabled');
-
-      if (result.success) {
-        state.isPro = true;
-        updateLicenseHeaderUI();
-        statusEl.innerText = '✓ Pro features successfully unlocked!';
-        statusEl.className = 'text-emerald-600 font-semibold';
-        statusEl.classList.remove('hidden');
-        showToast('Pro License Activated successfully!');
-        trackEvent('license_activated', { success: true });
-        
-        // Hide modal after delay
-        setTimeout(() => {
-          paywallModal.classList.remove('active');
-          statusEl.classList.add('hidden');
-          inputKey.value = '';
-        }, 1500);
-      } else {
-        statusEl.innerText = `Error: ${result.error || 'Invalid license key.'}`;
-        statusEl.className = 'text-rose-600 font-semibold';
-        statusEl.classList.remove('hidden');
-        trackEvent('license_activated', { success: false, error: result.error });
-      }
-    });
-  }
-}
-
-function updateLicenseHeaderUI() {
-  const btnActivate = UI.get('btn-activate-license');
-  if (!btnActivate) return;
-
-  if (state.isPro) {
-    btnActivate.innerText = '✓ Pro Active';
-    btnActivate.style.background = 'none';
-    btnActivate.style.border = '1px solid var(--border)';
-    btnActivate.style.color = 'var(--text-secondary)';
-    btnActivate.style.cursor = 'default';
-    btnActivate.setAttribute('disabled', 'true');
-  } else {
-    btnActivate.innerText = 'Activate Pro License';
-    btnActivate.style.background = 'var(--accent)';
-    btnActivate.style.border = '1px solid var(--accent)';
-    btnActivate.style.color = 'white';
-    btnActivate.style.cursor = 'pointer';
-    btnActivate.removeAttribute('disabled');
-  }
-}
-
-function showPaywallModal(featureDescription?: string) {
-  const paywallModal = UI.get('modal-paywall');
-  if (!paywallModal) return;
-
-  const descContainer = UI.get('paywall-feature-desc');
-  const descText = UI.get('paywall-feature-text');
-
-  if (featureDescription && descContainer && descText) {
-    descText.innerText = featureDescription;
-    descContainer.style.display = 'block';
-  } else if (descContainer) {
-    descContainer.style.display = 'none';
-  }
-
-  paywallModal.classList.add('active');
-}
-
 function initDrawerToggle() {
   const toggleBtn = UI.get('btn-toggle-drawer');
   const panel = UI.get('analysis-drawer');
@@ -1267,11 +1141,6 @@ function initLayoutControls() {
   const selectLayout = UI.get('select-layout') as HTMLSelectElement;
   selectLayout?.addEventListener('change', (e) => {
     const val = (e.target as HTMLSelectElement).value as any;
-    if (val === 'stacked' && !state.isPro) {
-      selectLayout.value = state.layoutMode;
-      showPaywallModal("Waterfall stack comparison view is a Pro-tier capability.");
-      return;
-    }
     state.layoutMode = val;
     if (state.layoutMode !== 'replicate') {
       state.previousLayoutMode = state.layoutMode as any;
@@ -1279,10 +1148,6 @@ function initLayoutControls() {
     updateUI();
   });
   UI.get('btn-group-replicates')?.addEventListener('click', () => {
-    if (!state.isPro) {
-      showPaywallModal("Replicate analysis (Mean ± SD averaging) is a Pro-tier capability.");
-      return;
-    }
     const selectedIds = Array.from(state.comparisonIds);
     if (state.activeFileId) selectedIds.push(state.activeFileId);
 
@@ -1389,10 +1254,6 @@ function initSliders() {
     exportFigure('png');
   });
   UI.get('btn-export-svg')?.addEventListener('click', () => {
-    if (!state.isPro) {
-      showPaywallModal("Vector SVG export is a Pro-tier capability.");
-      return;
-    }
     trackEvent('export_generated', { export_type: 'svg' });
     exportFigure('svg');
   });
@@ -1977,10 +1838,6 @@ function generateCaption() {
 
 function initReportControls() {
   UI.get('btn-export-report')?.addEventListener('click', () => {
-    if (!state.isPro) {
-      showPaywallModal("Interactive HTML compliance report generation is a Pro-tier capability.");
-      return;
-    }
     if (state.snapshots.length === 0) {
       showToast("No snapshots captured! Capture some analysis blocks first.");
       return;
@@ -2013,10 +1870,6 @@ function initProtocolExport() {
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!state.isPro) {
-      showPaywallModal("Workflow reproducibility protocol (.irp) export is a Pro-tier capability.");
-      return;
-    }
     console.log('[Protocol] Export button clicked');
     showToast("Preparing protocol export...");
 
@@ -2448,10 +2301,6 @@ async function saveSnapshot(title: string) {
 
 
 async function runFitting(minX: number, maxX: number) {
-  if (!state.isPro) {
-    showPaywallModal("Levenberg-Marquardt fitting and peak deconvolution are Pro-tier capabilities.");
-    return;
-  }
   const active = state.files.get(state.activeFileId || '');
   if (!active) return;
 
@@ -2759,10 +2608,6 @@ UI.get('btn-exit-fit')?.addEventListener('click', () => {
 // ── Protocol Handling (Step 6) ──
 
 async function promptProtocolImport(protocolJson: any) {
-  if (!state.isPro) {
-    showPaywallModal("Workflow reproducibility protocol (.irp) import is a Pro-tier capability.");
-    return;
-  }
   let protocol: InstantRamanProtocol;
   try {
     protocol = ProtocolManager.validateSchema(protocolJson);

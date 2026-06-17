@@ -11,31 +11,31 @@
 
 :root {
   /* Warm Paper Palette */
-  --bg-app: #fafbfc;
-  --bg-panel: #f4f5f7;
+  --bg-app: #fdfdfc;
+  --bg-panel: #f5f5f4;
   --bg-surface: #ffffff;
-  --bg-active: #eef2f7;
+  --bg-active: #e7e5e4;
 
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
 
-  --text-primary: #1a1a2e;
-  --text-secondary: #6b7280;
-  --text-dim: #9ca3af;
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-dim: #a8a29e;
 
-  --accent: #0284c7;
-  --accent-light: rgba(2, 132, 199, 0.08);
-  --accent-medium: rgba(2, 132, 199, 0.15);
+  --accent: #991b1b;
+  --accent-light: rgba(153, 27, 27, 0.08);
+  --accent-medium: rgba(153, 27, 27, 0.15);
   --danger: #dc2626;
 
   /* Legacy aliases for JS compatibility */
-  --laser: #0284c7;
+  --laser: #991b1b;
   --reference: #d97706;
   --residual: #ef4444;
-  --raw: #9ca3af;
+  --raw: #a8a29e;
 
-  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --radius: 6px;
   --radius-sm: 4px;
