@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://raman-instant.github.io/sitemap.xml
+Sitemap: https://shekhardul.github.io/raman-instant/sitemap.xml

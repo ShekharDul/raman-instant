@@ -18,25 +18,28 @@
   <title>Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool</title>
   <meta name="title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
   <meta name="description"
-    content="Free browser-based Raman spectroscopy tool. SNIP baseline correction, Levenberg-Marquardt peak deconvolution (Gaussian/Lorentzian/Voigt), and uncertainty quantification. No install, 100% client-side, publication-ready." />
-  <meta name="author" content="Instant Raman Team" />
-  <link rel="canonical" href="https://raman-instant.github.io/" />
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+  <meta name="keywords"
+    content="Raman spectroscopy, baseline correction, SNIP algorithm, peak fitting, deconvolution, Levenberg-Marquardt, spectral analysis, Raman shift, free" />
+  <meta name="author" content="Shekhar Dulgach" />
+  <link rel="canonical" href="https://shekhardul.github.io/raman-instant/" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://raman-instant.github.io/" />
-  <meta property="og:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution" />
+  <meta property="og:url" content="https://shekhardul.github.io/raman-instant/" />
+  <meta property="og:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
   <meta property="og:description"
-    content="Free browser-based Raman spectroscopy tool. SNIP baseline correction, LM peak deconvolution (Gaussian/Lorentzian/Voigt), and uncertainty quantification." />
-  <meta property="og:image" content="https://raman-instant.github.io/og-preview.png" />
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+  <meta property="og:image" content="https://shekhardul.github.io/raman-instant/og-preview.png" />
+  <meta property="og:site_name" content="Instant Raman" />
 
   <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://raman-instant.github.io/" />
-  <meta property="twitter:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution" />
-  <meta property="twitter:description"
-    content="Free browser-based Raman spectroscopy tool. SNIP baseline correction, LM peak deconvolution (Gaussian/Lorentzian/Voigt), and uncertainty quantification." />
-  <meta property="twitter:image" content="https://raman-instant.github.io/og-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://shekhardul.github.io/raman-instant/" />
+  <meta name="twitter:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
+  <meta name="twitter:description"
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+  <meta name="twitter:image" content="https://shekhardul.github.io/raman-instant/og-preview.png" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml"
@@ -53,27 +56,26 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Instant Raman",
-    "url": "https://raman-instant.github.io/",
-    "operatingSystem": "Web",
-    "browserRequirements": "Requires JavaScript, modern browser",
-    "applicationCategory": "ScientificSoftware",
-    "description": "A high-performance research workstation for Raman spectroscopy data processing, including SNIP baseline correction, cosmic ray filtering, Levenberg-Marquardt deconvolution (Gaussian/Lorentzian/Voigt), and split statistical/epistemic uncertainty quantification.",
-    "documentation": "https://raman-instant.github.io/docs.html",
+    "url": "https://shekhardul.github.io/raman-instant/",
+    "operatingSystem": "Web browser",
+    "applicationCategory": "ScienceApplication",
+    "description": "Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting with Gaussian, Lorentzian, and Voigt profiles, uncertainty quantification, and publication-ready exports.",
     "offers": {
       "@type": "Offer",
       "price": "0",
-      "priceCurrency": "USD",
-      "category": "Free with optional one-time Pro upgrade"
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Shekhar Dulgach"
     },
     "featureList": [
       "Automated SNIP Baseline Correction",
-      "Cosmic Ray Outlier Filtering (MAD Z-score)",
-      "Levenberg-Marquardt Multi-Peak Deconvolution (Gaussian, Lorentzian, Voigt)",
-      "Split Statistical and Epistemic Uncertainty Quantification",
-      "Monte Carlo Error Propagation for Derived Ratios (e.g. I_D/I_G)",
-      "Cryptographic .irp Reproducibility Protocol",
-      "Universal File Format Support (JCAMP-DX, Horiba, Renishaw, Bruker, Ocean Optics)",
-      "100% Client-Side No Data Upload"
+      "Levenberg-Marquardt Multi-Peak Fitting",
+      "Gaussian, Lorentzian, and Voigt Profiles",
+      "Bootstrap Uncertainty Quantification",
+      "Publication-Ready PNG, SVG, and Excel Export",
+      "Renishaw, Horiba, WITec, Bruker File Support"
     ]
   }
   </script>
@@ -92,6 +94,25 @@
 <body>
   <div id="heartbeat"></div>
   <script>document.getElementById('heartbeat').style.background = '#0d9488';</script>
+
+  <!-- Static SEO content: visible to crawlers and in noscript, hidden once React landing hydrates -->
+  <div id="seo-content">
+    <h1>Instant Raman — Free Browser-Based Raman Peak Fitting & Deconvolution</h1>
+    <p>Instant Raman is a free, open-source workstation for Raman spectroscopy data processing — entirely in your browser. Upload your spectra, get baseline-corrected plots, fitted peaks, and publication-ready figures in seconds. Your data never leaves your computer.</p>
+    <p>Designed for materials scientists, chemists, and spectroscopists who need rigorous, reproducible analysis without expensive commercial software.</p>
+    <h2>Key Features</h2>
+    <ul>
+      <li>Adaptive SNIP baseline correction with configurable iterations</li>
+      <li>Levenberg-Marquardt multi-peak fitting with Gaussian, Lorentzian, and Voigt profiles</li>
+      <li>Bootstrap uncertainty quantification separating statistical and epistemic error</li>
+      <li>Publication-ready exports: 300-DPI PNG, vector SVG, Excel, and interactive HTML reports</li>
+      <li>Universal file support: Renishaw, Horiba, WITec, Bruker, JCAMP-DX, CSV, and TXT</li>
+      <li>100% client-side processing — zero server uploads, zero telemetry</li>
+    </ul>
+  </div>
+  <noscript>
+    <style>#seo-content { display: block !important; max-width: 700px; margin: 40px auto; padding: 0 20px; font-family: system-ui, sans-serif; line-height: 1.6; }</style>
+  </noscript>
 
   <div id="landing-root"></div>
   <script type="module" src="./src/landing-entry.tsx"></script>
@@ -508,7 +529,7 @@
                 <input type="number" id="input-range-max" placeholder="Max"
                   style="flex:1; padding: 6px 8px; border: 1px solid var(--border); font-size: 12px; border-radius: var(--radius-sm);">
                 <button id="btn-apply-range" class="btn-small" style="padding: 6px 10px;">Set</button>
-                <button id="btn-reset-range" class="btn-small" style="padding: 6px 10px;">✕</button>
+                <button id="btn-reset-range" class="btn-small" style="padding: 6px 10px;" aria-label="Reset axis range">✕</button>
               </div>
             </div>
 
@@ -557,11 +578,11 @@
 
   <div id="modal-about" class="modal-overlay">
     <div class="modal-content" style="padding: 40px; max-width: 500px;">
-      <button class="modal-close" id="btn-close-about">✕</button>
+      <button class="modal-close" id="btn-close-about" aria-label="Close about dialog">✕</button>
 
       <div class="docs-section">
-        <h1 style="font-size: 20px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.01em;">About Instant Raman
-        </h1>
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.01em;">About Instant Raman
+        </h2>
 
         <p style="margin-bottom: 16px;">I built this because I spent too much time as a research assistant doing the
           same repetitive tasks after every Raman session. Getting from raw instrument data to a figure that actually
