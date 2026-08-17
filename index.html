@@ -84,6 +84,7 @@
   <!-- Critical CSS to prevent Flash of Unrendered Content (FOUC) -->
   <style>
     #app { display: none !important; }
+    #seo-content { display: none !important; }
     body:not(.workstation-active) .modal-overlay { display: none !important; }
     #landing-root { display: block; }
     /* Page-specific overrides only — design system lives in index.css */
@@ -191,18 +192,6 @@
 
           <div class="section">
             <div class="section-title">Baseline correction</div>
-            <div id="anchor-list-container" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                <thead style="position: sticky; top: 0; background: var(--bg-surface); box-shadow: 0 1px 0 var(--border);">
-                  <tr style="text-align: left; color: var(--text-secondary); font-size: 10px;">
-                    <th style="padding: 4px;">X (cm⁻¹)</th>
-                    <th style="padding: 4px;">Y (Int)</th>
-                    <th style="padding: 4px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="anchor-list-body"></tbody>
-              </table>
-            </div>
             <div class="ctrl-group">
               <div class="ctrl-label"><span>Baseline mode</span></div>
               <div style="display: flex; gap: 4px;">
