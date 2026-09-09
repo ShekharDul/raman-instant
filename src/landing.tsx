@@ -1,8 +1,4 @@
 import React from 'react';
-import peakFitImg from './assets/peak_fit.png';
-import rawPlotImg from './assets/raw_plot.svg';
-import correctedPlotImg from './assets/corrected_plot.svg';
-import './styles/landing.css';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
@@ -10,134 +6,258 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ onEnterWorkstation }) => {
   return (
-    <div className="portfolio-wrapper">
-      {/* HEADER */}
-      <header className="pf-header">
-        <div className="pf-brand">
-          Instant Raman <span className="pf-version">v1.2.0-beta</span>
-        </div>
-        <nav className="pf-nav-links">
-          <button onClick={onEnterWorkstation} className="pf-nav-cta">Launch Workstation</button>
-          <a href="https://github.com/raman-instant/core" className="pf-nav-link">GitHub</a>
-          <a href="mailto:author@example.com" className="pf-nav-link">Contact</a>
-        </nav>
-      </header>
+    <div
+      id="landing-canvas"
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        backgroundColor: '#ffffff',
+        boxSizing: 'border-box',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        position: 'relative',
+        overflowX: 'hidden',
+      }}
+    >
+      {/* Centered Content Container */}
+      <div
+        style={{
+          maxWidth: '1080px',
+          margin: '0 auto',
+          padding: '24px 32px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Top Navigation */}
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              letterSpacing: '-0.03em',
+              color: '#0f172a',
+              userSelect: 'none',
+            }}
+          >
+            Instant Raman
+          </div>
 
-      {/* HERO SECTION */}
-      <section className="pf-hero">
-        <div className="pf-hero-content">
-          <h1 className="pf-hero-title">
-            Browser-based Raman spectroscopy processing pipeline featuring non-linear least squares peak deconvolution with exact Jacobian-based confidence bounds.
+          <nav
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '24px',
+            }}
+          >
+            <a
+              href="https://github.com/ShekharDul/raman-instant"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#475569',
+                textDecoration: 'none',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
+            >
+              GitHub
+            </a>
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#475569',
+                textDecoration: 'none',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
+            >
+              LinkedIn
+            </a>
+          </nav>
+        </header>
+
+        {/* Hero Section */}
+        <main
+          style={{
+            marginTop: '72px',
+            maxWidth: '740px',
+          }}
+        >
+          <h1
+            style={{
+              fontSize: '48px',
+              fontWeight: 800,
+              lineHeight: 1.15,
+              letterSpacing: '-0.035em',
+              color: '#0f172a',
+              margin: '0 0 20px 0',
+            }}
+          >
+            Simplify your Raman spectroscopy workflow.
           </h1>
-          <p className="pf-hero-subtitle">
-            Engineered entirely in TypeScript for 100% client-side execution. Eliminates manual anchor-point bias and provides rigorous mathematical transparency for peer-reviewed research.
-          </p>
-          <div className="pf-hero-actions">
-            <button onClick={onEnterWorkstation} className="pf-primary-btn">Open Workstation</button>
-          </div>
-        </div>
-        
-        <figure className="pf-figure">
-          <img src={peakFitImg} alt="Spectral deconvolution of overlapping bands" className="pf-figure-img" />
-          <figcaption className="pf-figure-caption">
-            Fig 1. Spectral deconvolution utilizing Levenberg-Marquardt optimization to resolve overlapping Gaussian profiles in the 1000-2000 cm⁻¹ region.
-          </figcaption>
-        </figure>
-      </section>
 
-      {/* METHODOLOGY SECTION */}
-      <section className="pf-methodology">
-        <h2 className="pf-section-title">Core Methodology & Architecture</h2>
-        
-        <div className="pf-method-row">
-          <div className="pf-method-label">01_Universal_Import</div>
-          <div className="pf-method-details">
-            <h3>Format Agnostic Data Ingestion</h3>
-            <p>
-              Analytical instrumentation output is notoriously fragmented. The custom parsing engine dynamically identifies and sanitizes inputs from proprietary formats (Horiba LabSpec, Bruker OPUS) and generic exports. This eliminates the preliminary data wrangling phase, standardizing the ingestion vector for the core processing pipeline.
-            </p>
-          </div>
-        </div>
+          <h2
+            style={{
+              fontSize: '19px',
+              fontWeight: 400,
+              lineHeight: 1.6,
+              letterSpacing: '-0.01em',
+              color: '#475569',
+              margin: 0,
+              maxWidth: '660px',
+            }}
+          >
+            Instant Raman enables easy raw data pre-processing, plotting, and collaboration for academic research use cases.
+          </h2>
 
-        <div className="pf-method-row">
-          <div className="pf-method-label">02_Baseline_Correction</div>
-          <div className="pf-method-details">
-            <h3>Algorithmic Background Subtraction</h3>
-            <p>
-              Traditional manual multi-point baseline correction introduces significant researcher bias. Instant Raman implements the Simple Non-Iterative Peak (SNIP) algorithm alongside Savitzky-Golay smoothing. This ensures a reproducible, mathematically objective subtraction of fluorescence backgrounds without clipping critical signal intensity.
-            </p>
-            <figure className="pf-figure">
-              <img src={correctedPlotImg} alt="Automated baseline correction via SNIP" className="pf-figure-img" />
-              <figcaption className="pf-figure-caption">Fig 2. SNIP baseline subtraction applied to raw acquisition data.</figcaption>
-            </figure>
+          <div style={{ marginTop: '32px' }}>
+            <button
+              onClick={onEnterWorkstation}
+              style={{
+                background: 'transparent',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontSize: '15px',
+                fontWeight: 600,
+                padding: '12px 26px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.025)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(15, 23, 42, 0.08)';
+                e.currentTarget.style.borderColor = '#94a3b8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+              }}
+            >
+              Get Started
+            </button>
           </div>
-        </div>
+        </main>
 
-        <div className="pf-method-row">
-          <div className="pf-method-label">03_Deconvolution</div>
-          <div className="pf-method-details">
-            <h3>Non-Linear Least Squares Fitting</h3>
-            <p>
-              For heavily overlapping spectral regions, basic peak-picking fails. The engine utilizes a Levenberg-Marquardt algorithm to fit sums of predefined line shapes (Gaussian, Lorentzian, Pseudo-Voigt). Crucially, the system calculates the Jacobian matrix to provide explicit uncertainty bounds (±) for every fitted parameter (center, width, amplitude).
-            </p>
-          </div>
-        </div>
-      </section>
+        {/* Processed Raman Spectrum Graphic (starts in the middle of the screen, peaks rise upwards towards the button without touching) */}
+        <section
+          aria-label="Processed Raman Spectrum Preview"
+          style={{
+            marginTop: '44px',
+            width: '100%',
+            maxWidth: '960px',
+            userSelect: 'none',
+            pointerEvents: 'none',
+          }}
+        >
+          <svg
+            viewBox="0 0 1000 240"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block',
+              overflow: 'visible',
+            }}
+          >
+            <defs>
+              {/* Fill gradient: rich blue at baseline (bottom), fading to transparent towards the top */}
+              <linearGradient id="ramanFillGrad" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.3" />
+                <stop offset="35%" stopColor="#3b82f6" stopOpacity="0.18" />
+                <stop offset="75%" stopColor="#60a5fa" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.0" />
+              </linearGradient>
 
-      {/* ENGINEERING RIGOR SECTION */}
-      <section className="pf-rigor">
-        <h2 className="pf-section-title">Engineering Rigor</h2>
-        <div className="pf-rigor-grid">
-          <div className="pf-rigor-item">
-            <h4>100% Client-Side Computation</h4>
-            <p>
-              Architected entirely in TypeScript and React. Complex matrix operations execute locally within the browser, ensuring zero latency and absolute data privacy. Research data never leaves the local machine.
-            </p>
-          </div>
-          <div className="pf-rigor-item">
-            <h4>Reproducibility Protocol (.irp)</h4>
-            <p>
-              Every processing action generates a deterministic `Instant Raman Protocol` file. These files embed a SHA-256 hash of the operations, allowing peers or reviewers to exactly reconstruct the data pipeline.
-            </p>
-          </div>
-          <div className="pf-rigor-item">
-            <h4>Academic Validation</h4>
-            <p>
-              Designed to meet the rigorous standards of computational reproducibility demanded by modern high-impact scientific journals.
-            </p>
-          </div>
-        </div>
-      </section>
+              {/* Stroke gradient: deep blue at baseline, fading towards the top */}
+              <linearGradient id="ramanStrokeGrad" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stopColor="#1d4ed8" stopOpacity="0.9" />
+                <stop offset="45%" stopColor="#2563eb" stopOpacity="0.75" />
+                <stop offset="80%" stopColor="#3b82f6" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.15" />
+              </linearGradient>
+            </defs>
 
-      {/* BUILDER SECTION */}
-      <section className="pf-builder">
-        <h2 className="pf-section-title">About the Builder</h2>
-        <div className="pf-builder-content">
-          <p>
-            This tool was developed out of direct frustration with existing analytical workflows. During research involving pharmaceutical API crystallization, I encountered a critical bottleneck: the lack of accessible, modern, and reproducible software for bulk Powder X-Ray Diffraction (PXRD) and Raman spectroscopy analysis.
-          </p>
-          <p>
-            The commercial options were prohibitively expensive, legacy desktop applications built in the 1990s, requiring tedious manual intervention for every single spectrum. 
-          </p>
-          <p>
-            Instant Raman was built to solve this specific pain point. It bridges the gap between sophisticated analytical chemistry requirements and modern software engineering standards. It demonstrates that scientific software can be fast, private, mathematically rigorous, and exceptionally designed.
-          </p>
-          <a href="https://linkedin.com/in/author" target="_blank" rel="noopener noreferrer" className="pf-contact-link">
-            [ LinkedIn Profile ]
-          </a>
-        </div>
-      </section>
+            {/* Subtle baseline */}
+            <line
+              x1="0"
+              y1="225"
+              x2="1000"
+              y2="225"
+              stroke="#e2e8f0"
+              strokeWidth="1"
+              strokeDasharray="4 6"
+            />
 
-      {/* FOOTER */}
-      <footer className="pf-footer">
-        <div className="pf-citation">
-          <strong>Citation:</strong> Author, (2026). Instant Raman: A client-side web application for reproducible Raman spectroscopy data processing. <em>GitHub Repository</em>, https://github.com/raman-instant/core
-        </div>
-        <div className="pf-footer-links">
-          <a href="https://github.com/raman-instant/core">GitHub Repo</a>
-          <a href="mailto:author@example.com">Email</a>
-        </div>
-      </footer>
+            {/* Filled area under curve with upward fading gradient */}
+            <path
+              d="M 0 225
+                 L 120 225
+                 C 140 225, 155 175, 175 175
+                 C 195 175, 205 225, 230 225
+                 L 320 225
+                 C 350 225, 375 90, 400 90
+                 C 425 90, 445 225, 475 225
+                 L 510 225
+                 C 535 225, 555 15, 575 15
+                 C 595 15, 615 225, 640 225
+                 C 655 225, 675 110, 695 110
+                 C 715 110, 735 225, 755 225
+                 L 790 225
+                 C 815 225, 835 140, 855 140
+                 C 875 140, 895 225, 920 225
+                 L 1000 225
+                 L 1000 225
+                 L 0 225
+                 Z"
+              fill="url(#ramanFillGrad)"
+            />
+
+            {/* Continuous processed Raman spectrum line */}
+            <path
+              d="M 0 225
+                 L 120 225
+                 C 140 225, 155 175, 175 175
+                 C 195 175, 205 225, 230 225
+                 L 320 225
+                 C 350 225, 375 90, 400 90
+                 C 425 90, 445 225, 475 225
+                 L 510 225
+                 C 535 225, 555 15, 575 15
+                 C 595 15, 615 225, 640 225
+                 C 655 225, 675 110, 695 110
+                 C 715 110, 735 225, 755 225
+                 L 790 225
+                 C 815 225, 835 140, 855 140
+                 C 875 140, 895 225, 920 225
+                 L 1000 225"
+              fill="none"
+              stroke="url(#ramanStrokeGrad)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </section>
+      </div>
     </div>
   );
 };

@@ -196,6 +196,11 @@ export class UniversalParser {
 
   public static normalizeDecimals(text: string): string {
     const lines = text.split('\n');
+    // A whole row with two comma-separated numbers is CSV, not one decimal.
+    const numericRows = lines.filter(line => /^\s*[+-]?\d/.test(line));
+    if (numericRows.length > 0 && numericRows.every(line =>
+      /^\s*[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s*,\s*[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s*$/.test(line)
+    )) return text;
     
     // Analyze first 100 data lines to detect format
     const sampleLines = lines
@@ -245,6 +250,7 @@ export class UniversalParser {
     
     // Parse all numeric lines
     for (const line of lines) {
+      if (!/^\s*[-+]?(?:\d|\.\d)/.test(line)) continue;
       const matches = line.match(numRegex);
       if (matches && matches.length >= 2) {
         const nums = matches.map(m => parseFloat(m));

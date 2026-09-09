@@ -9,14 +9,10 @@ import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
 import { ReportGenerator } from './ui/reportGenerator.ts';
-import { FittingEngine, type FitResult, formatStatisticalError } from './engine/fitting.ts';
+import { FittingEngine, type FitResult } from './engine/fitting.ts';
 import type { NormalizedSpectrum, SpectralData, Peak, VarianceResult, NormalizationMode, CustomLabel } from './engine/types.ts';
 import { ProtocolManager, type InstantRamanProtocol } from './engine/protocol.ts';
 import * as XLSX from 'xlsx';
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { DiagnosticDashboard } from './components/DiagnosticDashboard.tsx';
-import { AnalysisSuite } from './components/AnalysisSuite.tsx';
 
 // ── Types ──
 interface ProcessedFile {
@@ -73,10 +69,7 @@ interface AppState {
   freeLabelMode: boolean;
   pendingLabel: { x: number; y: number } | null;
   snapshots: import('./ui/reportGenerator.ts').Snapshot[];
-  epiResult: import('./engine/fitting').EpistemicResult | null;
-  mcResult: any | null; // UncertaintyPropagatorResult
   visibleTableFileId: string | null;
-  isPro: boolean;
 }
 
 // ── State ──
@@ -112,10 +105,7 @@ const state: AppState = {
   freeLabelMode: false,
   pendingLabel: null,
   snapshots: [],
-  epiResult: null,
-  mcResult: null,
   visibleTableFileId: null,
-  isPro: true
 };
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
@@ -1821,7 +1811,7 @@ function getScientificNarrative(file: ProcessedFile) {
   if (norm === 'area') normDesc = 'total area (AUC) normalization';
   if (norm === 'point') normDesc = `normalization to the peak at ${state.normTargetX?.toFixed(1)} cm⁻¹`;
 
-  return `Raman spectrum of ${file.name}. Data was processed using the Instant Raman (${APP_VERSION}) spectral workstation. Background subtraction was performed using the Simple Non-Iterative Peak (SNIP) algorithm (${snip} iterations) [1], followed by Savitzky-Golay smoothing (window size ${sg}) [2]. The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Analysis protocol verified via SHA-256 integrity check.`;
+  return `Raman spectrum of ${file.name}. Data was processed using the Instant Raman (${APP_VERSION}) spectral workstation. Background subtraction was performed using the Statistics-sensitive Non-linear Iterative Peak-clipping (SNIP) algorithm (${snip} iterations) [1], followed by Savitzky-Golay smoothing (window size ${sg}) [2]. The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Keep the original data file with the exported protocol to review and rerun processing.`;
 }
 
 function generateCaption() {
@@ -1970,32 +1960,15 @@ async function exportProtocol(activeFile: ProcessedFile) {
     ];
 
     // 4. Fitting Record
-    let fittingRecord: any[] | null = null;
-    if (state.fittingMode && (state as any).epiResult) {
-      const epi = (state as any).epiResult;
-      fittingRecord = [
-        {
-          peak_id: epi.peak_id || 1,
-          nominal_center: epi.nominal_center,
-          boundary_left: epi.boundary_left,
-          boundary_right: epi.boundary_right,
-          boundary_perturbation_range: epi.boundary_perturbation_range,
-          best_fit_model: epi.best_fit_model,
-          fitted_center: epi.fitted_center,
-          fitted_center_statistical_error: epi.fitted_center_statistical_error,
-          fitted_fwhm: epi.fitted_fwhm,
-          fitted_amplitude: epi.fitted_amplitude,
-          r_squared: epi.r_squared,
-          reduced_chi_squared: epi.reduced_chi_squared,
-          epistemic_center_min: epi.epistemic_center_min,
-          epistemic_center_max: epi.epistemic_center_max,
-          epistemic_standard_deviation: epi.epistemic_standard_deviation,
-          combined_uncertainty: epi.combined_uncertainty,
-          convergence_status: epi.convergence_status,
-          all_model_results: epi.all_model_results
-        }
-      ];
-    }
+    const fittingRecord = state.fittingMode && state.fitResult ? state.fitResult.peaks.map((p, i) => ({
+      peak_id: i + 1, nominal_center: p.center.value,
+      boundary_left: state.fitResult!.fitX[0], boundary_right: state.fitResult!.fitX.at(-1),
+      best_fit_model: p.type, fitted_center: p.center.value,
+      fitted_fwhm: p.fwhm.value, fitted_amplitude: p.amplitude.value,
+      fitted_shape: p.shape?.value ?? null,
+      fitted_center_statistical_error: p.center.error,
+      r_squared: state.fitResult!.r2, convergence_status: state.fitResult!.convergence_status
+    })) : null;
 
     const protocol: any = {
       protocol_metadata: metadata,
@@ -2003,7 +1976,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
       processing_steps: steps as any,
       fitting_record: fittingRecord as any,
       integration_record: null,
-      reproducibility_guarantee: "Full trace and uncertainty parameters included."
+      reproducibility_guarantee: "Processing parameters and source-file hash included; keep the original data file."
     };
 
     // Validation check
@@ -2134,6 +2107,8 @@ async function saveSnapshot(title: string) {
     type = 'fitting';
     tableType = 'fit';
     tableData = state.fitResult.peaks;
+    const residualPlot = UI.get("fit-residual") as any;
+    if (residualPlot?.data) traces = [...traces, ...residualPlot.data.map((t: any) => ({ ...t, yaxis: "y2" }))];
   } else {
     type = 'general';
     tableType = 'peaks';
@@ -2184,69 +2159,6 @@ async function saveSnapshot(title: string) {
     };
   }
 
-  // 4.5 Capture Uncertainty Metadata
-  let uncertaintyData = undefined;
-  if (state.fittingMode && (state as any).epiResult) {
-    const isSuite = !!document.getElementById('suite-plot-fit');
-    
-    // Legacy mapping
-    let fitEl = document.getElementById('plot-fit-large') as any;
-    let resEl = document.getElementById('plot-residual-small') as any;
-    let uncEl = document.getElementById('plot-uncertainty-bars') as any;
-    
-    // Suite mapping
-    const sFitEl = document.getElementById('suite-plot-fit') as any;
-    const sResEl = document.getElementById('suite-plot-residual') as any;
-    const sEnsEl = document.getElementById('suite-plot-ensemble') as any;
-    const sMcEl = document.getElementById('suite-plot-mc') as any;
-    
-    const interpEl = document.querySelector('.unc-right-bottom');
-
-    const clonePlot = (el: any) => {
-      if (!el || !el.data) return { traces: [], layout: {} };
-      return {
-        traces: el.data.map((d: any) => ({
-          ...d,
-          x: Array.isArray(d.x) ? [...d.x] : d.x,
-          y: Array.isArray(d.y) ? [...d.y] : d.y
-        })),
-        layout: {
-          xaxis: { range: el._fullLayout?.xaxis?.range, title: el._fullLayout?.xaxis?.title?.text },
-          yaxis: { range: el._fullLayout?.yaxis?.range, title: el._fullLayout?.yaxis?.title?.text },
-          shapes: el._fullLayout?.shapes || [],
-          annotations: el._fullLayout?.annotations || [],
-          title: el._fullLayout?.title?.text
-        }
-      };
-    };
-
-    if (isSuite) {
-      uncertaintyData = {
-        epiResult: (state as any).epiResult,
-        interpretationHtml: '', // Narrative is handled by snapshot.narrative
-        isSuite: true,
-        mcResult: (state as any).mcResult,
-        plots: {
-          fit: clonePlot(sFitEl),
-          residual: clonePlot(sResEl),
-          ensemble: clonePlot(sEnsEl),
-          monteCarlo: clonePlot(sMcEl)
-        }
-      };
-    } else if (fitEl && resEl && uncEl) {
-      uncertaintyData = {
-        epiResult: (state as any).epiResult,
-        interpretationHtml: interpEl ? interpEl.innerHTML : '',
-        isSuite: false,
-        plots: {
-          fit: clonePlot(fitEl),
-          residual: clonePlot(resEl),
-          uncertainty: clonePlot(uncEl)
-        }
-      };
-    }
-  }
-
   // 5. Build Robust Layout from Live Plot
   const firstPlotEl = plotEls[0] as any;
   const liveLayout = firstPlotEl?._fullLayout || {};
@@ -2273,7 +2185,6 @@ async function saveSnapshot(title: string) {
     gridTraces: snapshotTraces, // Store all plots if in grid mode
     tableData, tableType,
     ratio: ratioData,
-    uncertaintyData,
     layout: finalLayout,
     settings: {
       snip: parseInt(UI.val('slider-snip') || '25'),
@@ -2294,7 +2205,6 @@ async function saveSnapshot(title: string) {
   trackEvent('snapshot_captured', { 
     snapshot_type: type, 
     layout_mode: state.layoutMode,
-    has_uncertainty: !!snapshot.uncertaintyData
   });
   updateUI();
 }
@@ -2344,7 +2254,6 @@ async function runFitting(minX: number, maxX: number) {
     if (result.convergence_status === 'failed' || result.peaks.length === 0) {
       showToast(`Fitting failed: ${result.errorMsg || 'Could not converge. Try adjusting the region or peak selection.'}`);
       state.fitResult = null;
-      (state as any).epiResult = null;
       state.fittingMode = false;
       UI.get('btn-exit-fit')?.classList.add('hidden');
       UI.text('system-status', 'Ready');
@@ -2352,22 +2261,7 @@ async function runFitting(minX: number, maxX: number) {
       return;
     }
 
-    let epiResult = null;
-    if (result.peaks.length > 0) {
-      // Pass ALL peaks for rigorous multi-component ensemble analysis
-      epiResult = FittingEngine.evaluateEpistemicUncertainty(
-        data.wavenumberData, data.intensityData,
-        1, 
-        result.peaks.map(p => p.center.value || 0),
-        result.peaks.map(p => p.fwhm.value || 0),
-        result.peaks.map(p => p.amplitude.value || 0),
-        minX, maxX,
-        10, 5
-      );
-    }
-
     state.fitResult = result;
-    (state as any).epiResult = epiResult;
     state.fittingMode = true;
     UI.get('btn-exit-fit')?.classList.remove('hidden');
     UI.text('system-status', 'Ready');
@@ -2377,235 +2271,14 @@ async function runFitting(minX: number, maxX: number) {
 
 function renderFitResults() {
   const container = UI.get('workspace-container');
-  if (!container || !state.fitResult) return;
-
-  const active = state.files.get(state.activeFileId || '');
-  if (!active || !(state as any).epiResult) return;
-
-  const epi = (state as any).epiResult;
-
-  // Transform workspace into a spacious scrolling viewport
-  container.innerHTML = '';
-  container.className = 'analysis-suite-viewport';
-  const root = document.createElement('div');
-  root.style.minHeight = '100%';
-  container.appendChild(root);
-
-  // Mount the Premium Analysis Suite
-  const suiteRoot = ReactDOM.createRoot(root);
-  suiteRoot.render(React.createElement(AnalysisSuite, { 
-    epi: epi, 
-    protocolId: active.protocolId || 'UNSET',
-    state: state,
-    onClose: () => {
-      // Exit uncertainty mode and return to standard workstation
-      (state as any).epiResult = null;
-      updateUI();
-    }
-  }));
+  const result = state.fitResult;
+  if (!container || !result) return;
+  container.className = 'fit-workspace';
+  container.innerHTML = '<h2>Peak fit</h2><p id="fit-summary"></p><div id="fit-plot" class="plot-container" style="height:420px"></div><div id="fit-residual" style="height:200px"></div>';
+  UI.text('fit-summary', result.peaks.length + ' component(s) · R²: ' + (result.r2?.toFixed(4) ?? 'unavailable') + ' · Review the fit and residuals before using the results.');
+  ChartRenderer.renderFit('fit-plot', result.fitX, result.fitY.map((y,i) => y + result.residuals[i]), result.fitX, result.fitY, true, state.showGrid);
+  ChartRenderer.renderResidual('fit-residual', { wavenumberData: result.fitX, intensityData: result.residuals }, undefined, state.showGrid);
 }
-
-function formatEpistemicRange(min: number | undefined | null, max: number | undefined | null): string {
-  if (min === null || min === undefined || max === null || max === undefined) return '';
-  if (isNaN(min) || isNaN(max)) return '';
-  const spread = Math.abs(max - min);
-
-  // Determine decimal places needed to show the spread meaningfully
-  let decimalPlaces: number;
-  if (spread === 0) return ''; // degenerate — should not reach here, isDegenerateRange handles this
-  else if (spread >= 1) decimalPlaces = 1;
-  else if (spread >= 0.1) decimalPlaces = 2;
-  else if (spread >= 0.01) decimalPlaces = 3;
-  else decimalPlaces = 4;
-
-  const minStr = min.toFixed(decimalPlaces);
-  const maxStr = max.toFixed(decimalPlaces);
-
-  // Safety check — if adaptive rounding still produces identical strings,
-  // increment decimal places by 1 until they differ or reach 6
-  // This handles edge cases where spread sits exactly on a threshold boundary
-  if (minStr === maxStr) {
-    for (let dp = decimalPlaces + 1; dp <= 6; dp++) {
-      const a = min.toFixed(dp);
-      const b = max.toFixed(dp);
-      if (a !== b) return `${a} to ${b} cm⁻¹`;
-    }
-  }
-
-  return `${minStr} to ${maxStr} cm⁻¹`;
-}
-
-function formatReportAs(center: number, statisticalError: number | null, _isDegenerateRange: boolean): string {
-  if (statisticalError === null || isNaN(statisticalError) || !isFinite(statisticalError) || statisticalError === 0) {
-    return `${center.toFixed(1)} ± —`;
-  }
-
-  if (statisticalError < 0.001) {
-    // For scientific notation, use existing shared formatter and fixed 4 decimal places for center
-    const statStr = formatStatisticalError(statisticalError);
-    return `${center.toFixed(4)} ${statStr}`;
-  }
-
-  // 1. Round uncertainty to 2 significant figures
-  // toPrecision returns a string representation of the number with specified significant digits
-  const roundedErrorStr = statisticalError.toPrecision(2);
-  const roundedError = Number(roundedErrorStr);
-
-  // 2. Count decimal places in the rounded uncertainty string
-  // We use the string from toPrecision to accurately count the displayed decimal places
-  let decimalPlaces = 0;
-  if (roundedErrorStr.includes('.')) {
-    const parts = roundedErrorStr.split('.');
-    // Avoid coordination if it returned scientific notation (e.g. 1.2e+2)
-    if (!parts[1].includes('e')) {
-      decimalPlaces = parts[1].length;
-    }
-  }
-
-  // 3. Display center to that same number of decimal places
-  const centerStr = center.toFixed(decimalPlaces);
-
-  return `${centerStr} ± ${roundedError} cm⁻¹`;
-}
-
-function isValidUncertaintyResult(epi: any): boolean {
-  if (!epi) return false;
-  if (epi.fitted_center === null || epi.fitted_center === undefined) return false;
-  if (epi.fitted_center === 0 && (epi.r_squared === 0 || epi.r_squared === null)) return false; // uninitialized default
-  if (!epi.best_fit_model || epi.best_fit_model === 'UNKNOWN' || epi.best_fit_model === 'unknown') return false;
-  if (epi.r_squared === null || epi.r_squared === undefined || epi.r_squared === 0) return false;
-  return true;
-}
-
-function generateInterpretationHtml(epi: any, protocolId: string) {
-  if (!isValidUncertaintyResult(epi)) {
-    return `
-      <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; min-height: 100%;">
-        <div style="margin-bottom: 24px;">
-          <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Fitting failed</h4>
-          <p style="font-size: 15px; margin: 0;">None of the three model types converged for this peak region. This may indicate an overlapping peak, a broad asymmetric feature, or insufficient signal. Try adjusting the fit region boundaries or check the baseline correction.</p>
-        </div>
-        <div style="margin-bottom: 24px;">
-          <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What It Means</h4>
-          <p style="font-size: 15px; margin: 0; font-style: italic; color: #94a3b8;">Convergence failed. Numerical assessment unavailable for this region.</p>
-        </div>
-        <div style="border-top: 1px solid #eee; padding-top: 16px; font-size: 10px; color: #94a3b8; font-family: var(--font-mono); line-height: 1.4;">
-          Instant Raman Protocol ID: ${protocolId.substring(0, 8)}
-        </div>
-      </div>
-    `;
-  }
-  const statStr = formatStatisticalError(epi.fitted_center_statistical_error);
-  const bestModel = epi.best_fit_model || 'unknown';
-  const r2 = epi.r_squared || 0;
-  const center = epi.fitted_center || 0;
-
-  let part1 = '';
-  let part2 = '';
-  let part3 = '';
-
-  const r2Threshold = 0.95;
-  const isInvalidFit = r2 < 0 || epi.epistemic_classification === 'INVALID_FIT';
-  const isPoorFit = r2 < r2Threshold && !isInvalidFit;
-  const rangeStr = formatEpistemicRange(epi.epistemic_center_min, epi.epistemic_center_max);
-
-  // 1. Core Findings (Part 1)
-  if (isInvalidFit) {
-    const epistemicSpread = (epi.epistemic_center_max !== null && epi.epistemic_center_min !== null) 
-      ? (epi.epistemic_center_max - epi.epistemic_center_min) 
-      : 100;
-    const isTightConvergence = epistemicSpread < 0.5;
-    
-    part1 = `The fit failed — R² is negative, meaning the model performs worse than a flat mean line.${isTightConvergence ? ' All ensemble fits converged to the same center, but this agreement is unreliable when the underlying fit is invalid.' : ''}`;
-  } else if (epi.isDegenerateRange) {
-    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries showed perfect convergence.`;
-  } else {
-    part1 = `Your peak center was determined to be <b>${center.toFixed(2)} cm⁻¹</b> using a <b>${bestModel.toUpperCase()}</b> profile (R² = ${r2.toFixed(4)}). The statistical precision is ${statStr}. Systematic perturbation across model types and boundaries revealed an epistemic range${rangeStr ? ' of ' + rangeStr : ' (unavailable)'}.`;
-  }
-
-  // Append failure note if any model type has zero successful fits
-  const counts = (epi.ensembleModelCounts || { lorentzian: 0, gaussian: 0, voigt: 0 }) as { lorentzian: number; gaussian: number; voigt: number };
-  const failedModels: string[] = [];
-  if (counts.lorentzian === 0) failedModels.push('Lorentzian');
-  if (counts.gaussian === 0) failedModels.push('Gaussian');
-  if (counts.voigt === 0) failedModels.push('Voigt');
-
-  if (failedModels.length > 0 && failedModels.length < 3 && !isInvalidFit) {
-    const failedStr = failedModels.length === 2 
-      ? `${failedModels[0]} and ${failedModels[1]}` 
-      : failedModels[0];
-    
-    const successfulModels = Object.entries(counts)
-      .filter(([_, n]) => n > 0)
-      .map(([m, _]) => m.charAt(0).toUpperCase() + m.slice(1));
-    
-    const successStr = successfulModels.length === 2 
-      ? `${successfulModels[0]} and ${successfulModels[1]}` 
-      : successfulModels[0];
-
-    part1 += ` <br><span style="font-size: 13px; color: #64748b; font-style: italic;">Note: ${failedStr} fits did not converge in this region — ensemble results reflect ${successStr} fits only.</span>`;
-  }
-
-  // 2. Meaning & Confidence (Part 2) - INVALID_FIT and POOR_FIT take absolute precedence
-  if (isInvalidFit) {
-    part2 = `<div style="color: #b45309; font-weight: 600;">Invalid fit.</div> The fitting window likely contains multiple overlapping peaks, a steeply sloped background, or a feature that no single line-shape profile can describe. Try splitting this region into two narrower windows, or adjust the baseline before fitting.`;
-  } else if (isPoorFit || epi.epistemic_classification === 'POOR_FIT') {
-    part2 = `<div style="color: #d97706; font-weight: 600;">Poor fit quality.</div> The best model explains less than 95% of the variance in this region. This may indicate overlapping peaks, an asymmetric feature, or incorrect region boundaries. Interpret the center position with caution.`;
-  } else if (epi.isDegenerateRange) {
-    part2 = `<div style="color: #059669; font-weight: 600;">High model agreement.</div> All three model types and all boundary perturbations converged to the same center. The result is stable and model-insensitive.`;
-  } else if (epi.epistemic_classification === 'HIGH_SENSITIVITY') {
-    part2 = `<div style="color: #dc2626; font-weight: 600;">High sensitivity detected.</div> The epistemic spread dominates the result. This suggests the peak may be poorly resolved or physically complex. Exercise caution with quantitative interpretations.`;
-  } else {
-    part2 = `<div style="color: #059669; font-weight: 600;">Stable model convergence.</div> The epistemic spread is contained within reasonable bounds relative to the statistical precision.`;
-  }
-
-  // 3. Reporting Logic (Part 3)
-  const combined = epi.combined_uncertainty || 0;
-  const reportAs = formatReportAs(center, combined, epi.isDegenerateRange);
-  const rangeClause = (rangeStr && !epi.isDegenerateRange) ? `. Epistemic range: ${rangeStr}` : '';
-
-  if (isInvalidFit) {
-    part3 = `<div style="padding: 12px; background: #fff7ed; border-left: 4px solid #f97316; color: #9a3412; font-weight: 400; font-size: 13px; line-height: 1.5;">
-      <b>This fit is invalid (R² < 0).</b> Do not report this value. Redefine the fitting window to isolate a single peak before refitting.
-    </div>`;
-  } else if (isPoorFit) {
-    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. <span style="color: #d97706;">Caution: Low variance explained.</span>`;
-  } else {
-    part3 = `<b>REPORT AS:</b> ${reportAs}${rangeClause}. See confidence assessment.`;
-  }
-
-  return `
-    <div style="padding: 24px; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.6; background: #fff; min-height: 100%;">
-      <div style="margin-bottom: 24px;">
-        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What Was Found</h4>
-        <p style="font-size: 15px; margin: 0;">${part1}</p>
-      </div>
-      <div style="margin-bottom: 24px;">
-        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What It Means</h4>
-        <p style="font-size: 15px; margin: 0; font-style: italic; color: #475569;">${part2}</p>
-      </div>
-      <div style="margin-bottom: 32px;">
-        <h4 style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">What To Report</h4>
-        <p style="font-size: 15px; margin: 0; font-weight: 600;">${part3}</p>
-      </div>
-      <div style="border-top: 1px solid #eee; padding-top: 16px; font-size: 10px; color: #94a3b8; font-family: var(--font-mono); line-height: 1.4;">
-        Uncertainty quantified using multi-model Levenberg-Marquardt fitting with boundary perturbation analysis. 
-        Statistical uncertainty derived from SVD covariance matrix. 
-        Epistemic uncertainty derived from systematic model and boundary sensitivity analysis. 
-        <br>Instant Raman Protocol ID: ${protocolId.substring(0, 8)}
-      </div>
-    </div>
-  `;
-}
-
-UI.get('btn-exit-fit')?.addEventListener('click', () => {
-  state.fittingMode = false;
-  state.fitResult = null;
-  UI.get('btn-exit-fit')?.classList.add('hidden');
-  updateUI();
-});
-
-// ── Protocol Handling (Step 6) ──
 
 async function promptProtocolImport(protocolJson: any) {
   let protocol: InstantRamanProtocol;
@@ -2678,7 +2351,7 @@ async function promptProtocolImport(protocolJson: any) {
     hashStatus.style.background = '#ecfdf5';
     hashStatus.style.color = '#059669';
     hashStatus.style.border = '1px solid #10b981';
-    hashStatus.textContent = `Matched with loaded file: "${matchedFile.name}". This protocol will reproduce the original analysis exactly.`;
+    hashStatus.textContent = `Matched with loaded file: "${matchedFile.name}". Review the saved settings before applying this protocol.`;
   } else {
     hashStatus.classList.remove('hidden');
     hashStatus.style.background = '#fffbeb';
@@ -2725,7 +2398,7 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
     }
   }
 
-  if (!file) {
+  if (!file || file.fileHash !== sourceHash) {
     alert(`Protocol Mismatch:\n\nThis protocol belongs to the file "${protocol.source_data_record.original_filename}".\n\nPlease load that file first to apply these analytical parameters.`);
     return;
   }
@@ -2767,23 +2440,18 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
 
   if (protocol.fitting_record && protocol.fitting_record.length > 0) {
     const record = protocol.fitting_record[0];
-    // Use the exact 10-argument signature for bit-for-bit reproduction
-    const epiResult = FittingEngine.evaluateEpistemicUncertainty(
-      reproducedFile.processed.wavenumberData,
-      reproducedFile.processed.intensityData,
-      record.peak_id,
-      record.nominal_center,
-      record.fitted_fwhm || 20,
-      record.fitted_amplitude || 100,
-      record.boundary_left,
-      record.boundary_right,
-      record.boundary_perturbation_range || 10,
-      5 // perturbationStepPct
-    );
-    (reproducedFile as any).reproducedFit = epiResult;
-    (state as any).epiResult = epiResult; // Update state for UI rendering
-    state.fittingMode = true;
-    reproducedFile.reproducedSteps.add('Multi-Model Deconvolution');
+    const records = protocol.fitting_record;
+    const model = record.best_fit_model || 'lorentzian';
+    const points = reproducedFile.processed.wavenumberData.map((x,i) => ({x, y: reproducedFile.processed.intensityData[i]})).filter(p => p.x >= record.boundary_left && p.x <= record.boundary_right);
+    const initial = records.flatMap(r => model === 'voigt'
+      ? [r.fitted_amplitude ?? 100, r.fitted_center ?? r.nominal_center, r.fitted_fwhm ?? 20, r.fitted_shape ?? 0.5]
+      : [r.fitted_amplitude ?? 100, r.fitted_center ?? r.nominal_center, r.fitted_fwhm ?? 20]);
+    const result = FittingEngine.fit(points.map(p => p.x), points.map(p => p.y), initial, model);
+    state.fitResult = result;
+    state.fittingMode = result.convergence_status === 'converged';
+    UI.get("btn-exit-fit")?.classList.toggle("hidden", !state.fittingMode);
+    (reproducedFile as any).reproducedFit = result;
+    if (state.fittingMode) reproducedFile.reproducedSteps.add('Peak Fitting');
   }
 
   // 4. Verification Report
@@ -2820,10 +2488,10 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
   const origFits = protocol.fitting_record || [];
   const reproducedFit = (file as any).reproducedFit;
 
-  origFits.forEach(of => {
+  origFits.forEach((of, index) => {
     const origVal = of.fitted_center || 0;
     // Use the reproduced fit center if available, otherwise fallback to peak detection
-    const reproVal = reproducedFit ? (reproducedFit.fitted_center || 0) :
+    const reproVal = reproducedFit ? (reproducedFit.peaks[index]?.center.value ?? 0) :
       (file.peaks.find(p => Math.abs(p.x - of.nominal_center) < 5)?.x || 0);
 
     const diff = Math.abs(origVal - reproVal);
@@ -2841,6 +2509,13 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
   });
 
   reportHtml += `</tbody></table>`;
+
+  if (origFits.length === 0) {
+    content.textContent = "Processing settings applied. This protocol has no saved fit results to compare; numerical reproduction has not been verified.";
+    modal.classList.add("active");
+    UI.get("btn-close-verification")?.addEventListener("click", () => modal.classList.remove("active"), { once: true });
+    return;
+  }
 
   const precisionClass = maxDiff > 1e-6 ? 'style="color: #be123c; margin-top: 16px; font-weight: 700;"' : 'style="color: #059669; margin-top: 16px; font-weight: 700;"';
   reportHtml += `<div ${precisionClass}>Maximum numerical deviation from original: ${maxDiff.toExponential(4)} cm⁻¹</div>`;

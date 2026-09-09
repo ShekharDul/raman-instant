@@ -1,6 +1,6 @@
 /**
  * Instant Raman Protocol (.irp) Types
- * This defines the strict JSON schema for byte-for-byte reproducibility of Raman analyses.
+ * This defines the JSON schema for saved analysis settings of Raman analyses.
  */
 
 export interface IrpMetadata {
@@ -57,42 +57,20 @@ export interface IrpPeakDetectionParams {
   peak_positions: number[] | null;
 }
 
-export interface IrpModelResult {
-  model_type: "lorentzian" | "gaussian" | "voigt";
-  boundary_perturbation_step: number; // e.g., -10, -5, 0, +5, +10 (% of FWHM)
-  boundary_left: number;
-  boundary_right: number;
-  fitted_center: number | null;
-  fitted_fwhm: number | null;
-  fitted_amplitude: number | null;
-  fitted_center_statistical_error: number | null;
-  fitted_fwhm_statistical_error: number | null;
-  fitted_amplitude_statistical_error: number | null;
-  statistical_uncertainty_status: "reliable" | "ill_conditioned" | null;
-  r_squared: number | null;
-  reduced_chi_squared: number | null;
-  convergence_status: "converged" | "failed";
-}
-
 export interface IrpPeakFittingRecord {
   peak_id: number;
   nominal_center: number;
   boundary_left: number;
   boundary_right: number;
-  boundary_perturbation_range: number | null;
   best_fit_model: "lorentzian" | "gaussian" | "voigt" | null;
   fitted_center: number | null;
   fitted_center_statistical_error: number | null;
   fitted_fwhm: number | null;
   fitted_amplitude: number | null;
+  fitted_shape?: number | null;
   r_squared: number | null;
   reduced_chi_squared: number | null;
-  epistemic_center_min: number | null;
-  epistemic_center_max: number | null;
-  epistemic_standard_deviation: number | null;
-  combined_uncertainty: number | null;
   convergence_status: "converged" | "failed" | null;
-  all_model_results: IrpModelResult[] | null;
 }
 
 export interface IrpIntegrationRecord {
