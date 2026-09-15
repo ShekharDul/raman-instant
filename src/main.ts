@@ -5,6 +5,7 @@
 const APP_VERSION = 'v2.1.0';
 import { SpectralProcessor } from './engine/processor.ts';
 import { UniversalParser } from './parsers/universalParser.ts';
+import { createSampleSpectrumFile } from './engine/sampleSpectrum.ts';
 import { previewImport } from './ui/importPreview.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
@@ -194,6 +195,27 @@ function initCalibration() {
 }
 
 function initUpload() {
+  window.addEventListener('sample-spectrum-requested', () => {
+    importQueue = importQueue.then(async () => {
+      try {
+        const id = 'synthetic-demo-spectrum';
+        if (!state.files.has(id)) {
+          const file = createSampleSpectrumFile();
+          const raw = await UniversalParser.parseFile(file);
+          const hash = await ProtocolManager.computeHash(await file.arrayBuffer());
+          processAndStore(id, file.name, raw, hash);
+        }
+        state.activeFileId = id;
+        updateUI();
+        UI.text('system-status', 'READY');
+        showToast('Synthetic demonstration spectrum loaded. This is not an experimental measurement.');
+      } catch (error) {
+        console.error('[Sample]', error);
+        UI.text('system-status', 'SAMPLE_ERROR');
+        showToast('Could not load sample data. Please try again.');
+      }
+    });
+  });
   const input = UI.get('file-input') as HTMLInputElement;
   if (!input) return;
   input.addEventListener('change', () => {

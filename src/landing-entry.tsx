@@ -20,7 +20,13 @@ if (container) {
 
   root.render(
     <React.StrictMode>
-      <Landing onEnterWorkstation={handleEnterWorkstation} />
+      <Landing
+        onEnterWorkstation={handleEnterWorkstation}
+        onTrySample={() => {
+          handleEnterWorkstation();
+          window.dispatchEvent(new Event('sample-spectrum-requested'));
+        }}
+      />
     </React.StrictMode>
   );
 }

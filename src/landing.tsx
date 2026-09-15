@@ -2,9 +2,10 @@ import React from 'react';
 
 interface LandingProps {
   onEnterWorkstation: () => void;
+  onTrySample: () => void;
 }
 
-const Landing: React.FC<LandingProps> = () => {
+const Landing: React.FC<LandingProps> = ({ onEnterWorkstation, onTrySample }) => {
   return (
     <div
       id="landing-canvas"
@@ -90,6 +91,18 @@ const Landing: React.FC<LandingProps> = () => {
           </nav>
         </header>
 
+        <main className="research-intro">
+          <p className="research-intro-note">A free tool for researchers</p>
+          <h1>Raman spectrum analysis,<br />in your browser.</h1>
+          <p className="research-intro-description">
+            Import CSV or Excel data to correct baselines, fit peaks, and prepare plots for your research.
+          </p>
+          <div className="research-intro-actions">
+            <button type="button" className="research-open-tool" onClick={onEnterWorkstation}>Open tool</button>
+            <button type="button" className="research-try-sample" onClick={onTrySample}>Try sample data</button>
+          </div>
+          <p className="research-sample-note">The sample is a synthetic spectrum for exploring the tool.</p>
+        </main>
       </div>
     </div>
   );
