@@ -377,7 +377,7 @@ html, body {
 
 .research-try-sample:hover { color: #182d3e; }
 
-#landing-canvas :is(a, button):focus-visible {
+#landing-canvas :is(a, button, summary):focus-visible {
   outline: 2px solid #344b5e;
   outline-offset: 5px;
 }
@@ -389,8 +389,74 @@ html, body {
   line-height: 1.6;
 }
 
+.research-section {
+  max-width: 760px;
+  padding: 36px 0;
+  border-top: 1px solid #d5d8da;
+  color: #20252c;
+}
+
+.research-section h2 {
+  margin: 0 0 24px;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.research-capabilities { margin: 0; }
+
+.research-capabilities > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 20px;
+  margin: 0 0 16px;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.research-capabilities > div:last-child { margin-bottom: 0; }
+.research-capabilities dt { font-weight: 600; }
+.research-capabilities dd { margin: 0; color: #525b66; }
+
+.research-section-intro,
+.research-methods details p {
+  margin: 0 0 16px;
+  max-width: 680px;
+  color: #525b66;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.research-methods details { border-bottom: 1px solid #d5d8da; }
+.research-methods summary {
+  padding: 16px 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.research-methods summary:hover { color: #344b5e; }
+.research-methods details[open] { padding-bottom: 4px; }
+.research-text-link { color: #344b5e; text-decoration: underline; text-underline-offset: 4px; }
+.research-text-link:hover { color: #182d3e; }
+.research-docs-link { display: inline-block; margin-top: 24px; font-size: 1rem; }
+
+.research-footer {
+  max-width: 760px;
+  margin-top: 12px;
+  padding: 28px 0 36px;
+  border-top: 1px solid #d5d8da;
+  color: #59616b;
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+.research-footer p { max-width: 600px; margin: 0; }
+
 @media (max-width: 480px) {
   #landing-canvas header { flex-wrap: wrap; gap: 16px 24px; }
+  .research-capabilities > div { grid-template-columns: 1fr; gap: 2px; margin-bottom: 20px; }
 }
 
 /* Responsiveness */
