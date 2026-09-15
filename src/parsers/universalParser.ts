@@ -1,379 +1,223 @@
-/**
- * Instant Raman v2.5 — Universal Spectral Parser
- * Automatically detects and parses multiple spectral file formats.
- * Normalizes all data into a standard internal structure.
- */
-
+import * as XLSX from 'xlsx';
 import type { NormalizedSpectrum } from '../engine/types.ts';
 
+export type Cell = string | number | null;
+export type AxisUnit = 'shift' | 'nm';
+export interface ImportTable { name: string; rows: Cell[][]; notes: string[] }
+export interface ImportDocument { fileName: string; format: string; tables: ImportTable[]; csvText?: string; delimiter?: string }
+export interface ImportOptions {
+  headerRow: number; // -1 means no headings
+  startRow: number;
+  endRow?: number; // exclusive; omitted means end of worksheet
+  xColumn: number;
+  yColumns: number[];
+  unit: AxisUnit | '';
+  decimal: '.' | ',';
+  laserWavelength: number;
+  duplicates: 'keep' | 'mean' | 'error';
+}
+export interface ImportResult { spectra: NormalizedSpectrum[]; warnings: string[] }
+
+/** CSV and Excel reader. Cell boundaries and explicit units survive every stage. */
 export class UniversalParser {
-  /**
-   * Main entry point for parsing any file.
-   */
-  static async parseFile(file: File, laserWavelength = 785): Promise<NormalizedSpectrum> {
+  static readCSV(text: string, delimiter: string): Cell[][] {
+    const rows: Cell[][] = [];
+    let row: Cell[] = [], cell = '', quoted = false, closed = false;
+    text = text.replace(/^\uFEFF/, '');
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else cell += ch;
+      } else if (ch === delimiter || ch === '\n' || ch === '\r') {
+        row.push(cell); cell = ''; closed = false;
+        if (ch !== delimiter) {
+          rows.push(row); row = [];
+          if (ch === '\r' && text[i + 1] === '\n') i++;
+        }
+      } else if (ch === '"') {
+        if (cell.trim() || closed) throw new Error('Invalid CSV quoting. Check the delimiter and quoted fields.');
+        cell = ''; quoted = true;
+      } else {
+        if (closed && !/\s/.test(ch)) throw new Error('Unexpected text after a quoted CSV field.');
+        if (!closed) cell += ch;
+      }
+    }
+    if (quoted) throw new Error('CSV contains an unclosed quoted field.');
+    if (cell || row.length || closed) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  static detectDelimiter(text: string): string {
+    let best = ',', bestScore = -1;
+    for (const delimiter of [',', ';', '\t', '|']) {
+      try {
+        const rows = this.readCSV(text, delimiter).filter(r => r.some(c => String(c).trim())).slice(0, 100);
+        const counts = new Map<number, number>();
+        for (const row of rows) if (row.length > 1) counts.set(row.length, (counts.get(row.length) || 0) + 1);
+        const cells = rows.filter(r => r.length > 1).flat();
+        const numericFraction = cells.filter(c => this.number(c, '.') !== null || this.number(c, ',') !== null).length / (cells.length || 1);
+        const score = Math.max(0, ...counts.values()) + numericFraction * 0.5;
+        if (score > bestScore) { bestScore = score; best = delimiter; }
+      } catch { /* another delimiter may correctly explain quoted fields */ }
+    }
+    return best;
+  }
+
+  static number(cell: Cell | undefined, decimal: '.' | ','): number | null {
+    if (typeof cell === 'number') return Number.isFinite(cell) ? cell : null;
+    if (typeof cell !== 'string') return null;
+    let value = cell.trim().replace(/\u2212/g, '-');
+    // Thousands separators are deliberately not guessed.
+    if (decimal === ',') {
+      if (value.includes('.')) return null;
+      value = value.replace(',', '.');
+    }
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) return null;
+    const result = Number(value);
+    return Number.isFinite(result) ? result : null;
+  }
+
+  static async inspectFile(file: File): Promise<ImportDocument> {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(extension || '')) throw new Error('Please select a CSV or Excel (.xlsx, .xls) data file.');
     const buffer = await file.arrayBuffer();
-    const headerBytes = new Uint8Array(buffer.slice(0, 4096));
-    const headerText = new TextDecoder().decode(headerBytes);
-    const fileName = file.name.toLowerCase();
-
-    // 1. Check for Binary Proprietary Formats (Renishaw & WITec)
-    if (this.isRenishawWDF(headerBytes, fileName)) {
-      throw new Error('Renishaw binary (.wdf) detected. Please export your data as .txt or .csv from Renishaw WiRE software.');
+    if (extension === 'csv') {
+      const bytes = new Uint8Array(buffer);
+      const encoding = bytes[0] === 255 && bytes[1] === 254 ? 'utf-16le' : bytes[0] === 254 && bytes[1] === 255 ? 'utf-16be' : 'utf-8';
+      let text = new TextDecoder(encoding, { fatal: true }).decode(buffer).replace(/^\uFEFF/, '');
+      const directive = text.match(/^sep=([,;\t|])\r?\n/i);
+      if (directive) text = text.slice(directive[0].length);
+      const delimiter = directive?.[1] || this.detectDelimiter(text);
+      return { fileName: file.name, format: 'CSV', csvText: text, delimiter,
+        tables: [{ name: 'CSV', rows: this.readCSV(text, delimiter), notes: [] }] };
     }
-    if (this.isWITecWIP(headerBytes, fileName)) {
-      throw new Error('WITec binary (.wip) detected. Please export your data as .txt or .csv from WITec Project software.');
-    }
-
-    // 2. Format Detection & Routing
-    const fullText = new TextDecoder().decode(buffer);
-
-    if (this.isJCAMP(headerText, fileName)) {
-      return this.parseJCAMP(fullText, file.name);
-    }
-    if (this.isOceanOptics(headerText, fileName)) {
-      return this.parseOceanOptics(fullText, file.name, laserWavelength);
-    }
-    if (this.isHoribaXML(headerText, fileName)) {
-      return this.parseHoribaXML(fullText, file.name);
-    }
-    if (this.isHoribaText(headerText, fileName)) {
-      return this.parseHoribaText(fullText, file.name);
-    }
-    if (this.isBrukerDPT(headerText, fileName)) {
-      return this.parseBrukerDPT(fullText, file.name);
-    }
-
-    // Default Fallback: Greedy Numeric Hunt
-    return this.parseText(fullText, file.name, laserWavelength);
-  }
-
-  // --- Detectors (Industry Standard Signatures) ---
-
-  private static isRenishawWDF(bytes: Uint8Array, fileName: string): boolean {
-    const magic = String.fromCharCode(...bytes.slice(0, 4));
-    return magic === 'WDF1' || fileName.endsWith('.wdf');
-  }
-
-  private static isWITecWIP(bytes: Uint8Array, fileName: string): boolean {
-    const magic = String.fromCharCode(...bytes.slice(0, 3));
-    return magic === 'WIT' || fileName.endsWith('.wip');
-  }
-
-  private static isJCAMP(text: string, fileName: string): boolean {
-    return text.includes('##TITLE=') || 
-           text.includes('##JCAMP-DX=') || 
-           text.includes('##DATA TYPE=') ||
-           fileName.endsWith('.jdx') || 
-           fileName.endsWith('.dx');
-  }
-
-  private static isOceanOptics(text: string, _fileName: string): boolean {
-    return text.includes('>>>>>Begin Spectral Data<<<<<') || 
-           text.includes('Ocean Optics') || 
-           text.includes('OOIBase32') ||
-           text.includes('SpectraSuite');
-  }
-
-  private static isHoribaXML(text: string, fileName: string): boolean {
-    return (text.includes('<?xml') && text.includes('LabSpec')) || 
-           (fileName.endsWith('.xml') && text.includes('<Dataset>'));
-  }
-
-  private static isHoribaText(text: string, _fileName: string): boolean {
-    return text.includes('LabSpec') || 
-           text.includes('Horiba') || 
-           text.includes('Software Name: LabSpec');
-  }
-
-  private static isBrukerDPT(text: string, fileName: string): boolean {
-    return fileName.endsWith('.dpt') || 
-           (text.includes('##') && text.includes('DATA TYPE=') && text.includes('Bruker'));
-  }
-
-  // --- Parsers ---
-
-  private static parseJCAMP(content: string, fileName: string): NormalizedSpectrum {
-    const x: number[] = [];
-    const y: number[] = [];
-    const lines = content.split(/\r?\n/);
-    let inData = false;
-
-    for (const line of lines) {
-      if (line.startsWith('##XYDATA=')) {
-        inData = true;
-        continue;
-      }
-      if (line.startsWith('##END=')) {
-        inData = false;
-        continue;
-      }
-
-      if (inData) {
-        // JCAMP can have multiple values per line, or compressed formats.
-        // Simple implementation for fixed-width or space-separated.
-        const values = line.trim().split(/[\s,]+/);
-        if (values.length >= 2) {
-          const startX = parseFloat(values[0]);
-          for (let i = 1; i < values.length; i++) {
-            const valY = parseFloat(values[i]);
-            if (!isNaN(valY)) {
-              x.push(startX + (i - 1)); // This is a simplification for (X++(Y..Y))
-              y.push(valY);
-            }
-          }
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, cellFormula: true });
+    const tables: ImportTable[] = workbook.SheetNames.map(name => {
+      const sheet = workbook.Sheets[name];
+      const notes = ['All worksheet rows are included, including hidden and filtered rows.'];
+      const rows: Cell[][] = [];
+      if (!sheet['!ref']) return { name, rows, notes };
+      const range = XLSX.utils.decode_range(sheet['!ref']);
+      if ((range.e.r + 1) * (range.e.c + 1) > 5_000_000) throw new Error(`Worksheet ${name} is too large. Export just the data table.`);
+      let formulas = false, missing = false;
+      for (let r = 0; r <= range.e.r; r++) {
+        const row: Cell[] = [];
+        for (let c = 0; c <= range.e.c; c++) {
+          const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+          if (cell?.f) { formulas = true; if (cell.v === undefined) missing = true; }
+          row.push(!cell ? null : cell.t === 'n' ? cell.v : cell.t === 's' ? String(cell.v ?? '') :
+            cell.t === 'd' ? '[date]' : cell.t === 'e' ? '[spreadsheet error]' : cell.f && cell.v === undefined ? '[formula without result]' : null);
         }
+        rows.push(row);
       }
-    }
-
-    return this.finalize(x, y, 'JCAMP-DX', fileName);
+      if (formulas) notes.push('Formula cells use saved results; formulas are not recalculated during import.');
+      if (missing) notes.push('Some formulas have no saved result. Recalculate and save the workbook in Excel.');
+      return { name, rows, notes };
+    }).filter(t => t.rows.some(r => r.some(c => c !== null && c !== '')));
+    if (!tables.length) throw new Error('The workbook has no nonempty worksheets.');
+    return { fileName: file.name, format: extension!.toUpperCase(), tables };
   }
 
-  private static parseOceanOptics(content: string, fileName: string, laserWavelength: number): NormalizedSpectrum {
-    const x: number[] = [];
-    const y: number[] = [];
-    const lines = content.split(/\r?\n/);
-    let dataStarted = false;
-
-    for (const line of lines) {
-      if (line.includes('>>>>>Begin Spectral Data<<<<<')) {
-        dataStarted = true;
-        continue;
-      }
-      if (dataStarted) {
-        const parts = line.trim().split(/[\s,]+/);
-        if (parts.length >= 2) {
-          const valX = parseFloat(parts[0]);
-          const valY = parseFloat(parts[1]);
-          if (!isNaN(valX) && !isNaN(valY)) {
-            x.push(valX);
-            y.push(valY);
-          }
-        }
+  static suggest(table: ImportTable): ImportOptions {
+    const isX = (v: Cell) => /raman|wave\s*number|wellenzahl|shift|wavelength|cm\s*(?:\^?\s*-\s*1|⁻¹)|\bnm\b/i.test(String(v ?? ''));
+    const isY = (v: Cell) => /intens|counts?|signal|absorbance/i.test(String(v ?? ''));
+    let headerRow = -1, xColumn = 0, yColumns = [1], unit: AxisUnit | '' = '';
+    for (let i = 0; i < Math.min(100, table.rows.length); i++) {
+      const row = table.rows[i];
+      const x = row.map((v, c) => isX(v) ? c : -1).filter(c => c >= 0);
+      const y = row.map((v, c) => isY(v) ? c : -1).filter(c => c >= 0);
+      if (x.length === 1 && y.some(c => c !== x[0])) {
+        headerRow = i; xColumn = x[0]; yColumns = y.filter(c => c !== xColumn);
+        const heading = String(row[xColumn]);
+        unit = /\bnm\b/i.test(heading) ? 'nm' : /shift|wave\s*number|wellenzahl|cm/i.test(heading) ? 'shift' : '';
+        break;
       }
     }
-
-    return this.finalize(x, y, 'Ocean Optics', fileName, laserWavelength);
-  }
-
-  private static parseHoribaXML(content: string, fileName: string): NormalizedSpectrum {
-    const x: number[] = [];
-    const y: number[] = [];
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(content, "text/xml");
-    
-    // Extraction for LabSpec XML structure
-    const xPoints = xmlDoc.getElementsByTagName('X');
-    const yPoints = xmlDoc.getElementsByTagName('Y');
-
-    if (xPoints.length > 0 && yPoints.length > 0) {
-      for (let i = 0; i < xPoints.length; i++) {
-        x.push(parseFloat(xPoints[i].textContent || '0'));
-        y.push(parseFloat(yPoints[i].textContent || '0'));
-      }
-    } else {
-      // Try alternative tags
-      const dataPoints = xmlDoc.getElementsByTagName('DataPoint');
-      for (let i = 0; i < dataPoints.length; i++) {
-        const xVal = dataPoints[i].getAttribute('x') || dataPoints[i].getElementsByTagName('X')[0]?.textContent;
-        const yVal = dataPoints[i].getAttribute('y') || dataPoints[i].getElementsByTagName('Y')[0]?.textContent;
-        if (xVal && yVal) {
-          x.push(parseFloat(xVal));
-          y.push(parseFloat(yVal));
-        }
-      }
+    const sample = table.rows.slice(headerRow + 1, headerRow + 101).flatMap(r => [r[xColumn], ...yColumns.map(c => r[c])]);
+    const commas = sample.filter(v => typeof v === 'string' && /^[+-]?\d+,\d+(?:e[+-]?\d+)?$/i.test(v.trim())).length;
+    const dots = sample.filter(v => typeof v === 'string' && /\d\.\d/.test(v)).length;
+    const decimal = commas > 0 && dots === 0 ? ',' : '.';
+    const firstNumeric = table.rows.findIndex(r => this.number(r[xColumn], decimal) !== null && yColumns.some(c => this.number(r[c], decimal) !== null));
+    if (headerRow < 0 && firstNumeric > 0) {
+      const previous = table.rows[firstNumeric - 1];
+      if (previous.filter(v => typeof v === 'string' && v.trim()).length >= 2) headerRow = firstNumeric - 1;
     }
-
-    return this.finalize(x, y, 'Horiba LabSpec (XML)', fileName);
+    const startRow = headerRow >= 0 ? headerRow + 1 : Math.max(0, firstNumeric);
+    let endRow = table.rows.length;
+    for (let r = startRow; r < table.rows.length; r++) {
+      // A repeated spectral heading marks another table, not more rows of this spectrum.
+      if (isX(table.rows[r][xColumn]) && yColumns.some(c => isY(table.rows[r][c]))) { endRow = r; break; }
+    }
+    return { headerRow, startRow, endRow, xColumn, yColumns, unit, decimal,
+      laserWavelength: 785, duplicates: 'keep' };
   }
 
-  private static parseHoribaText(content: string, fileName: string): NormalizedSpectrum {
-    return this.parseText(content, fileName, 785, 'Horiba LabSpec');
-  }
-
-  private static parseBrukerDPT(content: string, fileName: string): NormalizedSpectrum {
-    return this.parseText(content, fileName, 785, 'Bruker DPT');
-  }
-
-  public static normalizeDecimals(text: string): string {
-    const lines = text.split('\n');
-    // A whole row with two comma-separated numbers is CSV, not one decimal.
-    const numericRows = lines.filter(line => /^\s*[+-]?\d/.test(line));
-    if (numericRows.length > 0 && numericRows.every(line =>
-      /^\s*[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s*,\s*[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s*$/.test(line)
-    )) return text;
-    
-    // Analyze first 100 data lines to detect format
-    const sampleLines = lines
-      .filter(line => /\d/.test(line))  // Has at least one digit
-      .slice(0, 100);
-    
-    let commaAsDecimalCount = 0;
-    let commaAsDelimiterCount = 0;
-    
-    for (const line of sampleLines) {
-      // Pattern: "1000,52" with 1-3 digits after comma = decimal separator
-      if (/\d+,\d{1,3}(?:\s|$)/.test(line)) {
-        commaAsDecimalCount++;
+  static importTable(document: ImportDocument, table: ImportTable, options: ImportOptions): ImportResult {
+    const o = options;
+    if (!o.unit) throw new Error('Choose the X-axis units before importing.');
+    if (!Number.isInteger(o.startRow) || o.startRow < 0 || o.startRow >= table.rows.length) throw new Error('Choose a valid first data row.');
+    const endRow = o.endRow ?? table.rows.length;
+    if (!Number.isInteger(endRow) || endRow <= o.startRow || endRow > table.rows.length) throw new Error('Choose a valid last data row.');
+    const width = Math.max(0, ...table.rows.slice(0, 100).map(r => r.length), ...table.rows.slice(o.startRow, o.startRow + 100).map(r => r.length));
+    if (!Number.isInteger(o.xColumn) || o.xColumn < 0 || o.xColumn >= width || !o.yColumns.length || o.yColumns.some(c => !Number.isInteger(c) || c < 0 || c >= width || c === o.xColumn) || new Set(o.yColumns).size !== o.yColumns.length) throw new Error('Select one X column and distinct intensity columns.');
+    if (o.unit === 'nm' && (!Number.isFinite(o.laserWavelength) || o.laserWavelength <= 0)) throw new Error('Enter the positive laser wavelength in nm.');
+    const warnings = [...table.notes];
+    const spectra = o.yColumns.map(column => {
+      const pairs: { x: number; y: number }[] = [];
+      const skipped: number[] = [];
+      for (let r = o.startRow; r < endRow; r++) {
+        const row = table.rows[r];
+        if (row.every(v => v === null || String(v).trim() === '')) continue;
+        let x = this.number(row[o.xColumn], o.decimal);
+        const y = this.number(row[column], o.decimal);
+        if (x === null || y === null || (o.unit === 'nm' && x <= 0)) { skipped.push(r + 1); continue; }
+        if (o.unit === 'nm') x = (1 / o.laserWavelength - 1 / x) * 1e7;
+        if (!Number.isFinite(x)) { skipped.push(r + 1); continue; }
+        pairs.push({ x, y });
       }
-      // Pattern: "1000, 5200" with space after comma = CSV delimiter
-      if (/\d+,\s+\d+/.test(line)) {
-        commaAsDelimiterCount++;
+      const label = String(table.rows[o.headerRow]?.[column] || `Column ${column + 1}`);
+      if (pairs.length < 3) throw new Error(`${label}: at least three valid X/intensity pairs are required.`);
+      pairs.sort((a, b) => a.x - b.x);
+      const unique: { x: number; y: number; count: number }[] = [];
+      let duplicates = 0;
+      for (const p of pairs) {
+        const last = unique.at(-1);
+        if (last && last.x === p.x) { duplicates++; last.count++; last.y += (p.y - last.y) / last.count; }
+        else unique.push({ ...p, count: 1 });
       }
-    }
-    
-    // If commas are predominantly used as decimals (2:1 ratio), normalize them
-    if (commaAsDecimalCount > commaAsDelimiterCount * 2) {
-      // Replace comma with dot ONLY when it's between digits and followed by whitespace or end-of-line
-      // This preserves actual CSV delimiters
-      return text.replace(/(\d+),(\d{1,3})(?=\s|$)/g, '$1.$2');
-    }
-    
-    return text;  // No normalization needed
-  }
-
-  private static calculateMedian(arr: number[]): number {
-    if (arr.length === 0) return 0;
-    const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0
-      ? (sorted[mid - 1] + sorted[mid]) / 2
-      : sorted[mid];
-  }
-
-  public static parseText(content: string, fileName: string, laserWavelength: number, formatLabel = 'Auto-Detected'): NormalizedSpectrum {
-    content = this.normalizeDecimals(content);
-    
-    const lines = content.split(/\r?\n/);
-    const numRegex = /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/g;
-    
-    const rawData: number[][] = [];
-    
-    // Parse all numeric lines
-    for (const line of lines) {
-      if (!/^\s*[-+]?(?:\d|\.\d)/.test(line)) continue;
-      const matches = line.match(numRegex);
-      if (matches && matches.length >= 2) {
-        const nums = matches.map(m => parseFloat(m));
-        rawData.push(nums);
-      }
-    }
-    
-    if (rawData.length === 0) {
-      throw new Error(
-        `Failed to parse ${fileName}: No valid numeric data detected.\n\n` +
-        `Supported formats:\n` +
-        `• CSV/TSV (comma or tab separated)\n` +
-        `• Space-delimited text (two or more columns)\n` +
-        `• JCAMP-DX (.jdx, .dx)\n` +
-        `• Horiba LabSpec (.txt, .xml)\n` +
-        `• Ocean Optics (.txt)\n` +
-        `• Bruker OPUS (.dpt)\n\n` +
-        `File preview (first 500 characters):\n${content.slice(0, 500)}...`
-      );
-    }
-    
-    // STEP 0.5: Filter obvious garbage data points
-    let filteredData = rawData.filter(row => {
-      const x = row[0];
-      const y = row[1];
-      
-      // Typical Raman range: 100-4000 cm⁻¹ or 400-1100 nm (for raw nm data)
-      // Allow slightly wider range to be safe
-      if (Math.abs(x) < 5) return false; 
-      
-      // Remove points where Y is exactly zero (often placeholder values)
-      if (y === 0) return false;
-      
-      return true;
+      if (unique.length < 3) throw new Error(`${label}: at least three distinct X values are required.`);
+      if (duplicates && o.duplicates === 'error') throw new Error(`${label}: ${duplicates} duplicate X values. Choose keep or average to continue.`);
+      if (duplicates) warnings.push(`${label}: ${duplicates} duplicate X values ${o.duplicates === 'mean' ? 'averaged' : 'kept'}.`);
+      if (skipped.length) warnings.push(`${label}: skipped ${skipped.length} rows with missing, nonnumeric, or invalid X/intensity cells (rows ${skipped.slice(0, 20).join(', ')}${skipped.length > 20 ? ', …' : ''}).`);
+      const selected = o.duplicates === 'mean' ? unique : pairs;
+      return { wavenumberData: selected.map(p => p.x), intensityData: selected.map(p => p.y), metadata: {
+        format: document.format, fileName: document.fileName, pointCount: selected.length,
+        ...(o.unit === 'nm' ? { laserWavelength: o.laserWavelength } : {}),
+        sheetName: table.name, seriesName: label,
+      } };
     });
-
-    if (filteredData.length < 5) {
-        // Fallback if filtering was too aggressive
-        filteredData = rawData;
-    }
-
-    // STEP 1: Detect if first column is sequential index
-    const firstCol = filteredData.map(row => row[0]);
-    let isSequentialIndex = false;
-    
-    if (firstCol.length >= 3) {
-      // Check first 10 rows for sequential pattern
-      const sample = firstCol.slice(0, 10);
-      isSequentialIndex = sample.every((val, idx) => Math.abs(val - (firstCol[0] + idx)) < 0.01);
-    }
-    
-    // STEP 2: Choose which columns to extract
-    let xColumnIndex = 0;
-    let yColumnIndex = 1;
-    
-    if (isSequentialIndex) {
-      // First column is index (0, 1, 2, 3...), skip it
-      xColumnIndex = 1;
-      yColumnIndex = 2;
-      
-      // Verify file has enough columns
-      if (filteredData[0].length < 3) {
-        throw new Error(
-          `Column mismatch in ${fileName}.\n` +
-          `First column appears to be row indices (0, 1, 2...), ` +
-          `but only ${filteredData[0].length} total columns found.\n` +
-          `Expected: [Index, Wavenumber, Intensity].\n` +
-          `Check your export settings in the instrument software.`
-        );
-      }
-    }
-    
-    // STEP 3: Extract X and Y from correct columns
-    const extractedY = filteredData.map(row => row[yColumnIndex]);
-    
-    // Keep only valid numeric points
-    const filteredPoints = filteredData
-      .map(row => ({ x: row[xColumnIndex], y: row[yColumnIndex] }))
-      .filter(point => {
-        return !isNaN(point.x) && isFinite(point.x) && !isNaN(point.y) && isFinite(point.y);
-      });
-
-    const x = filteredPoints.map(p => p.x);
-    const y = filteredPoints.map(p => p.y);
-
-    return this.finalize(x, y, formatLabel, fileName, laserWavelength);
+    return { spectra, warnings };
   }
 
-  /**
-   * Finalizes the data: sorting, deduplication, and wavelength conversion if needed.
-   * Ensures output is in the normalized internal data structure.
-   */
-  private static finalize(x: number[], y: number[], format: string, fileName: string, laserWavelength = 785): NormalizedSpectrum {
-    if (x.length === 0) {
-      throw new Error(`Failed to extract numeric data from ${format} file.`);
-    }
+  static async parseFile(file: File, laserWavelength = 785): Promise<NormalizedSpectrum> {
+    const document = await this.inspectFile(file);
+    if (document.tables.length !== 1) throw new Error('Select a worksheet using the import preview.');
+    const table = document.tables[0], options = this.suggest(table);
+    options.laserWavelength = laserWavelength;
+    if (options.yColumns.length !== 1) throw new Error('Select spectra using the import preview.');
+    return this.importTable(document, table, options).spectra[0];
+  }
 
-    // Sort and remove duplicates
-    const combined = x.map((v, i) => [v, y[i]]).sort((a, b) => a[0] - b[0]);
-    let finalX = combined.map(v => v[0]);
-    let finalY = combined.map(v => v[1]);
-
-    const minX = finalX[0];
-    const maxX = finalX[finalX.length - 1];
-
-    // Auto-convert nm to cm-1 if detected (typical for raw spectrometer output)
-    if (minX > 100 && minX < 1100 && maxX > 100 && maxX < 1100) {
-      finalX = finalX.map(nm => parseFloat((((1 / laserWavelength) - (1 / nm)) * 1e7).toFixed(2)));
-      // Re-sort as nm to cm-1 conversion flips the order
-      const resorted = finalX.map((v, i) => [v, finalY[i]]).sort((a, b) => a[0] - b[0]);
-      finalX = resorted.map(v => v[0]);
-      finalY = resorted.map(v => v[1]);
-    }
-
-    return {
-      wavenumberData: finalX,
-      intensityData: finalY,
-      metadata: {
-        format,
-        fileName,
-        pointCount: finalX.length,
-        laserWavelength
-      }
-    };
+  /** CSV-only convenience API. Headerless data requires an explicit unit. */
+  static parseText(content: string, fileName: string, laserWavelength = 785, unit?: AxisUnit): NormalizedSpectrum {
+    if (!fileName.toLowerCase().endsWith('.csv')) throw new Error('Text import supports .csv files only.');
+    const table = { name: 'CSV', rows: this.readCSV(content, this.detectDelimiter(content)), notes: [] };
+    const options = this.suggest(table);
+    if (unit) options.unit = unit;
+    options.laserWavelength = laserWavelength;
+    return this.importTable({ fileName, format: 'CSV', tables: [table] }, table, options).spectra[0];
   }
 }

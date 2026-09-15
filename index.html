@@ -75,7 +75,7 @@
       "Gaussian, Lorentzian, and Voigt Profiles",
       "Bootstrap Uncertainty Quantification",
       "Publication-Ready PNG, SVG, and Excel Export",
-      "Renishaw, Horiba, WITec, Bruker File Support"
+      "CSV and Excel File Support"
     ]
   }
   </script>
@@ -106,7 +106,7 @@
       <li>Adaptive SNIP baseline correction with configurable iterations</li>
       <li>Levenberg-Marquardt multi-peak fitting with Gaussian, Lorentzian, and Voigt profiles</li>
       <li>Publication-ready exports: 300-DPI PNG, vector SVG, Excel, and interactive HTML reports</li>
-      <li>Universal file support: Renishaw, Horiba, WITec, Bruker, JCAMP-DX, CSV, and TXT</li>
+      <li>CSV and Excel import with column selection and data preview</li>
       <li>100% client-side processing — zero server uploads, zero telemetry</li>
     </ul>
   </div>
@@ -135,8 +135,8 @@
       <div class="section">
         <div class="section-title">Ingestion</div>
         <label for="file-input" id="upload-zone" class="upload-zone" style="display: block; margin-bottom: 12px;"
-          aria-label="Upload spectral data files">Select spectral data<br /><span style="font-size: 11px; color: var(--text-dim);">.dx · .dpt · .txt · .csv</span></label>
-        <input type="file" id="file-input" multiple hidden aria-hidden="true" />
+          aria-label="Upload spectral data files">Select spectral data<br /><span style="font-size: 11px; color: var(--text-dim);">.csv · .xlsx · .xls</span></label>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.irp,.json" multiple hidden aria-hidden="true" />
         <div
           style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--accent-light); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);">
           <span
@@ -584,7 +584,7 @@
 
       <div class="docs-section">
         <h2>What it handles</h2>
-        <p>It reads files directly from Renishaw, Horiba, WITec, and Bruker instruments, or standard CSV and TXT files.
+        <p>It imports CSV and Excel (.xlsx and .xls) files with a preview for choosing worksheets, columns, and units.
           It uses SNIP for baseline correction and finds peak centers with sub-pixel accuracy. If you have overlapping
           peaks, you can use the LM fitting tool with Lorentzian, Gaussian, or Voigt profiles. If you have multiple
           samples of the same thing, it can average them and show you the standard deviation.</p>

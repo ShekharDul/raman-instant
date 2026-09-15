@@ -26,6 +26,8 @@ export interface NormalizedSpectrum extends SpectralData {
     fileName: string;
     pointCount: number;
     laserWavelength?: number;
+    sheetName?: string;
+    seriesName?: string;
   };
 }
 

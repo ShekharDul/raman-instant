@@ -17,10 +17,10 @@ for (const model of ['lorentzian','gaussian','voigt'] as const) {
   const replay = FittingEngine.fit(x,y,initial,model);
   assert.deepEqual(replay.fitY,fit.fitY);
 }
-const parsed = UniversalParser.parseText('100,10\n200,20\n300,15\n','test.csv',785);
+const parsed = UniversalParser.parseText('100,10\n200,20\n300,15\n','test.csv',785,'shift');
 assert.deepEqual(parsed.wavenumberData,[100,200,300]);
 assert.deepEqual(parsed.intensityData,[10,20,15]);
-const withHeader = UniversalParser.parseText('Laser: 785 nm at 50 mW\n100,10\n200,20\n300,15\n','header.csv',785);
+const withHeader = UniversalParser.parseText('Laser: 785 nm at 50 mW\n100,10\n200,20\n300,15\n','header.csv',785,'shift');
 assert.deepEqual(withHeader.wavenumberData,[100,200,300]);
 const protocol = JSON.parse(readFileSync('valid.irp','utf8'));
 ProtocolManager.validateSchema(protocol);

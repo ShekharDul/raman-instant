@@ -203,14 +203,15 @@
         
         <h3>Supported Formats</h3>
         <ul>
-          <li><strong>Universal Formats:</strong> <code>.dx</code>, <code>.jdx</code> (JCAMP-DX)</li>
-          <li><strong>Native Exports:</strong> <code>.dpt</code> (Bruker), <code>.xml</code> / <code>.txt</code> (Horiba LabSpec)</li>
-          <li><strong>Generic Data:</strong> <code>.csv</code>, <code>.txt</code>, <code>.asc</code></li>
-          <li>Standard UTF-8 encoding.</li>
+          <li><strong>Spectral data:</strong> <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>.</li>
+          <li>CSV supports comma, semicolon, tab, or pipe separators, quoted fields, UTF-8, and UTF-16 with a byte-order mark.</li>
+          <li>Protocol files (<code>.irp</code> / <code>.json</code>) use a separate import flow.</li>
         </ul>
 
         <h3>Layout</h3>
-        <p>For generic text files, the app expects two columns (Shift and Intensity). For professional formats (DX, Bruker, Horiba), the app automatically handles complex headers, metadata, and non-linear spacing.</p>
+        <p>The import preview suggests headings such as Raman Shift, Wavenumber, Intensity, and Counts. Check the worksheet, heading row, first data row, X column, and one or more intensity columns. Headerless files require manual column and unit selection. Each selected intensity column becomes a separate spectrum sharing the selected X column.</p>
+        <p>Choose Raman shift (cm⁻¹) or wavelength (nm). Wavelength conversion requires the measurement's laser wavelength. The app never infers units from numeric ranges. Set the decimal separator explicitly when necessary; remove thousands separators before importing.</p>
+        <p>The preview reports invalid rows and duplicate X values. Zero and negative intensities are retained in raw data. Excel includes hidden and filtered rows and uses saved formula results without recalculating them. At least three distinct numeric X values are required per spectrum. Select a worksheet per import; import the workbook again to choose another sheet.</p>
       </section>
 
       <section id="workflow">

@@ -5,6 +5,7 @@
 const APP_VERSION = 'v2.1.0';
 import { SpectralProcessor } from './engine/processor.ts';
 import { UniversalParser } from './parsers/universalParser.ts';
+import { previewImport } from './ui/importPreview.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
@@ -201,8 +202,13 @@ function initUpload() {
   });
 }
 
+let importQueue: Promise<void> = Promise.resolve();
 function handleFiles(fileList: FileList) {
   const files = Array.from(fileList);
+  importQueue = importQueue.then(() => importFiles(files));
+}
+
+async function importFiles(files: File[]) {
   UI.text('system-status', `INGESTING ${files.length}...`);
   
   const irpCount = files.filter(f => f.name.toLowerCase().endsWith('.irp')).length;
@@ -212,7 +218,7 @@ function handleFiles(fileList: FileList) {
     contains_protocol: irpCount > 0 
   });
 
-  files.forEach(async file => {
+  for (const file of files) {
     try {
       if (file.name.toLowerCase().endsWith('.irp') || file.name.toLowerCase().endsWith('.json')) {
         const text = await file.text();
@@ -224,21 +230,21 @@ function handleFiles(fileList: FileList) {
         }
         promptProtocolImport(json);
         UI.text('system-status', `READY`);
-        return;
+        continue;
       }
 
-      // Read array buffer for hashing if needed later
       const buffer = await file.arrayBuffer();
-      // Need a new File object for the parser since we consumed the buffer? 
-      // Actually UniversalParser uses file.text() internally. 
-      // arrayBuffer() might not consume it if we just read it. Wait, File is a Blob, reading it multiple times is fine.
-      const parsed = await UniversalParser.parseFile(new File([buffer], file.name));
-      const id = `file-${Math.random().toString(36).slice(2, 9)}`;
-
+      const document = await UniversalParser.inspectFile(new File([buffer], file.name));
+      const imported = await previewImport(document);
+      if (!imported) { UI.text('system-status', 'READY'); continue; }
       const fileHash = await ProtocolManager.computeHash(buffer);
-
-      processAndStore(id, file.name, parsed, fileHash);
-      if (state.files.size === 1) state.activeFileId = id;
+      for (const parsed of imported.spectra) {
+        const id = `file-${Math.random().toString(36).slice(2, 9)}`;
+        const name = imported.spectra.length > 1 || document.format !== 'CSV'
+          ? `${file.name} — ${parsed.metadata.sheetName} — ${parsed.metadata.seriesName}` : file.name;
+        processAndStore(id, name, parsed, fileHash);
+        if (state.files.size === 1) state.activeFileId = id;
+      }
 
       trackEvent('file_uploaded', {
         file_name: file.name,
@@ -253,7 +259,7 @@ function handleFiles(fileList: FileList) {
       UI.text('system-status', err.message || 'PARSE_ERROR');
       alert(err.message || 'Failed to parse file.');
     }
-  });
+  }
 }
 
 function updateMaxXData() {
@@ -2613,4 +2619,3 @@ function markManualChange(stepName: string) {
     updateUI();
   }
 }
-
