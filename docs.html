@@ -190,7 +190,8 @@
         <p>We use a method called the <strong>SNIP algorithm</strong> (Statistics-sensitive Non-linear Iterative Peak-clipping) to clean up your spectral data.</p>
         
         <h3>How it works</h3>
-        <p>Instead of using complicated curves that might accidentally hide your real data, the SNIP method carefully "clips" away the background noise (like fluorescence) while keeping your Raman peaks intact.</p>
+        <p>Automatic mode estimates the baseline using iterative clipping (SNIP). Manual mode interpolates between your selected anchors. Compare the corrected spectrum with the original data: baseline choices can affect peak heights and areas.</p>
+        <p>After baseline subtraction, negative corrected intensities are set to zero. A centered nine-point moving average smooths the result; the four points at each edge retain their corrected values. Normalisation follows smoothing. Automatic detection uses a 2% threshold of maximum processed intensity, merges candidates within 2.5 cm⁻¹, and retains up to 50 peaks.</p>
         
         <div class="info-box">
           <p><strong>Iterations:</strong> You can use the slider in the sidebar to adjust how much background to remove. More iterations generally mean a smoother, deeper baseline removal.</p>
@@ -249,7 +250,7 @@
         <h2>07. Cosmic Ray Rejection</h2>
         <p>Sensitive CCD detectors used in Raman spectrometers are susceptible to high-energy cosmic rays, which appear as sharp, unphysical spikes in your data. Instant Raman implements a non-destructive <strong>Z-score sliding window</strong> algorithm using <strong>Median Absolute Deviation (MAD)</strong>.</p>
         <div class="info-box">
-          <p><strong>The Healing Process:</strong> When a spike is detected, the engine "heals" the data using a local median filter, ensuring your integration and peak areas remain mathematically accurate for quantitative work.</p>
+          <p><strong>Spike replacement:</strong> Points exceeding the modified Z-score threshold of 6 are replaced with the local median. Inspect the result because genuine narrow peaks can also be affected. Raw imported values are retained.</p>
         </div>
       </section>
 
@@ -261,7 +262,7 @@
         <ul>
           <li><strong>Lorentzian:</strong> Standard for crystalline materials (e.g., Silicon, Diamond).</li>
           <li><strong>Gaussian:</strong> Optimized for disordered materials or glasses.</li>
-          <li><strong>Voigt (4-Param):</strong> The industry gold standard, combining Lorentzian and Gaussian profiles for maximum accuracy.</li>
+          <li><strong>Pseudo-Voigt (4-Param):</strong> A weighted mixture of Lorentzian and Gaussian profiles; this is a pseudo-Voigt approximation.</li>
         </ul>
 
         <h3>Professional Visualization</h3>
@@ -270,7 +271,13 @@
 
       <section id="analysis-methods">
         <h2>09. Peak Metrology</h2>
-        <p>Center positions are calculated using <strong>parabolic interpolation</strong> of the three highest points around each peak maximum. This provides center positions with higher precision than the raw data spacing. FWHM is calculated directly from the data by identifying the half-maximum intensity threshold on both sides of the peak. For overlapping bands, the LM deconvolution engine should be used for rigorous results.</p>
+        <p>Center positions are estimated with <strong>parabolic interpolation</strong> using each local maximum and its two neighbours. FWHM is estimated from the half-maximum crossings. These are estimates, not a guarantee of accuracy. Overlapping bands, noise, irregular sampling, and fitting choices can affect results; inspect fitted curves and residuals.</p>
+      </section>
+
+      <section id="protocols">
+        <h2>Saved analysis protocols</h2>
+        <p>Use Import analysis protocol to load an .irp or .json protocol. New protocols record the source file, worksheet, column and row choices, units, conversion settings, and a hash of the selected spectrum. A matching workbook alone is insufficient: the selected spectrum must also match before settings are applied.</p>
+        <p>Manual baseline anchors, moving-average smoothing, and negative-value clipping are included in new exports. Older protocols without a selected-spectrum hash remain readable for manual review; automatic application is disabled. Keep the original CSV or Excel file. Import details remain available beside each spectrum in the Spectra list.</p>
       </section>
 
       <section id="citation">

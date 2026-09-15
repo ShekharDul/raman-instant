@@ -18,7 +18,7 @@
   <title>Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool</title>
   <meta name="title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
   <meta name="description"
-    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Pseudo-Voigt deconvolution, and publication-ready exports." />
   <meta name="keywords"
     content="Raman spectroscopy, baseline correction, SNIP algorithm, peak fitting, deconvolution, Levenberg-Marquardt, spectral analysis, Raman shift, free" />
   <meta name="author" content="Shekhar Dulgach" />
@@ -29,7 +29,7 @@
   <meta property="og:url" content="https://shekhardul.github.io/raman-instant/" />
   <meta property="og:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
   <meta property="og:description"
-    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Pseudo-Voigt deconvolution, and publication-ready exports." />
   <meta property="og:image" content="https://shekhardul.github.io/raman-instant/og-preview.png" />
   <meta property="og:site_name" content="Instant Raman" />
 
@@ -38,7 +38,7 @@
   <meta name="twitter:url" content="https://shekhardul.github.io/raman-instant/" />
   <meta name="twitter:title" content="Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool" />
   <meta name="twitter:description"
-    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Voigt deconvolution, and publication-ready exports." />
+    content="Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting, Gaussian/Lorentzian/Pseudo-Voigt deconvolution, and publication-ready exports." />
   <meta name="twitter:image" content="https://shekhardul.github.io/raman-instant/og-preview.png" />
 
   <!-- Favicon -->
@@ -59,7 +59,7 @@
     "url": "https://shekhardul.github.io/raman-instant/",
     "operatingSystem": "Web browser",
     "applicationCategory": "ScienceApplication",
-    "description": "Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting with Gaussian, Lorentzian, and Voigt profiles, and publication-ready exports.",
+    "description": "Free browser-based Raman spectroscopy workstation. SNIP baseline correction, Levenberg-Marquardt peak fitting with Gaussian, Lorentzian, and Pseudo-Voigt profiles, and publication-ready exports.",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -72,7 +72,7 @@
     "featureList": [
       "Automated SNIP Baseline Correction",
       "Levenberg-Marquardt Multi-Peak Fitting",
-      "Gaussian, Lorentzian, and Voigt Profiles",
+      "Gaussian, Lorentzian, and Pseudo-Voigt Profiles",
       "Bootstrap Uncertainty Quantification",
       "Publication-Ready PNG, SVG, and Excel Export",
       "CSV and Excel File Support"
@@ -104,7 +104,7 @@
     <h2>Key Features</h2>
     <ul>
       <li>Adaptive SNIP baseline correction with configurable iterations</li>
-      <li>Levenberg-Marquardt multi-peak fitting with Gaussian, Lorentzian, and Voigt profiles</li>
+      <li>Levenberg-Marquardt multi-peak fitting with Gaussian, Lorentzian, and Pseudo-Voigt profiles</li>
       <li>Publication-ready exports: 300-DPI PNG, vector SVG, Excel, and interactive HTML reports</li>
       <li>CSV and Excel import with column selection and data preview</li>
       <li>100% client-side processing — zero server uploads, zero telemetry</li>
@@ -133,21 +133,23 @@
 
     <aside class="sidebar">
       <div class="section">
-        <div class="section-title">Ingestion</div>
+        <div class="section-title">Import data</div>
         <label for="file-input" id="upload-zone" class="upload-zone" style="display: block; margin-bottom: 12px;"
           aria-label="Upload spectral data files">Select spectral data<br /><span style="font-size: 11px; color: var(--text-dim);">.csv · .xlsx · .xls</span></label>
-        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.irp,.json" multiple hidden aria-hidden="true" />
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" multiple hidden aria-hidden="true" />
+        <button id="btn-import-protocol" type="button" class="btn-small" style="width:100%">Import analysis protocol (.irp / .json)</button>
+        <input type="file" id="protocol-file-input" accept=".irp,.json" hidden />
         <div
           style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--accent-light); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);">
           <span
-            style="font-size: 11px; font-weight: 500; color: var(--accent);">Auto cosmic ray removal</span>
+              style="font-size: 11px; font-weight: 500; color: var(--accent);">Automatic spike removal</span>
           <div class="toggle-slider-wrap">
             <input type="checkbox" id="check-cosmic-ray" class="toggle-input" checked>
             <label for="check-cosmic-ray" class="toggle-label"></label>
           </div>
         </div>
 
-        <div class="section-title" style="margin-top: 20px;">Calibration</div>
+        <div class="section-title" style="margin-top: 20px;">Silicon reference check</div>
         <div id="cal-status-container" class="hidden"
           style="margin-bottom: 12px; padding: 12px; background: var(--bg-surface); border: 1px solid var(--border); font-size: 11px; border-radius: var(--radius-sm);">
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -163,11 +165,11 @@
             STATUS</div>
         </div>
         <button id="btn-si-cal" class="btn-small" style="width: 100%;"
-          title="Check active file for the standard Silicon peak at 520.7 cm⁻¹">Run Si calibration check</button>
+          title="Compare a silicon reference measurement with 520.7 cm⁻¹. This check does not change the X axis or calibrate the instrument.">Check Si peak position</button>
       </div>
       <div class="tab-header">
         <button id="btn-tab-plot" class="tab-btn active">Plot settings</button>
-        <button id="btn-tab-files" class="tab-btn">File list</button>
+        <button id="btn-tab-files" class="tab-btn">Spectra</button>
       </div>
 
       <div id="pane-plot" class="tab-pane active">
@@ -175,7 +177,7 @@
         <div id="plot-empty" class="pane-empty">
           <div style="text-align:center; padding:40px 20px; opacity:0.6;">
             <div style="font-size:32px; margin-bottom:16px;">⚙️</div>
-            <div style="font-size:13px; font-weight:600; color:var(--text-primary);">No files selected</div>
+            <div style="font-size:13px; font-weight:600; color:var(--text-primary);">No spectra selected</div>
             <div style="font-size:12px; margin-top:8px; color:var(--text-dim);">Upload a file to configure plot settings</div>
           </div>
         </div>
@@ -185,7 +187,7 @@
             <div class="section-title">View control</div>
             <div style="display: flex; gap: 8px;">
               <button id="btn-undo-view" class="btn-small" style="flex: 1;">Undo view</button>
-              <button id="btn-reset-view" class="btn-small" style="flex: 1;">Reset all</button>
+              <button id="btn-reset-view" class="btn-small" style="flex: 1;">Reset view</button>
             </div>
           </div>
 
@@ -259,7 +261,7 @@
               <div class="ctrl-label"><span>Spectral normalization</span></div>
               <select id="select-norm"
                 style="width: 100%; padding: 6px 8px; font-family: var(--font-sans); font-size: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary);">
-                <option value="none">Raw (Baseline Corrected)</option>
+                <option value="none">None</option>
                 <option value="max">Max Intensity (Peak 1.0)</option>
                 <option value="area">Total Area (AUC 1.0)</option>
                 <option value="point">User Point (Target Peak)</option>
@@ -304,7 +306,7 @@
                 style="width: 100%; padding: 6px 8px; font-family: var(--font-sans); font-size: 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary);">
                 <option value="lorentzian">Lorentzian (default)</option>
                 <option value="gaussian">Gaussian</option>
-                <option value="voigt">Voigt (4-param)</option>
+                <option value="voigt">Pseudo-Voigt (4-param)</option>
               </select>
             </div>
             <button id="btn-exit-fit" class="btn-small hidden"
@@ -423,7 +425,7 @@
               style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border);">
               <div class="panel-title">Analysis Timeline</div>
               <span class="peak-info-icon"
-                title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Accurate for resolved peaks. For overlapping peaks, see proximity warning below."
+                title="Peak centre: 3-point parabolic interpolation. FWHM: scanned 50% intensity threshold. Estimates are intended for resolved peaks. For overlapping peaks, see proximity warning below."
                 style="cursor: help; opacity: 0.5; font-size: 14px;">ⓘ</span>
             </div>
 
@@ -585,16 +587,15 @@
       <div class="docs-section">
         <h2>What it handles</h2>
         <p>It imports CSV and Excel (.xlsx and .xls) files with a preview for choosing worksheets, columns, and units.
-          It uses SNIP for baseline correction and finds peak centers with sub-pixel accuracy. If you have overlapping
-          peaks, you can use the LM fitting tool with Lorentzian, Gaussian, or Voigt profiles. If you have multiple
+          It uses SNIP for baseline correction and finds peak centers with three-point parabolic refinement. If you have overlapping
+          peaks, you can use the LM fitting tool with Lorentzian, Gaussian, or Pseudo-Voigt profiles. If you have multiple
           samples of the same thing, it can average them and show you the standard deviation.</p>
       </div>
 
       <div class="docs-section">
         <h2>The limits</h2>
-        <p>This tool is honest about what it sees. If your peaks overlap too much for the simple detector to be
-          accurate, it will show you a warning rather than giving you a number it isn't sure about. In those cases, you
-          should use the fitting tool for a better result.</p>
+        <p>Peak positions, widths, and areas are estimates. Overlap, noise, baseline choices, and sampling can affect them.
+          Inspect the original spectrum, fitted curves, and residuals; a warning cannot identify every unreliable result.</p>
       </div>
 
       <div class="docs-section">

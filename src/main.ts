@@ -7,6 +7,7 @@ import { SpectralProcessor } from './engine/processor.ts';
 import { UniversalParser } from './parsers/universalParser.ts';
 import { createSampleSpectrumFile } from './engine/sampleSpectrum.ts';
 import { previewImport } from './ui/importPreview.ts';
+import { showImportDetails } from './ui/importDetails.ts';
 import { ChartRenderer } from './ui/charts.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
@@ -29,7 +30,7 @@ interface ProcessedFile {
   selectedPeakX: Set<number>;
   variance: VarianceResult;
   spikesRemoved: number;
-  params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode };
+  params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode; cosmic: boolean; normTarget: number | null };
   anchors: { x: number; y: number }[];
   labels: CustomLabel[];
   color: string;
@@ -189,12 +190,18 @@ function initCalibration() {
 
       badge.style.background = result.status === 'OK' ? '#059669' : result.status === 'DRIFTED' ? '#d97706' : '#be123c';
       badge.style.color = '#fff';
-      badge.textContent = result.status === 'OK' ? 'CALIBRATED' : result.status === 'DRIFTED' ? `DRIFTED (${result.offset})` : 'NO Si PEAK';
+      badge.textContent = result.status === 'OK' ? 'WITHIN TOLERANCE' : result.status === 'DRIFTED' ? `OFFSET (${result.offset})` : 'NO Si PEAK';
     }
   });
 }
 
 function initUpload() {
+  const protocolInput = UI.get('protocol-file-input') as HTMLInputElement | null;
+  UI.get('btn-import-protocol')?.addEventListener('click', () => protocolInput?.click());
+  protocolInput?.addEventListener('change', () => {
+    if (protocolInput.files?.length) handleFiles(protocolInput.files);
+    protocolInput.value = '';
+  });
   window.addEventListener('sample-spectrum-requested', () => {
     importQueue = importQueue.then(async () => {
       try {
@@ -334,7 +341,7 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
     intensityData: cleaned.intensityData.map((v, i) => Math.max(0, v - baseline.intensityData[i]))
   };
 
-  const smoothed = SpectralProcessor.savitzkyGolay(corrected, sg);
+  const smoothed = SpectralProcessor.movingAverage(corrected, sg);
 
   // Normalization
   let processed = smoothed;
@@ -369,7 +376,7 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
     selectedPeakX: existing?.selectedPeakX || new Set(),
     variance,
     spikesRemoved: replacedCount,
-    params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode },
+    params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode, cosmic: state.cosmicRayRemoval, normTarget: state.normTargetX },
     anchors,
     color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length],
     labels: existing?.labels || [],
@@ -434,7 +441,7 @@ function updateUI() {
   // Update Footer Stats
   const totalFiles = state.files.size;
   const activeCount = state.comparisonIds.size || (state.activeFileId ? 1 : 0);
-  UI.text('footer-stats', `FILES: ${totalFiles} ; ACTIVE FILES: ${activeCount}`);
+  UI.text('footer-stats', `SPECTRA: ${totalFiles} ; ACTIVE SPECTRA: ${activeCount}`);
 
   // Update Ratio Results visibility
   if (state.ratioSelection.p1 || state.ratioSelection.p2) {
@@ -537,7 +544,7 @@ function renderFileList() {
         <div style="width:3px; height:24px; background:${file.color}; border-radius:2px;"></div>
         <div style="flex:1; min-width:0;">
           <div class="file-name-edit" contenteditable="true" spellcheck="false" 
-               style="font-weight:600; font-size:12px; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${file.name}</div>
+               style="font-weight:600; font-size:12px; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
           <div style="display: flex; align-items: center; gap: 6px; margin-top:2px;">
             <div style="font-size: 10px; color: var(--text-dim);">${file.raw.metadata.pointCount} pts</div>
             ${file.isReproduced ? `<div style="font-size: 9px; background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; font-weight: 700; border: 1px solid #fde68a;">REPRODUCED [${file.protocolId?.slice(0, 8)}]</div>` : ''}
@@ -557,6 +564,16 @@ function renderFileList() {
       </div>
     `;
     const nameEl = item.querySelector('.file-name-edit') as HTMLElement;
+    nameEl.textContent = file.name;
+    const importButton = document.createElement('button');
+    importButton.className = 'btn-small';
+    importButton.textContent = 'Import details';
+    importButton.addEventListener('click', event => { event.stopPropagation(); showImportDetails(file.raw); });
+    const sourceLabel = document.createElement('div');
+    sourceLabel.style.cssText = 'font-size:11px;color:var(--text-secondary);overflow-wrap:anywhere';
+    sourceLabel.textContent = [file.raw.metadata.fileName, file.raw.metadata.sheetName, file.raw.metadata.seriesName].filter(Boolean).join(' · ');
+    nameEl.after(sourceLabel);
+    item.querySelector('.file-actions')?.prepend(importButton);
     nameEl?.addEventListener('blur', () => {
       const newName = nameEl.textContent?.trim();
       if (newName && newName !== file.name) {
@@ -1680,9 +1697,10 @@ async function exportExcel() {
       ['Parameter', 'Value'],
       ['Workstation', `Instant Raman ${APP_VERSION}`],
       ['Export Date', new Date().toISOString()],
-      ['Global Baseline (SNIP)', params.snip + ' iterations'],
-      ['Global Smoothing (SG)', 'Window size ' + params.sg],
-      ['Peak Detection Threshold', '5% of Max Intensity'],
+      ['Baseline', 'See each spectrum sheet for mode and settings'],
+      ['Smoothing (moving average)', 'Window size ' + params.sg],
+      ['Negative corrected intensities', 'Set to zero before smoothing'],
+      ['Peak Detection Threshold', '2% of maximum processed intensity'],
       ['Software', 'raman-instant.com']
     ];
     if (state.viewRange) {
@@ -1722,6 +1740,11 @@ async function exportExcel() {
 
       const spectralData: any[][] = [
         ['File Name', file.name],
+        ['Source File', file.raw.metadata.fileName],
+        ['Worksheet', file.raw.metadata.sheetName ?? ''],
+        ['Series', file.raw.metadata.seriesName ?? ''],
+        ['Import Settings (zero-based indices)', JSON.stringify(file.raw.metadata.importSettings ?? {})],
+        ['Import Notes', (file.raw.metadata.importWarnings ?? []).join('\n')],
         ['Baseline Mode', file.params.mode.toUpperCase()],
         ['Cosmic Ray Spikes Removed', file.spikesRemoved],
         ['SNIP Iterations', file.params.mode === 'auto' ? file.params.snip : 'N/A'],
@@ -1837,9 +1860,10 @@ function getScientificNarrative(file: ProcessedFile) {
   let normDesc = 'no additional normalization';
   if (norm === 'max') normDesc = 'peak maximum normalization';
   if (norm === 'area') normDesc = 'total area (AUC) normalization';
-  if (norm === 'point') normDesc = `normalization to the peak at ${state.normTargetX?.toFixed(1)} cm⁻¹`;
+  if (norm === 'point') normDesc = `normalization to the selected point at ${params.normTarget?.toFixed(1)} cm⁻¹`;
 
-  return `Raman spectrum of ${file.name}. Data was processed using the Instant Raman (${APP_VERSION}) spectral workstation. Background subtraction was performed using the Statistics-sensitive Non-linear Iterative Peak-clipping (SNIP) algorithm (${snip} iterations) [1], followed by Savitzky-Golay smoothing (window size ${sg}) [2]. The spectrum was stabilized using ${normDesc}. Peak detection was performed using a local maxima algorithm with 3-point parabolic refinement and a 5% intensity threshold, identifying ${peakCount} distinct Raman bands. Keep the original data file with the exported protocol to review and rerun processing.`;
+  const baselineDescription = params.mode === 'manual' ? `linear interpolation between ${file.anchors.length} manual anchors` : `iterative clipping (SNIP, ${snip} iterations) [1]`;
+  return `Raman spectrum of ${file.name}. Processed using Instant Raman (${APP_VERSION}). ${params.cosmic ? `Median-based spike removal replaced ${file.spikesRemoved} points.` : 'Spike removal was disabled.'} Baseline subtraction used ${baselineDescription}. Negative corrected intensities were set to zero, followed by moving-average smoothing (window size ${sg}) [2] and ${normDesc}. Local maxima detection with three-point parabolic refinement and a 2% threshold of maximum processed intensity identified ${peakCount} candidate peaks. Keep the original data file and import settings with the exported protocol.`;
 }
 
 function generateCaption() {
@@ -1894,7 +1918,7 @@ function initProtocolExport() {
     const active = state.files.get(state.activeFileId || '');
     if (!active) {
       console.warn('[Protocol] No active file found for export');
-      showToast("Select a file to export its protocol.");
+      showToast("Select a spectrum to export its protocol.");
       return;
     }
     exportProtocol(active);
@@ -1919,7 +1943,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
     // 1. Metadata
     const metadata: any = {
       instant_raman_version: APP_VERSION,
-      protocol_version: "1.0.0",
+      protocol_version: "1.1.0",
       protocol_id: protocolId,
       created_at: new Date().toISOString(),
       created_by: "Instant Raman User"
@@ -1927,8 +1951,10 @@ async function exportProtocol(activeFile: ProcessedFile) {
 
     // 2. Source Data Record
     const sourceData: any = {
-      original_filename: activeFile.name,
-      file_format_detected: "Automatic",
+      original_filename: activeFile.raw.metadata.fileName,
+      file_format_detected: activeFile.raw.metadata.format,
+      spectrum_hash: await ProtocolManager.spectrumHash(activeFile.raw),
+      import_metadata: activeFile.raw.metadata,
       wavenumber_range: {
         min: activeFile.raw.wavenumberData[0],
         max: activeFile.raw.wavenumberData[activeFile.raw.wavenumberData.length - 1]
@@ -1943,10 +1969,10 @@ async function exportProtocol(activeFile: ProcessedFile) {
       {
         step_number: 0,
         step_name: "Cosmic Ray Removal",
-        applied: state.cosmicRayRemoval,
+        applied: activeFile.params.cosmic,
         parameters: {
           algorithm: "MAD_zscore",
-          threshold: 5,
+          threshold: 6,
           spikes_detected: activeFile.spikesRemoved,
           spikes_removed: activeFile.spikesRemoved,
           spike_positions: []
@@ -1957,7 +1983,10 @@ async function exportProtocol(activeFile: ProcessedFile) {
         step_name: "Baseline Correction",
         applied: true,
         parameters: {
-          algorithm: "SNIP",
+          algorithm: activeFile.params.mode === 'manual' ? 'linear_anchor_interpolation' : 'SNIP',
+          anchors: activeFile.anchors,
+          smoothing: { algorithm: 'moving_average', window: 9 },
+          clip_negative_corrected: true,
           iterations: activeFile.params.snip,
           mode: activeFile.params.mode
         }
@@ -1970,7 +1999,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
           method: activeFile.params.norm === 'max' ? 'max_intensity' :
             activeFile.params.norm === 'area' ? 'total_area' :
               activeFile.params.norm === 'point' ? 'reference_peak' : 'none',
-          reference_wavenumber: state.normTargetX
+          reference_wavenumber: activeFile.params.normTarget
         }
       },
       {
@@ -1979,8 +2008,8 @@ async function exportProtocol(activeFile: ProcessedFile) {
         applied: true,
         parameters: {
           method: "parabolic_interpolation",
-          minimum_height_threshold: 0.05,
-          minimum_separation: 10,
+          minimum_height_threshold: 0.02,
+          minimum_separation: 2.5,
           peaks_detected: activeFile.peaks.length,
           peak_positions: activeFile.peaks.map(p => p.x)
         }
@@ -2361,18 +2390,17 @@ async function promptProtocolImport(protocolJson: any) {
   `;
 
   summaryContent.innerHTML = summaryHtml;
+  const importSummary = document.createElement('p');
+  importSummary.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;padding:12px';
+  importSummary.textContent = source.import_metadata
+    ? `Selected source: ${source.import_metadata.fileName}\nWorksheet: ${source.import_metadata.sheetName ?? ''}\nSeries: ${source.import_metadata.seriesName ?? ''}\nImport settings (zero-based indices): ${JSON.stringify(source.import_metadata.importSettings ?? {})}`
+    : 'Import choices were not recorded in this protocol.';
+  summaryContent.append(importSummary);
 
   // Hash Verification (Global Search)
   const sourceHash = protocol.source_data_record.file_hash;
-  let matchedFile = null;
-
-  // Search all loaded files for a match
-  for (const f of state.files.values()) {
-    if ((f as any).fileHash === sourceHash) {
-      matchedFile = f;
-      break;
-    }
-  }
+  const matches = await ProtocolManager.matchingSpectra(protocol.source_data_record, [...state.files.values()]);
+  const matchedFile = matches.find(f => f.id === state.activeFileId) ?? matches[0];
 
   if (matchedFile) {
     hashStatus.classList.remove('hidden');
@@ -2385,11 +2413,14 @@ async function promptProtocolImport(protocolJson: any) {
     hashStatus.style.background = '#fffbeb';
     hashStatus.style.color = '#d97706';
     hashStatus.style.border = '1px solid #f59e0b';
-    hashStatus.textContent = `No matching file found for hash: ${sourceHash.substring(0, 8)}... Please load the original data file first.`;
+    hashStatus.textContent = !source.spectrum_hash
+      ? 'This older protocol has no selected-spectrum identity. Review its settings here and apply them manually, then export a new protocol. Automatic application is unavailable.'
+      : 'No matching spectrum found. Import the original file using the saved worksheet, columns, row range, and units.';
   }
 
   // Action Listeners
   const applyBtn = UI.get('btn-apply-protocol');
+  if (applyBtn instanceof HTMLButtonElement) applyBtn.disabled = !matchedFile;
   const cancelBtn = UI.get('btn-cancel-protocol');
 
   const onApply = () => {
@@ -2411,27 +2442,16 @@ async function promptProtocolImport(protocolJson: any) {
 
 async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   const sourceHash = protocol.source_data_record.file_hash;
-  let targetFileId = state.activeFileId;
-  let file = state.files.get(targetFileId || '');
-
-  // 1. Try to find the correct file by hash across all loaded files
-  if (!file || (file as any).fileHash !== sourceHash) {
-    for (const [id, f] of state.files.entries()) {
-      if ((f as any).fileHash === sourceHash) {
-        targetFileId = id;
-        file = f;
-        state.activeFileId = id; // Auto-activate the matching file
-        break;
-      }
-    }
-  }
-
-  if (!file || file.fileHash !== sourceHash) {
+  const matches = await ProtocolManager.matchingSpectra(protocol.source_data_record, [...state.files.values()]);
+  const file = matches.find(f => f.id === state.activeFileId) ?? matches[0];
+  const targetFileId = file?.id;
+  if (!file) {
     alert(`Protocol Mismatch:\n\nThis protocol belongs to the file "${protocol.source_data_record.original_filename}".\n\nPlease load that file first to apply these analytical parameters.`);
     return;
   }
 
   UI.text('system-status', 'APPLYING PROTOCOL...');
+  state.activeFileId = file.id;
 
   // 1. Reset state to match protocol parameters
   const steps = protocol.processing_steps;
@@ -2443,6 +2463,8 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   // Baseline
   const baselineStep = steps[1];
   state.baselineMode = baselineStep.parameters?.mode === 'manual' ? 'manual' : 'auto';
+  file.anchors = baselineStep.parameters?.anchors?.map(a => ({ ...a })) ?? [];
+  (UI.get('check-cosmic-ray') as HTMLInputElement).checked = state.cosmicRayRemoval;
   if (state.baselineMode === 'auto') {
     UI.setVal('slider-snip', (baselineStep.parameters?.iterations || 25).toString());
     UI.text('val-snip', (baselineStep.parameters?.iterations || 25).toString());
@@ -2456,6 +2478,12 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
       method === 'total_area' ? 'area' :
         method === 'reference_peak' ? 'point' : 'none';
   state.normTargetX = normStep.parameters?.reference_wavenumber || null;
+  UI.setVal('select-norm', state.normalizationMode);
+  UI.get('norm-point-info')?.classList.toggle('hidden', state.normalizationMode !== 'point');
+  UI.get('snip-controls')?.classList.toggle('hidden', state.baselineMode !== 'auto');
+  UI.get('manual-controls')?.classList.toggle('hidden', state.baselineMode !== 'manual');
+  UI.get('btn-mode-snip')?.classList.toggle('active-compare', state.baselineMode === 'auto');
+  UI.get('btn-mode-manual')?.classList.toggle('active-compare', state.baselineMode === 'manual');
 
   // 2. Reprocess
   reprocessActive();
@@ -2614,10 +2642,12 @@ function renderTimeline() {
   }
 
   const steps = [
-    { name: 'Cosmic Ray', params: state.cosmicRayRemoval ? 'Enabled (MAD threshold)' : 'Disabled' },
-    { name: 'Baseline Correction', params: `${active.params.mode.toUpperCase()} (iter: ${active.params.snip})` },
+    { name: 'Spike removal', params: active.params.cosmic ? `Median-based; ${active.spikesRemoved} points replaced` : 'Disabled' },
+    { name: 'Baseline Correction', params: active.params.mode === 'manual' ? `Manual (${active.anchors.length} anchors)` : `SNIP (${active.params.snip} iterations)` },
+    { name: 'Corrected intensity', params: 'Negative values set to zero' },
+    { name: 'Smoothing', params: `Moving average (${active.params.sg} points)` },
     { name: 'Normalization', params: active.params.norm === 'none' ? 'None' : active.params.norm.toUpperCase() },
-    { name: 'Peak Detection', params: `${active.peaks.length} peaks identified` }
+    { name: 'Peak Detection', params: `${active.peaks.length} candidate peaks; threshold 2% of maximum processed intensity` }
   ];
 
   container.innerHTML = steps.map(step => `

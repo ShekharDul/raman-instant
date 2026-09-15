@@ -1,3 +1,5 @@
+import type { NormalizedSpectrum } from './types.ts';
+
 /**
  * Instant Raman Protocol (.irp) Types
  * This defines the JSON schema for saved analysis settings of Raman analyses.
@@ -21,6 +23,8 @@ export interface IrpSourceData {
   wavenumber_spacing: number;
   number_of_data_points: number;
   file_hash: string; // SHA-256
+  spectrum_hash?: string;
+  import_metadata?: NormalizedSpectrum['metadata'];
 }
 
 export interface IrpProcessingStep<T> {
@@ -39,9 +43,12 @@ export interface IrpCosmicRayParams {
 }
 
 export interface IrpBaselineParams {
-  algorithm: "SNIP";
+  algorithm: "SNIP" | "linear_anchor_interpolation";
   iterations: number | null;
   mode: "manual" | "auto" | null;
+  anchors?: { x: number; y: number }[];
+  smoothing?: { algorithm: 'moving_average'; window: number };
+  clip_negative_corrected?: boolean;
 }
 
 export interface IrpNormalizationParams {
@@ -98,6 +105,21 @@ export interface InstantRamanProtocol {
 }
 
 export class ProtocolManager {
+  static async spectrumHash(raw: NormalizedSpectrum): Promise<string> {
+    // Covers the selected data and import choices, not merely its parent workbook.
+    const identity = [raw.wavenumberData, raw.intensityData, raw.metadata.sheetName ?? null,
+      raw.metadata.importSettings ?? null];
+    return this.computeHash(new TextEncoder().encode(JSON.stringify(identity)).buffer);
+  }
+
+  static async matchingSpectra<T extends { raw: NormalizedSpectrum; fileHash?: string }>(source: IrpSourceData, candidates: T[]): Promise<T[]> {
+    if (!source.spectrum_hash) return []; // Legacy hashes cannot identify a worksheet/column selection.
+    const matches: T[] = [];
+    for (const candidate of candidates) {
+      if (candidate.fileHash === source.file_hash && await this.spectrumHash(candidate.raw) === source.spectrum_hash) matches.push(candidate);
+    }
+    return matches;
+  }
   /**
    * Strictly validates the given JSON object against the InstantRamanProtocol schema.
    * Rejects the file immediately with a specific error message identifying the failed field.
@@ -139,6 +161,9 @@ export class ProtocolManager {
     checkType('source_data_record.wavenumber_spacing', json.source_data_record.wavenumber_spacing, 'number');
     checkType('source_data_record.number_of_data_points', json.source_data_record.number_of_data_points, 'number');
     checkType('source_data_record.file_hash', json.source_data_record.file_hash, 'string');
+    if (json.source_data_record.spectrum_hash !== undefined && !/^[a-f0-9]{64}$/.test(json.source_data_record.spectrum_hash)) {
+      throw new Error('Invalid selected-spectrum hash.');
+    }
 
     // processing_steps
     checkType('processing_steps', json.processing_steps, 'array');
@@ -167,6 +192,10 @@ export class ProtocolManager {
       checkType('processing_steps[1].parameters.algorithm', step1.parameters.algorithm, 'string');
       checkType('processing_steps[1].parameters.iterations', step1.parameters.iterations, 'number', true);
       checkType('processing_steps[1].parameters.mode', step1.parameters.mode, 'string', true);
+      const p = step1.parameters;
+      if (p.anchors !== undefined && (!Array.isArray(p.anchors) || p.anchors.some((a: any) => !a || !Number.isFinite(a.x) || !Number.isFinite(a.y)))) throw new Error('Invalid manual baseline anchors.');
+      if (p.smoothing !== undefined && (p.smoothing.algorithm !== 'moving_average' || p.smoothing.window !== 9)) throw new Error('Unsupported smoothing settings.');
+      if (p.clip_negative_corrected !== undefined && p.clip_negative_corrected !== true) throw new Error('Unsupported corrected-intensity clipping setting.');
     }
 
     // Step 2: Normalization

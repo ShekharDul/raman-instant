@@ -233,7 +233,7 @@ export const REPORT_TEMPLATE = `
         <section class="bibliography-section">
             <h2>References & Methodology</h2>
             <div class="bib-item">[1] Ryan, C. G., et al. (1988). "SNIP: A statistics-sensitive background estimator." Nuclear Instruments and Methods in Physics Research Section B.</div>
-            <div class="bib-item">[2] Savitzky, A., & Golay, M. J. (1964). "Smoothing and Differentiation of Data by Simplified Least Squares Procedures." Analytical Chemistry.</div>
+            <div class="bib-item">[2] Smoothing implementation: centered moving average, nine points. Values near the spectrum edges are retained.</div>
             <div class="bib-item">[3] Instant Raman Documentation. Processing, plotting, and saved analysis settings.</div>
         </section>
 

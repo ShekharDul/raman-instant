@@ -197,6 +197,11 @@ export class UniversalParser {
         format: document.format, fileName: document.fileName, pointCount: selected.length,
         ...(o.unit === 'nm' ? { laserWavelength: o.laserWavelength } : {}),
         sheetName: table.name, seriesName: label,
+        importSettings: { headerRow: o.headerRow, startRow: o.startRow, endRow,
+          xColumn: o.xColumn, yColumn: column, unit: o.unit as AxisUnit,
+          decimal: o.decimal, laserWavelength: o.unit === 'nm' ? o.laserWavelength : null,
+          duplicates: o.duplicates, delimiter: document.delimiter ?? null },
+        importWarnings: warnings,
       } };
     });
     return { spectra, warnings };

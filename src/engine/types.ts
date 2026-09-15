@@ -28,6 +28,13 @@ export interface NormalizedSpectrum extends SpectralData {
     laserWavelength?: number;
     sheetName?: string;
     seriesName?: string;
+    importSettings?: {
+      headerRow: number; startRow: number; endRow: number;
+      xColumn: number; yColumn: number; unit: 'shift' | 'nm';
+      decimal: '.' | ','; laserWavelength: number | null;
+      duplicates: 'keep' | 'mean' | 'error'; delimiter: string | null;
+    };
+    importWarnings?: string[];
   };
 }
 

@@ -92,9 +92,9 @@ export class SpectralProcessor {
   }
 
   /**
-   * Savitzky-Golay smoothing (linear filter).
+   * Centered moving-average smoothing; edge values are retained.
    */
-  static savitzkyGolay(data: SpectralData, windowSize = 9): SpectralData {
+  static movingAverage(data: SpectralData, windowSize = 9): SpectralData {
     const y = data.intensityData;
     if (windowSize % 2 === 0) windowSize += 1;
     const resultY = [...y];

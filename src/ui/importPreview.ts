@@ -96,7 +96,7 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
     }
     sheet.addEventListener('change', reset);
     delimiter.addEventListener('change', () => {
-      try { current().rows = UniversalParser.readCSV(documentData.csvText!, delimiter.value); reset(); }
+      try { current().rows = UniversalParser.readCSV(documentData.csvText!, delimiter.value); documentData.delimiter = delimiter.value; reset(); }
       catch (error) { result = null; confirm.disabled = true; status.textContent = String(error); }
     });
     header.addEventListener('change', () => { populateColumns(); refresh(); });
