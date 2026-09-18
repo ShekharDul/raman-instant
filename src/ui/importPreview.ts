@@ -1,3 +1,5 @@
+import { importJob } from '../parsers/workerClient.ts';
+import type { Cell } from '../parsers/universalParser.ts';
 import { UniversalParser, type ImportDocument, type ImportResult } from '../parsers/universalParser.ts';
 
 /** A local, accessible preview; file content is only inserted as text. */
@@ -41,6 +43,7 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
     const confirm = document.createElement('button'); confirm.textContent = 'Import spectra';
     for (const button of [cancel, confirm]) { button.type = 'button'; button.style.cssText = 'padding:10px 18px;border:1px solid #64748b;border-radius:6px;background:#27364e;color:white;cursor:pointer'; actions.append(button); }
     let result: ImportResult | null = null;
+    let revision = 0, closed = false, job: AbortController | undefined;
     const current = () => documentData.tables[Number(sheet.value)];
     function populateColumns() {
       const oldX = x.value, oldY = Array.from(y.selectedOptions).map(o => o.value);
@@ -55,7 +58,9 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
       x.value = oldX || '0';
       for (const option of y.options) option.selected = oldY.includes(option.value);
     }
-    function refresh() {
+    async function refresh() {
+      const requestRevision = ++revision;
+      job?.abort(); job = new AbortController();
       result = null; confirm.disabled = true; confirm.style.opacity = '0.45';
       laser.disabled = unit.value !== 'nm';
       const table = current();
@@ -74,16 +79,18 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
       try {
         if (!Number.isInteger(Number(header.value)) || Number(header.value) < 0 || Number(header.value) > table.rows.length) throw new Error('Choose a valid heading row.');
         if (Number(start.value) <= Number(header.value)) throw new Error('The first data row must follow the heading row.');
-        result = UniversalParser.importTable(documentData, table, {
+        const parsed = await importJob<ImportResult>({ operation: 'import', document: { ...documentData, tables: [], csvText: undefined }, table, options: {
           headerRow: Number(header.value) - 1, startRow: Number(start.value) - 1, endRow: Number(end.value),
           xColumn: Number(x.value), yColumns: Array.from(y.selectedOptions).map(o => Number(o.value)),
           unit: unit.value as 'shift' | 'nm' | '', decimal: decimal.value as '.' | ',',
           laserWavelength: Number(laser.value), duplicates: duplicates.value as 'keep' | 'mean' | 'error',
-        });
+        } }, job.signal);
+        if (closed || requestRevision !== revision) return;
+        result = parsed;
         status.textContent = result.spectra.map(s => `${s.metadata.seriesName}: ${s.metadata.pointCount} points; X ${s.wavenumberData[0].toFixed(2)} to ${s.wavenumberData.at(-1)!.toFixed(2)} cm⁻¹`).join('\n') +
           (result.warnings.length ? '\n\n' + result.warnings.join('\n') : '\nNo invalid data rows found.');
         confirm.disabled = false; confirm.style.opacity = '1';
-      } catch (error) { status.textContent = error instanceof Error ? error.message : String(error); }
+      } catch (error) { if (!closed && requestRevision === revision) status.textContent = error instanceof Error ? error.message : String(error); }
     }
     function reset() {
       const options = UniversalParser.suggest(current());
@@ -95,16 +102,23 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
       refresh();
     }
     sheet.addEventListener('change', reset);
-    delimiter.addEventListener('change', () => {
-      try { current().rows = UniversalParser.readCSV(documentData.csvText!, delimiter.value); documentData.delimiter = delimiter.value; reset(); }
-      catch (error) { result = null; confirm.disabled = true; status.textContent = String(error); }
+    delimiter.addEventListener('change', async () => {
+      const requestRevision = ++revision; job?.abort(); job = new AbortController();
+      result = null; confirm.disabled = true;
+      try {
+        const value = delimiter.value;
+        const rows = await importJob<Cell[][]>({ operation: 'csv', text: documentData.csvText!, delimiter: value }, job.signal);
+        if (closed || requestRevision !== revision) return;
+        current().rows = rows; documentData.delimiter = value; reset();
+      }
+      catch (error) { if (!closed && requestRevision === revision) { result = null; confirm.disabled = true; status.textContent = String(error); } }
     });
-    header.addEventListener('change', () => { populateColumns(); refresh(); });
-    for (const input of [start, end, x, y, unit, decimal, laser, duplicates]) input.addEventListener('change', refresh);
-    function finish(value: ImportResult | null) { dialog.close(); dialog.remove(); resolve(value); }
+    header.addEventListener('input', () => { populateColumns(); refresh(); });
+    for (const input of [start, end, x, y, unit, decimal, laser, duplicates]) input.addEventListener('input', refresh);
+    function finish(value: ImportResult | null) { closed = true; revision++; job?.abort(); dialog.close(); dialog.remove(); resolve(value); }
     cancel.addEventListener('click', () => finish(null));
     dialog.addEventListener('cancel', event => { event.preventDefault(); finish(null); });
-    confirm.addEventListener('click', () => { refresh(); if (result) finish(result); });
+    confirm.addEventListener('click', async () => { await refresh(); if (!closed && result) finish(result); });
     document.body.append(dialog); reset(); dialog.showModal();
   });
 }

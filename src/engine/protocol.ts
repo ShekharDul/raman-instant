@@ -1,3 +1,4 @@
+import { validateProtocol } from '../security/protocolSchema.ts';
 import type { NormalizedSpectrum } from './types.ts';
 
 /**
@@ -125,118 +126,7 @@ export class ProtocolManager {
    * Rejects the file immediately with a specific error message identifying the failed field.
    */
   static validateSchema(json: any): InstantRamanProtocol {
-    if (!json || typeof json !== 'object') throw new Error("Protocol must be a valid JSON object.");
-
-    // Helper for explicit type checking
-    const checkType = (path: string, val: any, expectedType: string, isNullable: boolean = false) => {
-      if (val === undefined) {
-        throw new Error(`Validation Error: Missing mandatory field '${path}'.`);
-      }
-      if (val === null) {
-        if (!isNullable) throw new Error(`Validation Error: Field '${path}' cannot be null.`);
-        return;
-      }
-      if (expectedType === 'array') {
-        if (!Array.isArray(val)) throw new Error(`Validation Error: '${path}' is expected to be an array, but received ${typeof val}.`);
-      } else if (typeof val !== expectedType) {
-        throw new Error(`Validation Error: '${path}' is expected to be a ${expectedType}, but received ${typeof val}.`);
-      }
-    };
-
-    // protocol_metadata
-    checkType('protocol_metadata', json.protocol_metadata, 'object');
-    checkType('protocol_metadata.instant_raman_version', json.protocol_metadata.instant_raman_version, 'string');
-    checkType('protocol_metadata.protocol_version', json.protocol_metadata.protocol_version, 'string');
-    checkType('protocol_metadata.protocol_id', json.protocol_metadata.protocol_id, 'string');
-    checkType('protocol_metadata.created_at', json.protocol_metadata.created_at, 'string');
-    checkType('protocol_metadata.created_by', json.protocol_metadata.created_by, 'string');
-
-    // source_data_record
-    checkType('source_data_record', json.source_data_record, 'object');
-    checkType('source_data_record.original_filename', json.source_data_record.original_filename, 'string');
-    checkType('source_data_record.file_format_detected', json.source_data_record.file_format_detected, 'string');
-    checkType('source_data_record.wavenumber_range', json.source_data_record.wavenumber_range, 'object');
-    checkType('source_data_record.wavenumber_range.min', json.source_data_record.wavenumber_range.min, 'number');
-    checkType('source_data_record.wavenumber_range.max', json.source_data_record.wavenumber_range.max, 'number');
-    checkType('source_data_record.wavenumber_spacing', json.source_data_record.wavenumber_spacing, 'number');
-    checkType('source_data_record.number_of_data_points', json.source_data_record.number_of_data_points, 'number');
-    checkType('source_data_record.file_hash', json.source_data_record.file_hash, 'string');
-    if (json.source_data_record.spectrum_hash !== undefined && !/^[a-f0-9]{64}$/.test(json.source_data_record.spectrum_hash)) {
-      throw new Error('Invalid selected-spectrum hash.');
-    }
-
-    // processing_steps
-    checkType('processing_steps', json.processing_steps, 'array');
-    if (json.processing_steps.length !== 4) {
-      throw new Error(`Validation Error: 'processing_steps' must contain exactly 4 steps.`);
-    }
-
-    // Step 0: Cosmic Ray
-    const step0 = json.processing_steps[0];
-    checkType('processing_steps[0].step_number', step0.step_number, 'number');
-    checkType('processing_steps[0].step_name', step0.step_name, 'string');
-    checkType('processing_steps[0].applied', step0.applied, 'boolean');
-    if (step0.applied) {
-      checkType('processing_steps[0].parameters', step0.parameters, 'object');
-      checkType('processing_steps[0].parameters.algorithm', step0.parameters.algorithm, 'string');
-      checkType('processing_steps[0].parameters.threshold', step0.parameters.threshold, 'number', true);
-    }
-
-    // Step 1: Baseline
-    const step1 = json.processing_steps[1];
-    checkType('processing_steps[1].step_number', step1.step_number, 'number');
-    checkType('processing_steps[1].step_name', step1.step_name, 'string');
-    checkType('processing_steps[1].applied', step1.applied, 'boolean');
-    if (step1.applied) {
-      checkType('processing_steps[1].parameters', step1.parameters, 'object');
-      checkType('processing_steps[1].parameters.algorithm', step1.parameters.algorithm, 'string');
-      checkType('processing_steps[1].parameters.iterations', step1.parameters.iterations, 'number', true);
-      checkType('processing_steps[1].parameters.mode', step1.parameters.mode, 'string', true);
-      const p = step1.parameters;
-      if (p.anchors !== undefined && (!Array.isArray(p.anchors) || p.anchors.some((a: any) => !a || !Number.isFinite(a.x) || !Number.isFinite(a.y)))) throw new Error('Invalid manual baseline anchors.');
-      if (p.smoothing !== undefined && (p.smoothing.algorithm !== 'moving_average' || p.smoothing.window !== 9)) throw new Error('Unsupported smoothing settings.');
-      if (p.clip_negative_corrected !== undefined && p.clip_negative_corrected !== true) throw new Error('Unsupported corrected-intensity clipping setting.');
-    }
-
-    // Step 2: Normalization
-    const step2 = json.processing_steps[2];
-    checkType('processing_steps[2].step_number', step2.step_number, 'number');
-    checkType('processing_steps[2].step_name', step2.step_name, 'string');
-    checkType('processing_steps[2].applied', step2.applied, 'boolean');
-    if (step2.applied) {
-      checkType('processing_steps[2].parameters', step2.parameters, 'object');
-      checkType('processing_steps[2].parameters.method', step2.parameters.method, 'string');
-      checkType('processing_steps[2].parameters.reference_wavenumber', step2.parameters.reference_wavenumber, 'number', true);
-    }
-
-    // Step 3: Peak Detection
-    const step3 = json.processing_steps[3];
-    checkType('processing_steps[3].step_number', step3.step_number, 'number');
-    checkType('processing_steps[3].step_name', step3.step_name, 'string');
-    checkType('processing_steps[3].applied', step3.applied, 'boolean');
-    if (step3.applied) {
-      checkType('processing_steps[3].parameters', step3.parameters, 'object');
-      checkType('processing_steps[3].parameters.method', step3.parameters.method, 'string');
-      checkType('processing_steps[3].parameters.minimum_height_threshold', step3.parameters.minimum_height_threshold, 'number', true);
-    }
-
-    // fitting_record
-    checkType('fitting_record', json.fitting_record, 'array', true);
-    if (json.fitting_record) {
-      json.fitting_record.forEach((fr: any, i: number) => {
-        const path = `fitting_record[${i}]`;
-        checkType(`${path}.peak_id`, fr.peak_id, 'number');
-        checkType(`${path}.nominal_center`, fr.nominal_center, 'number');
-        checkType(`${path}.boundary_left`, fr.boundary_left, 'number');
-        checkType(`${path}.boundary_right`, fr.boundary_right, 'number');
-        checkType(`${path}.best_fit_model`, fr.best_fit_model, 'string', true);
-      });
-    }
-
-    // integration_record
-    checkType('integration_record', json.integration_record, 'array', true);
-
-    checkType('reproducibility_guarantee', json.reproducibility_guarantee, 'string');
+    validateProtocol(json);
 
     return json as InstantRamanProtocol;
   }

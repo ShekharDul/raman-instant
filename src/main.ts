@@ -1,3 +1,7 @@
+import { importJob } from './parsers/workerClient.ts';
+import type { ImportDocument } from './parsers/universalParser.ts';
+import { LIMITS, checkBatch, checkSession } from './security/limits.ts';
+import { escapeHTML } from './security/text.ts';
 /**
  * Instant Raman v2.1 — Research Workstation Engine
  * Optimized for robustness, performance, and commercial reliability.
@@ -117,7 +121,6 @@ const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#
 const UI = {
   get: (id: string) => document.getElementById(id),
   text: (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; },
-  html: (id: string, val: string) => { const el = document.getElementById(id); if (el) el.innerHTML = val; },
   val: (id: string) => (document.getElementById(id) as HTMLInputElement)?.value || '',
   setVal: (id: string, val: string) => { const el = document.getElementById(id) as HTMLInputElement; if (el) el.value = val; }
 };
@@ -209,6 +212,7 @@ function initUpload() {
         if (!state.files.has(id)) {
           const file = createSampleSpectrumFile();
           const raw = await UniversalParser.parseFile(file);
+          checkSession([...state.files.values()].reduce((n, f) => n + f.raw.wavenumberData.length, 0), state.files.size, raw.wavenumberData.length, 1);
           const hash = await ProtocolManager.computeHash(await file.arrayBuffer());
           processAndStore(id, file.name, raw, hash);
         }
@@ -232,12 +236,20 @@ function initUpload() {
 }
 
 let importQueue: Promise<void> = Promise.resolve();
+let queuedFiles = 0, queuedBytes = 0;
 function handleFiles(fileList: FileList) {
   const files = Array.from(fileList);
-  importQueue = importQueue.then(() => importFiles(files));
+  const bytes = files.reduce((n, file) => n + file.size, 0);
+  try {
+    checkBatch(files);
+    if (queuedFiles + files.length > LIMITS.files || queuedBytes + bytes > LIMITS.batchBytes) throw new Error('Finish the current import before adding more files.');
+  } catch (error) { alert((error as Error).message); return; }
+  queuedFiles += files.length; queuedBytes += bytes;
+  importQueue = importQueue.then(() => importFiles(files)).finally(() => { queuedFiles -= files.length; queuedBytes -= bytes; });
 }
 
 async function importFiles(files: File[]) {
+  try { checkBatch(files); } catch (error) { alert((error as Error).message); return; }
   UI.text('system-status', `INGESTING ${files.length}...`);
   
   const irpCount = files.filter(f => f.name.toLowerCase().endsWith('.irp')).length;
@@ -250,22 +262,18 @@ async function importFiles(files: File[]) {
   for (const file of files) {
     try {
       if (file.name.toLowerCase().endsWith('.irp') || file.name.toLowerCase().endsWith('.json')) {
-        const text = await file.text();
-        let json;
-        try {
-          json = JSON.parse(text);
-        } catch (e) {
-          throw new Error("Failed to parse IRP file as JSON.");
-        }
-        promptProtocolImport(json);
+        const json = await importJob<InstantRamanProtocol>({ operation: 'protocol', file });
+        await promptProtocolImport(json);
         UI.text('system-status', `READY`);
         continue;
       }
 
       const buffer = await file.arrayBuffer();
-      const document = await UniversalParser.inspectFile(new File([buffer], file.name));
+      const document = await importJob<ImportDocument>({ operation: 'inspect', file });
       const imported = await previewImport(document);
       if (!imported) { UI.text('system-status', 'READY'); continue; }
+      checkSession([...state.files.values()].reduce((n, f) => n + f.raw.wavenumberData.length, 0), state.files.size,
+        imported.spectra.reduce((n, s) => n + s.wavenumberData.length, 0), imported.spectra.length);
       const fileHash = await ProtocolManager.computeHash(buffer);
       for (const parsed of imported.spectra) {
         const id = `file-${Math.random().toString(36).slice(2, 9)}`;
@@ -276,7 +284,6 @@ async function importFiles(files: File[]) {
       }
 
       trackEvent('file_uploaded', {
-        file_name: file.name,
         file_size: file.size,
         file_type: file.name.split('.').pop()?.toLowerCase() || 'unknown'
       });
@@ -364,6 +371,9 @@ function processAndStore(id: string, name: string, raw: NormalizedSpectrum, file
 
   const peaks = SpectralProcessor.findPeaks(processed);
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
+  if (![...processed.intensityData, ...baseline.intensityData, normFactor, variance.sigPct, variance.bslPct].every(Number.isFinite)) {
+    throw new Error('These data and processing settings exceed the supported numerical range.');
+  }
 
   trackEvent('peak_detection_run', {
     peak_count: peaks.length,
@@ -511,7 +521,7 @@ function renderLabelList() {
 
     item.innerHTML = `
       <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;">
-        <span style="font-weight:700; color:#3b82f6;">${label.x.toFixed(0)}</span>: ${label.text}
+        <span style="font-weight:700; color:#3b82f6;">${label.x.toFixed(0)}</span>: ${escapeHTML(label.text)}
       </div>
       <button class="btn-del-label" style="background:none; border:none; color:#be123c; cursor:pointer; font-weight:700; padding:2px 4px;">✕</button>
     `;
@@ -543,11 +553,11 @@ function renderFileList() {
         </div>
         <div style="width:3px; height:24px; background:${file.color}; border-radius:2px;"></div>
         <div style="flex:1; min-width:0;">
-          <div class="file-name-edit" contenteditable="true" spellcheck="false" 
+          <div class="file-name-edit" contenteditable="plaintext-only" spellcheck="false"
                style="font-weight:600; font-size:12px; outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
           <div style="display: flex; align-items: center; gap: 6px; margin-top:2px;">
             <div style="font-size: 10px; color: var(--text-dim);">${file.raw.metadata.pointCount} pts</div>
-            ${file.isReproduced ? `<div style="font-size: 9px; background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; font-weight: 700; border: 1px solid #fde68a;">REPRODUCED [${file.protocolId?.slice(0, 8)}]</div>` : ''}
+            ${file.isReproduced ? `<div style="font-size: 9px; background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 3px; font-weight: 700; border: 1px solid #fde68a;">REPRODUCED [${escapeHTML(file.protocolId?.slice(0, 8))}]</div>` : ''}
           </div>
         </div>
       </div>
@@ -756,7 +766,7 @@ function renderPlots() {
     filesToRender.slice(0, limit).forEach((f) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'plot-item';
-      wrapper.innerHTML = `<div class="plot-item-title">${f.name}</div><div class="plot-container" style="flex:1; min-height:0;"></div>`;
+      wrapper.innerHTML = `<div class="plot-item-title">${escapeHTML(f.name)}</div><div class="plot-container" style="flex:1; min-height:0;"></div>`;
       container.appendChild(wrapper);
       const plotEl = wrapper.querySelector('.plot-container') as HTMLElement;
 
@@ -962,6 +972,7 @@ function attachManualBaselineListener(el: HTMLElement) {
 function addAnchor(x: number, y: number) {
   const active = state.files.get(state.activeFileId || '');
   if (active) {
+    if (active.anchors.length >= LIMITS.anchors) { showToast('Maximum 256 baseline anchors reached.'); return; }
     active.anchors.push({ x, y });
     reprocessActive();
   }
@@ -1117,7 +1128,7 @@ function renderDataGrid() {
   container.innerHTML = `
     <div class="panel-header" style="background: var(--bg-surface); padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
       <div style="display: flex; flex-direction: column;">
-        <span style="font-size: 11px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${file.name}</span>
+        <span style="font-size: 11px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHTML(file.name)}</span>
         <span style="font-size: 10px; color: var(--text-dim);">${file.peaks.length} peaks identified</span>
       </div>
       <button id="btn-close-data-grid" class="btn-icon" style="opacity: 0.6; padding: 4px;">✕</button>
@@ -2053,7 +2064,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
     URL.revokeObjectURL(url);
 
     showToast(`Protocol exported: ${filename}`);
-    trackEvent('protocol_exported', { file_name: activeFile.name, protocol_id: protocolId });
+    trackEvent('protocol_exported', {});
   } catch (err: any) {
     console.error('[Protocol] Export failed:', err);
     showToast(`Export failed: ${err.message}`);
@@ -2361,15 +2372,15 @@ async function promptProtocolImport(protocolJson: any) {
   let summaryHtml = `
     <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
       <div style="font-weight: 700; color: var(--text-primary);">Metadata</div>
-      <div>ID: <span style="font-family: var(--font-mono); font-size: 10px;">${meta.protocol_id}</span></div>
+      <div>ID: <span style="font-family: var(--font-mono); font-size: 10px;">${escapeHTML(meta.protocol_id)}</span></div>
       <div>Created: ${new Date(meta.created_at).toLocaleString()}</div>
-      <div>By: ${meta.created_by} (IR v${meta.instant_raman_version})</div>
+      <div>By: ${escapeHTML(meta.created_by)} (IR v${escapeHTML(meta.instant_raman_version)})</div>
     </div>
     <div style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
       <div style="font-weight: 700; color: var(--text-primary);">Source Data Record</div>
-      <div>Filename: ${source.original_filename}</div>
+      <div>Filename: ${escapeHTML(source.original_filename)}</div>
       <div>Range: ${source.wavenumber_range.min.toFixed(1)} - ${source.wavenumber_range.max.toFixed(1)} cm⁻¹</div>
-      <div>Hash: <span style="font-family: var(--font-mono); font-size: 10px;">${source.file_hash}</span></div>
+      <div>Hash: <span style="font-family: var(--font-mono); font-size: 10px;">${escapeHTML(source.file_hash)}</span></div>
     </div>
     <div style="margin-bottom: 12px;">
       <div style="font-weight: 700; color: var(--text-primary);">Processing Pipeline</div>
@@ -2378,9 +2389,9 @@ async function promptProtocolImport(protocolJson: any) {
 
   steps.forEach(step => {
     if (step.applied) {
-      summaryHtml += `<li><b>${step.step_name}:</b> ${JSON.stringify(step.parameters)}</li>`;
+      summaryHtml += `<li><b>${escapeHTML(step.step_name)}:</b> ${escapeHTML(JSON.stringify(step.parameters))}</li>`;
     } else {
-      summaryHtml += `<li style="opacity: 0.5;">${step.step_name}: (Not Applied)</li>`;
+      summaryHtml += `<li style="opacity: 0.5;">${escapeHTML(step.step_name)}: (Not Applied)</li>`;
     }
   });
 
@@ -2516,8 +2527,7 @@ async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
   updateUI();
   UI.text('system-status', 'REPRODUCED');
   showToast("Protocol applied successfully.");
-  trackEvent('protocol_applied_success', { 
-    protocol_id: protocol.protocol_metadata.protocol_id,
+  trackEvent('protocol_applied_success', {
     has_fitting: (protocol.fitting_record?.length || 0) > 0
   });
 }
@@ -2556,7 +2566,7 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
     const warning = diff > 1e-6 ? 'style="color: #be123c; font-weight: bold;"' : '';
     reportHtml += `
       <tr>
-        <td style="padding: 4px;">Peak ${of.peak_id} (${of.best_fit_model})</td>
+        <td style="padding: 4px;">Peak ${of.peak_id} (${escapeHTML(of.best_fit_model)})</td>
         <td style="padding: 4px;">${origVal.toFixed(6)}</td>
         <td style="padding: 4px;">${reproVal.toFixed(6)}</td>
         <td style="padding: 4px;" ${warning}>${diff.toExponential(2)}</td>
@@ -2579,12 +2589,10 @@ function generateVerificationReport(protocol: InstantRamanProtocol, file: Proces
   if (maxDiff > 1e-6) {
     trackEvent('numerical_verification_failed', { 
       max_deviation: maxDiff,
-      file_name: file.name
     });
   } else {
     trackEvent('numerical_verification_success', { 
       max_deviation: maxDiff,
-      file_name: file.name
     });
   }
 

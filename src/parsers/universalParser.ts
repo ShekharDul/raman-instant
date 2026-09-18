@@ -1,3 +1,5 @@
+import { LIMITS, checkFile } from '../security/limits.ts';
+import { boundedWorkbookArchive } from '../security/workbookArchive.ts';
 import * as XLSX from 'xlsx';
 import type { NormalizedSpectrum } from '../engine/types.ts';
 
@@ -21,10 +23,22 @@ export interface ImportResult { spectra: NormalizedSpectrum[]; warnings: string[
 /** CSV and Excel reader. Cell boundaries and explicit units survive every stage. */
 export class UniversalParser {
   static readCSV(text: string, delimiter: string): Cell[][] {
+    if (![',', ';', '\t', '|'].includes(delimiter)) throw new Error('Unsupported CSV delimiter.');
+    if (text.length > LIMITS.fileBytes) throw new Error('CSV text exceeds the import limit.');
     const rows: Cell[][] = [];
+    let cellCount = 0;
+    const pushCell = () => {
+      if (++cellCount > LIMITS.cells || row.length >= LIMITS.columns || cell.length > LIMITS.fieldChars) throw new Error('CSV exceeds cell, column, or field-length limits.');
+      row.push(cell);
+    };
+    const pushRow = () => {
+      if (rows.length >= LIMITS.rows) throw new Error('CSV exceeds the row limit.');
+      rows.push(row);
+    };
     let row: Cell[] = [], cell = '', quoted = false, closed = false;
     text = text.replace(/^\uFEFF/, '');
     for (let i = 0; i < text.length; i++) {
+      if (cell.length > LIMITS.fieldChars) throw new Error('CSV field exceeds 4096 characters.');
       const ch = text[i];
       if (quoted) {
         if (ch === '"') {
@@ -32,9 +46,9 @@ export class UniversalParser {
           else { quoted = false; closed = true; }
         } else cell += ch;
       } else if (ch === delimiter || ch === '\n' || ch === '\r') {
-        row.push(cell); cell = ''; closed = false;
+        pushCell(); cell = ''; closed = false;
         if (ch !== delimiter) {
-          rows.push(row); row = [];
+          pushRow(); row = [];
           if (ch === '\r' && text[i + 1] === '\n') i++;
         }
       } else if (ch === '"') {
@@ -46,7 +60,7 @@ export class UniversalParser {
       }
     }
     if (quoted) throw new Error('CSV contains an unclosed quoted field.');
-    if (cell || row.length || closed) { row.push(cell); rows.push(row); }
+    if (cell || row.length || closed) { pushCell(); pushRow(); }
     return rows;
   }
 
@@ -81,6 +95,7 @@ export class UniversalParser {
   }
 
   static async inspectFile(file: File): Promise<ImportDocument> {
+    checkFile(file);
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (!['csv', 'xlsx', 'xls'].includes(extension || '')) throw new Error('Please select a CSV or Excel (.xlsx, .xls) data file.');
     const buffer = await file.arrayBuffer();
@@ -94,19 +109,29 @@ export class UniversalParser {
       return { fileName: file.name, format: 'CSV', csvText: text, delimiter,
         tables: [{ name: 'CSV', rows: this.readCSV(text, delimiter), notes: [] }] };
     }
-    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, cellFormula: true });
+    let input: ArrayBuffer | Uint8Array = buffer;
+    if (extension === 'xlsx') input = await boundedWorkbookArchive(buffer);
+    else {
+      const signature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+      if (!signature.every((v, i) => new Uint8Array(buffer)[i] === v)) throw new Error('Invalid XLS file signature. Export a standard Excel workbook or CSV.');
+    }
+    const workbook = XLSX.read(input, { type: 'array', cellDates: true, cellFormula: true, cellHTML: false, cellStyles: false, bookVBA: false, sheetRows: LIMITS.rows + 1 });
+    if (workbook.SheetNames.length > LIMITS.sheets) throw new Error('Workbook exceeds the 16-sheet limit.');
+    let totalCells = 0;
     const tables: ImportTable[] = workbook.SheetNames.map(name => {
       const sheet = workbook.Sheets[name];
       const notes = ['All worksheet rows are included, including hidden and filtered rows.'];
       const rows: Cell[][] = [];
       if (!sheet['!ref']) return { name, rows, notes };
-      const range = XLSX.utils.decode_range(sheet['!ref']);
-      if ((range.e.r + 1) * (range.e.c + 1) > 5_000_000) throw new Error(`Worksheet ${name} is too large. Export just the data table.`);
+      const range = XLSX.utils.decode_range(sheet['!fullref'] || sheet['!ref']);
+      totalCells += (range.e.r + 1) * (range.e.c + 1);
+      if (!Number.isSafeInteger(totalCells) || range.e.r >= LIMITS.rows || range.e.c >= LIMITS.columns || totalCells > LIMITS.cells) throw new Error(`Worksheet ${name} is too large. Export just the data table.`);
       let formulas = false, missing = false;
       for (let r = 0; r <= range.e.r; r++) {
         const row: Cell[] = [];
         for (let c = 0; c <= range.e.c; c++) {
           const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+          if (typeof cell?.v === 'string' && cell.v.length > LIMITS.fieldChars) throw new Error('Workbook field exceeds 4096 characters.');
           if (cell?.f) { formulas = true; if (cell.v === undefined) missing = true; }
           row.push(!cell ? null : cell.t === 'n' ? cell.v : cell.t === 's' ? String(cell.v ?? '') :
             cell.t === 'd' ? '[date]' : cell.t === 'e' ? '[spreadsheet error]' : cell.f && cell.v === undefined ? '[formula without result]' : null);
@@ -157,13 +182,14 @@ export class UniversalParser {
 
   static importTable(document: ImportDocument, table: ImportTable, options: ImportOptions): ImportResult {
     const o = options;
-    if (!o.unit) throw new Error('Choose the X-axis units before importing.');
+    if (!['shift', 'nm'].includes(o.unit)) throw new Error('Choose the X-axis units before importing.');
     if (!Number.isInteger(o.startRow) || o.startRow < 0 || o.startRow >= table.rows.length) throw new Error('Choose a valid first data row.');
     const endRow = o.endRow ?? table.rows.length;
     if (!Number.isInteger(endRow) || endRow <= o.startRow || endRow > table.rows.length) throw new Error('Choose a valid last data row.');
     const width = Math.max(0, ...table.rows.slice(0, 100).map(r => r.length), ...table.rows.slice(o.startRow, o.startRow + 100).map(r => r.length));
     if (!Number.isInteger(o.xColumn) || o.xColumn < 0 || o.xColumn >= width || !o.yColumns.length || o.yColumns.some(c => !Number.isInteger(c) || c < 0 || c >= width || c === o.xColumn) || new Set(o.yColumns).size !== o.yColumns.length) throw new Error('Select one X column and distinct intensity columns.');
     if (o.unit === 'nm' && (!Number.isFinite(o.laserWavelength) || o.laserWavelength <= 0)) throw new Error('Enter the positive laser wavelength in nm.');
+    if (endRow - o.startRow > LIMITS.points || o.yColumns.length > LIMITS.series || (endRow - o.startRow) * o.yColumns.length > LIMITS.sessionPoints) throw new Error('Import at most 25,000 rows per spectrum, 16 spectra, and 200,000 points.');
     const warnings = [...table.notes];
     const spectra = o.yColumns.map(column => {
       const pairs: { x: number; y: number }[] = [];
@@ -176,6 +202,7 @@ export class UniversalParser {
         if (x === null || y === null || (o.unit === 'nm' && x <= 0)) { skipped.push(r + 1); continue; }
         if (o.unit === 'nm') x = (1 / o.laserWavelength - 1 / x) * 1e7;
         if (!Number.isFinite(x)) { skipped.push(r + 1); continue; }
+        if (Math.abs(x) > 1e7 || Math.abs(y) > 1e100) throw new Error('Data values exceed the supported numerical range.');
         pairs.push({ x, y });
       }
       const label = String(table.rows[o.headerRow]?.[column] || `Column ${column + 1}`);

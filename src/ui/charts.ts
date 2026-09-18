@@ -1,8 +1,11 @@
+import { escapeHTML } from '../security/text.ts';
+import Plotly from 'plotly.js-cartesian-dist-min';
+(window as any).Plotly = Plotly;
 /**
  * Instant Raman v2.0 — Chart Renderer
  * Paper-White theme for professional research figures.
  */
-declare const Plotly: any;
+
 
 // Swiss Modernist Palette
 const COLORS = {
@@ -257,7 +260,7 @@ export class ChartRenderer {
           x: d.raw.wavenumberData, 
           y: d.raw.intensityData.map((v) => v + offset),
           mode: 'lines', 
-          name: `Raw (${d.name})`,
+          name: `Raw (${escapeHTML(d.name)})`,
           line: { color: '#94a3b8', width: 1 },
           opacity: 0.4, 
           hoverinfo: 'skip',
@@ -270,7 +273,7 @@ export class ChartRenderer {
           x: d.baseline.wavenumberData, 
           y: d.baseline.intensityData.map((v) => v + offset),
           mode: 'lines', 
-          name: `Baseline (${d.name})`,
+          name: `Baseline (${escapeHTML(d.name)})`,
           line: { color: '#94a3b8', width: 1, dash: 'dot' },
           opacity: 0.5, 
           hoverinfo: 'skip',
@@ -281,7 +284,7 @@ export class ChartRenderer {
       traces.push({
         x: d.data.wavenumberData, 
         y: d.data.intensityData.map((v) => v + offset),
-        mode: 'lines', name: d.name, 
+        mode: 'lines', name: escapeHTML(d.name),
         line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
         hoverinfo: 'x+y+name'
       });
@@ -353,7 +356,7 @@ export class ChartRenderer {
         layout.annotations.push({
           x: d.data.wavenumberData[lastIdx],
           y: d.data.intensityData[lastIdx],
-          text: `<b>${d.name}</b>`,
+          text: `<b>${escapeHTML(d.name)}</b>`,
           showarrow: false,
           xanchor: 'left',
           yanchor: 'middle',
@@ -441,7 +444,7 @@ export class ChartRenderer {
         const lastY = d.data.intensityData[d.data.intensityData.length - 1];
         return {
           x: 1, y: lastY, xref: 'paper', yref: 'y',
-          text: `<b>${d.name}</b>`,
+          text: `<b>${escapeHTML(d.name)}</b>`,
           showarrow: false,
           xanchor: 'left',
           font: { size: 12, color: d.color || COLORS.main },
@@ -478,10 +481,10 @@ export class ChartRenderer {
       {
         x: x, y: lowerSD, mode: 'lines', line: { width: 0 }, 
         fill: 'tonexty', fillcolor: `rgba(${this.hexToRgb(color)}, 0.15)`,
-        name: `±1 SD (${name})`, hoverinfo: 'skip'
+        name: `±1 SD (${escapeHTML(name)})`, hoverinfo: 'skip'
       },
       {
-        x: x, y: meanY, mode: 'lines', name: `Mean (${name})`, 
+        x: x, y: meanY, mode: 'lines', name: `Mean (${escapeHTML(name)})`,
         line: { color: color, width: 3 },
         hoverinfo: 'x+y+name'
       }
@@ -891,7 +894,7 @@ export class ChartRenderer {
             });
           }
           layout.annotations.push({
-            text: `<b>(${panelLabel}) ${f.name}</b>`, font: { size: 18 },
+            text: `<b>(${panelLabel}) ${escapeHTML(f.name)}</b>`, font: { size: 18 },
             xref: `x${axisIdx} domain`, yref: `y${axisIdx} domain`,
             x: 0, y: 1.1, showarrow: false, xanchor: 'left'
           });
@@ -973,7 +976,7 @@ export class ChartRenderer {
     return customLabels.map(l => ({
       x: l.x,
       y: l.y,
-      text: `<b>${l.text}</b>`,
+      text: `<b>${escapeHTML(l.text)}</b>`,
       showarrow: true,
       arrowhead: 2,
       arrowsize: 1,

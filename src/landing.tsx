@@ -134,7 +134,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation, onTrySample }) =>
           </details>
           <details>
             <summary>Data handling</summary>
-            <p>Spectrum parsing and analysis run in your browser. The site uses Google Analytics for usage events; these events can include uploaded file names. External scripts and fonts are also loaded.</p>
+            <p>Spectrum parsing and analysis run in your browser. The site uses Google Analytics for usage events; uploaded file names and protocol identifiers are excluded from these events. External analytics and fonts are loaded.</p>
           </details>
           <a className="research-text-link research-docs-link" href={`${import.meta.env.BASE_URL}docs.html`}>Read the documentation</a>
         </section>

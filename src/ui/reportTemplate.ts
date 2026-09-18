@@ -1,3 +1,4 @@
+import { escapeHTML } from '../security/text.ts';
 export const REPORT_TEMPLATE = `
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +7,6 @@ export const REPORT_TEMPLATE = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instant Raman — Analysis Portfolio</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         
         :root {
             --bg: #ffffff;
@@ -254,6 +254,7 @@ export const REPORT_TEMPLATE = `
 
     <script>
         (function() {
+            const escapeHTML = ${escapeHTML.toString()};
             try {
                 const data = JSON.parse(document.getElementById('raman-data').textContent);
                 document.getElementById('report-date').textContent = new Date(data.timestamp).toLocaleString();
@@ -262,7 +263,7 @@ export const REPORT_TEMPLATE = `
                 const summary = data.sessionSummary;
                 document.getElementById('session-details').innerHTML = \`
                     <p><strong>Total Files:</strong> \${summary.totalFiles}</p>
-                    <p><strong>Source Filenames:</strong> \${summary.filenames.join(', ')}</p>
+                    <p><strong>Source Filenames:</strong> \${escapeHTML(summary.filenames.join(', '))}</p>
                 \`;
 
                 // 2. Render Snapshots
@@ -270,7 +271,8 @@ export const REPORT_TEMPLATE = `
                 if (!data.snapshots || data.snapshots.length === 0) {
                     main.innerHTML = '<div style="padding: 40px; text-align: center; opacity: 0.5;">No analysis snapshots captured. Add analysis blocks to your portfolio to see them here.</div>';
                 }
-                data.snapshots.forEach((snap) => {
+                data.snapshots.forEach((snap, snapshotIndex) => {
+                    snap.id = String(snapshotIndex);
                     const block = document.createElement('section');
                     block.className = 'snapshot-block';
                     
@@ -279,15 +281,15 @@ export const REPORT_TEMPLATE = `
                         // STANDARD LAYOUT
                         block.innerHTML = \`
                             <div class="snapshot-header">
-                                <h2 class="snapshot-title">\${snap.title}</h2>
+                                <h2 class="snapshot-title">\${escapeHTML(snap.title)}</h2>
                                 <div class="snapshot-meta">
-                                    <span>TYPE: \${snap.type.toUpperCase()}</span>
+                                    <span>TYPE: \${escapeHTML(snap.type.toUpperCase())}</span>
                                     <span>TIME: \${new Date(snap.timestamp).toLocaleTimeString()}</span>
                                     <span>SNIP: \${snap.settings.snip}</span>
-                                    <span>NORM: \${snap.settings.norm.toUpperCase()}</span>
+                                    <span>NORM: \${escapeHTML(snap.settings.norm.toUpperCase())}</span>
                                 </div>
                             </div>
-                            \${snap.narrative ? \`<div class="scientific-narrative">\${snap.narrative}</div>\` : ''}
+                            \${snap.narrative ? \`<div class="scientific-narrative">\${escapeHTML(snap.narrative)}</div>\` : ''}
                             <div id="\${plotId}" class="plot-container"></div>
                             <div class="snapshot-table-wrap">
                                 <table id="table-\${snap.id}">
@@ -383,11 +385,11 @@ export const REPORT_TEMPLATE = `
                         ratioSummary.innerHTML = \`
                             <div class="ratio-item">
                                 <span class="ratio-label">Intensity Ratio I(\${snap.ratio.p1.x.toFixed(0)})/I(\${snap.ratio.p2.x.toFixed(0)})</span>
-                                <span class="ratio-value">\${snap.ratio.intRatio}</span>
+                                <span class="ratio-value">\${escapeHTML(snap.ratio.intRatio)}</span>
                             </div>
                             <div class="ratio-item">
                                 <span class="ratio-label">Area Ratio A1/A2</span>
-                                <span class="ratio-value">\${snap.ratio.areaRatio}</span>
+                                <span class="ratio-value">\${escapeHTML(snap.ratio.areaRatio)}</span>
                             </div>
                         \`;
                         tableWrap.insertBefore(ratioSummary, tableWrap.firstChild);

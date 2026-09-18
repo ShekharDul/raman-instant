@@ -21,7 +21,7 @@ Keep the original data file with its .irp protocol. Protocols do not embed raw d
 
 ## Development
 
-Run npm install, then npm run dev. Run npm run build for the production build. The app uses TypeScript, React for the landing page, Vite, Plotly, SheetJS, and numerical fitting libraries. Processing and exports run in the browser; plots currently load Plotly from a CDN.
+Run npm ci, then npm run dev. Run npm test and npm run build for validation, then npm run test:browser for production-browser security checks. The app uses TypeScript, React for the landing page, Vite, Plotly, SheetJS, and numerical fitting libraries. Processing and exports run in the browser; Plotly is bundled locally. See [SECURITY.md](SECURITY.md) for enforced import limits and security boundaries.
 
 ## License and author
 

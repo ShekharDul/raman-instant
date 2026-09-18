@@ -7,12 +7,7 @@
 
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XR31BLTDQF"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-XR31BLTDQF');
-  </script>
+  <script type="module" src="./src/analytics.ts"></script>
 
   <!-- Primary Meta Tags -->
   <title>Instant Raman — Free Online Raman Peak Fitting & Deconvolution Tool</title>
@@ -80,7 +75,6 @@
   }
   </script>
 
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
   <!-- Critical CSS to prevent Flash of Unrendered Content (FOUC) -->
   <style>
     #app { display: none !important; }
@@ -88,13 +82,12 @@
     body:not(.workstation-active) .modal-overlay { display: none !important; }
     #landing-root { display: block; }
     /* Page-specific overrides only — design system lives in index.css */
-    #heartbeat { height: 2px; width: 100%; position: fixed; top: 0; left: 0; z-index: 9999; }
+    #heartbeat { background: #0d9488; height: 2px; width: 100%; position: fixed; top: 0; left: 0; z-index: 9999; }
   </style>
 </head>
 
 <body>
   <div id="heartbeat"></div>
-  <script>document.getElementById('heartbeat').style.background = '#0d9488';</script>
 
   <!-- Static SEO content: visible to crawlers and in noscript, hidden once React landing hydrates -->
   <div id="seo-content">
