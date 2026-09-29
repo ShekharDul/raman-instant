@@ -99,8 +99,22 @@ await test('separate tables and explicit row bounds', async () => {
   options.startRow=5; options.endRow=8;
   assert.deepEqual(P.importTable(doc,table,options).spectra[0].wavenumberData,[600,601,602]);
 });
+await test('text files support delimited tables and instrument whitespace exports', async () => {
+  for (const separator of ['\t', ',', ';', '|', '  ', ' \t ']) {
+    const text = ['Instrument export', ...['500', '501', '502'].map((x, i) => `${x}${separator}${[0, -2, 1e3][i]}`)].join('\r\n');
+    const doc = await P.inspectFile(new File([text], 'spectrum.TXT', { type: 'text/plain' }));
+    const table = doc.tables[0], options = P.suggest(table);
+    options.unit = 'shift';
+    const result = P.importTable(doc, table, options);
+    assert.equal(doc.format, 'TXT');
+    assert.deepEqual(result.spectra[0].wavenumberData, [500, 501, 502]);
+    assert.deepEqual(result.spectra[0].intensityData, [0, -2, 1000]);
+  }
+  assert.deepEqual(P.readCSV('  500  0  \r\n\t501 \t -2\t\n 502 1e3  ', 'whitespace'), [['500','0'],['501','-2'],['502','1e3']]);
+  assert.deepEqual(P.readCSV('500\t\t10', '\t'), [['500','','10']]);
+});
 await test('unsupported formats and empty files fail clearly', async () => {
-  for(const ext of ['txt','dx','jdx','dpt','xml','wdf','wip']) await assert.rejects(()=>P.inspectFile(new File(['500,10'],`file.${ext}`)),/CSV or Excel/);
+  for(const ext of ['dx','jdx','dpt','xml','wdf','wip']) await assert.rejects(()=>P.inspectFile(new File(['500,10'],`file.${ext}`)),/CSV or Excel/);
   const {doc,table,options}=await load(''); options.unit='shift';
   assert.throws(()=>P.importTable(doc,table,options),/data row/);
 });

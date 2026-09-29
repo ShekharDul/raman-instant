@@ -25,7 +25,7 @@ export function previewImport(documentData: ImportDocument): Promise<ImportResul
       const input = document.createElement('input'); input.type = 'number'; input.min = min; input.step = '1'; return field(label, input);
     }
     const sheet = select('Worksheet', documentData.tables.map((t, i) => [String(i), t.name]));
-    const delimiter = select('CSV separator', [[',', 'Comma'], [';', 'Semicolon'], ['\t', 'Tab'], ['|', 'Pipe']]);
+    const delimiter = select('Text separator', [[',', 'Comma'], [';', 'Semicolon'], ['\t', 'Tab'], ['|', 'Pipe'], ['whitespace', 'Spaces / tabs']]);
     delimiter.value = documentData.delimiter || ','; delimiter.disabled = documentData.csvText === undefined;
     const header = number('Heading row (0 = none)', '0');
     const start = number('First data row', '1');

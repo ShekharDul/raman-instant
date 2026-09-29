@@ -23,7 +23,7 @@ export interface ImportResult { spectra: NormalizedSpectrum[]; warnings: string[
 /** CSV and Excel reader. Cell boundaries and explicit units survive every stage. */
 export class UniversalParser {
   static readCSV(text: string, delimiter: string): Cell[][] {
-    if (![',', ';', '\t', '|'].includes(delimiter)) throw new Error('Unsupported CSV delimiter.');
+    if (![',', ';', '\t', '|', 'whitespace'].includes(delimiter)) throw new Error('Unsupported text delimiter.');
     if (text.length > LIMITS.fileBytes) throw new Error('CSV text exceeds the import limit.');
     const rows: Cell[][] = [];
     let cellCount = 0;
@@ -40,13 +40,20 @@ export class UniversalParser {
     for (let i = 0; i < text.length; i++) {
       if (cell.length > LIMITS.fieldChars) throw new Error('CSV field exceeds 4096 characters.');
       const ch = text[i];
+      // Instrument text exports often separate values with runs of spaces/tabs.
+      // Keep ordinary CSV/tab parsing unchanged so empty cells retain their positions.
+      if (!quoted && delimiter === 'whitespace' && (ch === ' ' || ch === '\t')) {
+        if (cell || closed) { pushCell(); cell = ''; closed = false; }
+        continue;
+      }
       if (quoted) {
         if (ch === '"') {
           if (text[i + 1] === '"') { cell += '"'; i++; }
           else { quoted = false; closed = true; }
         } else cell += ch;
       } else if (ch === delimiter || ch === '\n' || ch === '\r') {
-        pushCell(); cell = ''; closed = false;
+        if (delimiter !== 'whitespace' || cell || closed || !row.length) pushCell();
+        cell = ''; closed = false;
         if (ch !== delimiter) {
           pushRow(); row = [];
           if (ch === '\r' && text[i + 1] === '\n') i++;
@@ -60,13 +67,16 @@ export class UniversalParser {
       }
     }
     if (quoted) throw new Error('CSV contains an unclosed quoted field.');
-    if (cell || row.length || closed) { pushCell(); pushRow(); }
+    if (cell || row.length || closed) {
+      if (delimiter !== 'whitespace' || cell || closed) pushCell();
+      pushRow();
+    }
     return rows;
   }
 
-  static detectDelimiter(text: string): string {
+  static detectDelimiter(text: string, allowWhitespace = false): string {
     let best = ',', bestScore = -1;
-    for (const delimiter of [',', ';', '\t', '|']) {
+    for (const delimiter of [',', ';', '\t', '|', ...(allowWhitespace ? ['whitespace'] : [])]) {
       try {
         const rows = this.readCSV(text, delimiter).filter(r => r.some(c => String(c).trim())).slice(0, 100);
         const counts = new Map<number, number>();
@@ -97,17 +107,18 @@ export class UniversalParser {
   static async inspectFile(file: File): Promise<ImportDocument> {
     checkFile(file);
     const extension = file.name.split('.').pop()?.toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(extension || '')) throw new Error('Please select a CSV or Excel (.xlsx, .xls) data file.');
+    if (!['txt', 'csv', 'xlsx', 'xls'].includes(extension || '')) throw new Error('Please select a text (.txt), CSV or Excel (.xlsx, .xls) data file.');
     const buffer = await file.arrayBuffer();
-    if (extension === 'csv') {
+    if (extension === 'csv' || extension === 'txt') {
       const bytes = new Uint8Array(buffer);
       const encoding = bytes[0] === 255 && bytes[1] === 254 ? 'utf-16le' : bytes[0] === 254 && bytes[1] === 255 ? 'utf-16be' : 'utf-8';
       let text = new TextDecoder(encoding, { fatal: true }).decode(buffer).replace(/^\uFEFF/, '');
       const directive = text.match(/^sep=([,;\t|])\r?\n/i);
       if (directive) text = text.slice(directive[0].length);
-      const delimiter = directive?.[1] || this.detectDelimiter(text);
-      return { fileName: file.name, format: 'CSV', csvText: text, delimiter,
-        tables: [{ name: 'CSV', rows: this.readCSV(text, delimiter), notes: [] }] };
+      const delimiter = directive?.[1] || this.detectDelimiter(text, extension === 'txt');
+      const format = extension.toUpperCase();
+      return { fileName: file.name, format, csvText: text, delimiter,
+        tables: [{ name: format, rows: this.readCSV(text, delimiter), notes: [] }] };
     }
     let input: ArrayBuffer | Uint8Array = buffer;
     if (extension === 'xlsx') input = await boundedWorkbookArchive(buffer);

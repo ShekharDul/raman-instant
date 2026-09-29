@@ -10,7 +10,7 @@ export const LIMITS = Object.freeze({
 export function checkFile(file: Pick<File, 'name' | 'size'>): void {
   const protocol = /\.(irp|json)$/i.test(file.name);
   if (file.name.length > 255) throw new Error('File name exceeds 255 characters.');
-  if (!/\.(csv|xlsx|xls|irp|json)$/i.test(file.name)) throw new Error('Please select a CSV or Excel (.xlsx, .xls) data file, or an IRP protocol.');
+  if (!/\.(txt|csv|xlsx|xls|irp|json)$/i.test(file.name)) throw new Error('Please select a text (.txt), CSV or Excel (.xlsx, .xls) data file, or an IRP protocol.');
   if (file.size > (protocol ? LIMITS.protocolBytes : LIMITS.fileBytes)) throw new Error(protocol ? 'Protocol exceeds the 1 MiB limit.' : 'Data file exceeds the 10 MiB limit.');
 }
 
