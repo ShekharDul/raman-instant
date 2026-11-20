@@ -49,6 +49,9 @@ Select a smaller data range or export a smaller table when an import is rejected
 - Analytics events exclude filenames and protocol identifiers. The site still
   uses Google Analytics and external fonts; this is not a claim of anonymous or
   network-free site operation.
+- The most recent workspace, including raw spectra, fits and report snapshots,
+  is stored in this browser using IndexedDB. Clear workspace removes that saved
+  data. Writes detect changes from another tab and report a conflict.
 
 ## Dependencies and verification
 

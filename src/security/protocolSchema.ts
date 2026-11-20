@@ -25,14 +25,16 @@ const coordinate = number(-1e7, 1e7);
 const count = number(0, LIMITS.points, true);
 const hash = text(64, /^[a-f0-9]{64}$/);
 const maybeNumber = optional(nullable(number()));
+const sourceFormat = choices('TXT', 'CSV', 'XLSX', 'XLS');
+const smoothingWindow = choices(1, ...Array.from({ length: 25 }, (_, i) => 3 + 2 * i));
 const settings = object({
   headerRow: number(-1, LIMITS.rows - 1, true), startRow: number(0, LIMITS.rows - 1, true), endRow: number(1, LIMITS.rows, true),
   xColumn: number(0, LIMITS.columns - 1, true), yColumn: number(0, LIMITS.columns - 1, true),
   unit: choices('shift', 'nm'), decimal: choices('.', ','), laserWavelength: nullable(number(0.000001, 1e7)),
-  duplicates: choices('keep', 'mean', 'error'), delimiter: choices(',', ';', '\t', '|', null),
+  duplicates: choices('keep', 'mean', 'error'), delimiter: choices(',', ';', '\t', '|', 'whitespace', null),
 });
 const metadata = object({
-  format: choices('CSV', 'XLSX', 'XLS'), fileName: text(255), pointCount: count,
+  format: sourceFormat, fileName: text(255), pointCount: count,
   laserWavelength: optional(number(0.000001, 1e7)), sheetName: optional(text()), seriesName: optional(text()),
   importSettings: optional(settings), importWarnings: optional(array(text(8192), 100)),
 });
@@ -41,7 +43,7 @@ const parameters: Check[] = [
     spikes_detected: optional(nullable(count)), spikes_removed: optional(nullable(count)), spike_positions: optional(nullable(array(coordinate, LIMITS.points))) }),
   object({ algorithm: choices('SNIP', 'linear_anchor_interpolation'), iterations: nullable(number(1, LIMITS.iterations, true)), mode: choices('manual', 'auto', null),
     anchors: optional(array(object({ x: coordinate, y: number() }), LIMITS.anchors)),
-    smoothing: optional(object({ algorithm: choices('moving_average'), window: choices(9) })), clip_negative_corrected: optional(choices(true)) }),
+    smoothing: optional(object({ algorithm: choices('moving_average'), window: smoothingWindow })), clip_negative_corrected: optional(bool) }),
   object({ method: choices('max_intensity', 'total_area', 'reference_peak', 'none'), reference_wavenumber: nullable(coordinate) }),
   object({ method: choices('parabolic_interpolation'), minimum_height_threshold: nullable(number(0, 100)),
     minimum_separation: optional(nullable(number(0, 1e7))), peaks_detected: optional(nullable(count)), peak_positions: optional(nullable(array(coordinate, LIMITS.points))) }),
@@ -60,12 +62,12 @@ const integration = object({
 });
 const schema = object({
   protocol_metadata: object({
-    instant_raman_version: text(32, /^v?\d+\.\d+\.\d+$/), protocol_version: choices('1.0.0', '1.1.0'),
+    instant_raman_version: text(32, /^v?\d+\.\d+\.\d+$/), protocol_version: choices('1.0.0', '1.1.0', '1.2.0'),
     protocol_id: text(64, /^(?:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|irp-[a-z0-9]{1,32})$/i),
     created_at: (v, p) => { text(64)(v, p); if (!Number.isFinite(Date.parse(v))) invalid(p); }, created_by: text(255),
   }),
   source_data_record: object({
-    original_filename: text(255), file_format_detected: choices('CSV', 'XLSX', 'XLS'),
+    original_filename: text(255), file_format_detected: sourceFormat,
     wavenumber_range: object({ min: coordinate, max: coordinate }), wavenumber_spacing: number(0, 2e7),
     number_of_data_points: number(3, LIMITS.points, true), file_hash: hash, spectrum_hash: optional(hash), import_metadata: optional(metadata),
   }),
@@ -85,6 +87,10 @@ export function validateProtocol(value: unknown): void {
   if (source.wavenumber_range.min >= source.wavenumber_range.max) invalid('wavenumber_range');
   const baseline = v.processing_steps[1].parameters;
   if (baseline) {
+    if (v.protocol_metadata.protocol_version !== '1.2.0' &&
+      ((baseline.smoothing && baseline.smoothing.window !== 9) || baseline.clip_negative_corrected === false)) {
+      invalid('baseline smoothing/clipping for legacy protocol');
+    }
     if (baseline.algorithm === 'SNIP' && (baseline.mode === 'manual' || baseline.iterations === null)) invalid('baseline iterations/mode');
     if (baseline.algorithm === 'linear_anchor_interpolation' && baseline.mode !== 'manual') invalid('baseline mode');
   }
@@ -92,6 +98,12 @@ export function validateProtocol(value: unknown): void {
   if (norm.applied && norm.parameters.method === 'reference_peak' && norm.parameters.reference_wavenumber === null) invalid('reference_wavenumber');
   for (const record of [...(v.fitting_record ?? []), ...(v.integration_record ?? [])]) if (record.boundary_left >= record.boundary_right) invalid('record boundaries');
   if (v.fitting_record?.some((r: any) => r.best_fit_model !== v.fitting_record[0].best_fit_model)) invalid('mixed fitting models');
+  if (v.fitting_record?.some((r: any) => r.boundary_left !== v.fitting_record[0].boundary_left ||
+    r.boundary_right !== v.fitting_record[0].boundary_right ||
+    r.boundary_left < source.wavenumber_range.min || r.boundary_right > source.wavenumber_range.max ||
+    [r.nominal_center, r.fitted_center].some(center => center != null && (center < r.boundary_left || center > r.boundary_right)))) {
+    invalid('fit region outside source spectrum or inconsistent across components');
+  }
   const s = source.import_metadata?.importSettings;
   if (s && (s.startRow >= s.endRow || s.headerRow >= s.startRow || s.xColumn === s.yColumn)) invalid('importSettings');
 }

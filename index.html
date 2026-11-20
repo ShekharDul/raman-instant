@@ -226,6 +226,16 @@
                 </table>
               </div>
             </div>
+            <div class="ctrl-group">
+              <label class="ctrl-label" for="select-smoothing">Moving average (points)</label>
+              <select id="select-smoothing">
+                <option value="1">Off</option>
+                <option value="9" selected>9</option>
+              </select>
+              <label class="ctrl-label"><span>Clip negative corrected values to zero</span>
+                <input id="check-clip-negative" type="checkbox" checked>
+              </label>
+            </div>
             <div id="stack-ctrl-group" class="ctrl-group hidden">
               <div class="ctrl-label"><span>Vertical offset</span><span class="ctrl-value" id="val-stack">0.0</span>
               </div>
@@ -261,7 +271,8 @@
               </select>
               <div id="norm-point-info" class="hidden"
                 style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);">
-                Click on the plot to select normalization reference.
+                <label for="input-norm-target">Reference shift (cm⁻¹)</label>
+                <input id="input-norm-target" type="number" step="any" min="-10000000" max="10000000">
                 <div id="norm-target-display" style="font-weight: 600; color: var(--accent); margin-top: 4px;">Ref: --- cm⁻¹
                 </div>
               </div>
@@ -302,6 +313,7 @@
                 <option value="voigt">Pseudo-Voigt (4-param)</option>
               </select>
             </div>
+            <button id="btn-view-fit" class="btn-small hidden" type="button">View last fit</button>
             <button id="btn-exit-fit" class="btn-small hidden"
               style="width: 100%; border: 1px solid var(--accent); color: var(--accent);">Exit fitting
               mode</button>
@@ -336,7 +348,7 @@
           <div class="instrument-control">
             <span class="control-label">Show raw spectrum</span>
             <div class="toggle-slider-wrap">
-              <input type="checkbox" id="check-show-unprocessed" class="toggle-input" checked>
+              <input type="checkbox" id="check-show-unprocessed" class="toggle-input">
               <label for="check-show-unprocessed" class="toggle-label"></label>
             </div>
           </div>
@@ -555,7 +567,10 @@
 
     <footer class="footer">
       <div id="footer-stats">Files: 0 · Active: 0</div>
-      <div></div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="workspace-save-status" role="status"></span>
+        <button id="btn-clear-workspace" type="button" class="btn-small" disabled>Clear workspace</button>
+      </div>
     </footer>
   </div>
 

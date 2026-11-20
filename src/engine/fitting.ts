@@ -2,7 +2,7 @@
  * Instant Raman v2.1 — Advanced Fitting Engine
  * Implements Levenberg-Marquardt (LM) non-linear optimization for spectral deconvolution.
  * Supports Lorentzian, Gaussian, and pseudo-Voigt profiles.
- * Includes rigorous SVD pseudo-inverse for statistical uncertainty quantification.
+ * Estimates local statistical standard errors using an SVD pseudo-inverse.
  */
 
 import { levenbergMarquardt as lm } from 'ml-levenberg-marquardt';
@@ -188,20 +188,9 @@ export class FittingEngine {
     const V = svd.rightSingularVectors;
     
     const singularValues = svd.diagonal;
-    let maxS = 0;
-    let minS = Infinity;
-    
-    for (let i = 0; i < singularValues.length; i++) {
-      const s = Math.abs(singularValues[i]);
-      if (s > maxS) maxS = s;
-      if (s > 0 && s < minS) minS = s;
-    }
-    
-    if (minS === Infinity) minS = 0;
-    
-    // Check Condition Number BEFORE thresholding
-    const conditionNumber = maxS / minS;
-    if (conditionNumber > 1e10 || isNaN(conditionNumber)) {
+    const maxS = Math.max(...singularValues);
+    const minS = Math.min(...singularValues);
+    if (!(minS > 1e-10 * maxS)) {
       return { errors: null, status: 'ill_conditioned' };
     }
 
@@ -238,112 +227,120 @@ export class FittingEngine {
     return { errors, status: 'reliable' };
   }
 
-  static fit(x: number[], y: number[], initialParams: number[], type: 'lorentzian' | 'gaussian' | 'voigt'): FitResult {
-    const paramsPerPeak = type === 'voigt' ? 4 : 3;
-    const numPeaks = initialParams.length / paramsPerPeak;
+  static fit(x: number[], y: number[], initialParams: number[], type: PeakFit['type']): FitResult {
+    const stride = type === 'voigt' ? 4 : 3;
+    const peakCount = initialParams.length / stride;
+    let iterations = 0;
+    const failure = (errorMsg: string): FitResult => ({
+      peaks: [], r2: null, reducedChi2: null, residuals: [], fitX: [], fitY: [],
+      iterations, convergence_status: 'failed', statistical_uncertainty_status: null, errorMsg
+    });
+    if (peakCount < 1 || !Number.isInteger(peakCount) || x.length !== y.length || x.length <= initialParams.length) {
+      return failure('Select a region with more data points than fitted parameters.');
+    }
+    if (![x, y, initialParams].every(values => values.every(Number.isFinite))) {
+      return failure('Fitting requires finite data and estimates.');
+    }
+    const xMin = Math.min(...x);
+    const xSpan = Math.max(...x) - xMin;
+    const yScale = y.reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+    if (!(xSpan > 0) || !(Math.max(...y) > 0) || y.every(value => value === y[0])) {
+      return failure('The selected region needs a varying signal with a positive peak.');
+    }
 
-    const model = (t: any) => (xVal: number) => {
-      let sum = 0;
-      for (let i = 0; i < numPeaks; i++) {
-        const idx = i * paramsPerPeak;
-        const a = t[idx];
-        const c = t[idx + 1];
-        const w = t[idx + 2];
-        if (type === 'voigt') {
-          const eta = t[idx + 3];
-          sum += this.voigt(xVal, a, c, w, eta);
-        } else if (type === 'gaussian') {
-          sum += this.gaussian(xVal, a, c, w);
-        } else {
-          sum += this.lorentzian(xVal, a, c, w);
-        }
-      }
-      return sum;
+    const profile = (value: number, parameters: number[], offset: number) => {
+      const a = parameters[offset], c = parameters[offset + 1], w = parameters[offset + 2];
+      return type === 'voigt'
+        ? this.voigt(value, a, c, w, parameters[offset + 3])
+        : this[type](value, a, c, w);
+    };
+    const model = (parameters: number[]) => (value: number) => {
+      let total = 0;
+      for (let i = 0; i < parameters.length; i += stride) total += profile(value, parameters, i);
+      return total;
     };
 
-    const minValues = [];
-    const maxValues = [];
-    for (let i = 0; i < numPeaks; i++) {
-      minValues.push(0, Math.min(...x), 0);
-      maxValues.push(Infinity, Math.max(...x), Infinity);
+    // Work in scaled units so solver tolerances apply across instrument gains and ranges.
+    const scaledX = x.map(value => (value - xMin) / xSpan);
+    const scaledY = y.map(value => value / yScale);
+    const minValues: number[] = [];
+    const maxValues: number[] = [];
+    const initialValues: number[] = [];
+    for (let i = 0; i < initialParams.length; i += stride) {
+      minValues.push(0, 0, 1e-6 / xSpan);
+      maxValues.push(Infinity, 1, 1e7 / xSpan);
+      initialValues.push(initialParams[i] / yScale, (initialParams[i + 1] - xMin) / xSpan, initialParams[i + 2] / xSpan);
       if (type === 'voigt') {
         minValues.push(0);
         maxValues.push(1);
+        initialValues.push(initialParams[i + 3]);
       }
     }
 
-    const options = {
-      damping: 1.5,
-      initialValues: initialParams,
-      maxIterations: 100,
-      errorTolerance: 1e-6,
-      minValues,
-      maxValues
-    };
-
     try {
-      const result = lm({ x, y }, model, options);
-      const fittedParams = result.parameterValues;
-      const fitY = x.map(xv => model(fittedParams)(xv));
-      const residuals = y.map((yv, i) => yv - fitY[i]);
+      const result = lm({ x: scaledX, y: scaledY }, model, {
+        damping: 0.01,
+        initialValues: initialValues.map((value, i) => Math.min(maxValues[i], Math.max(minValues[i], value))),
+        maxIterations: 100, errorTolerance: 1e-12, gradientDifference: 1e-5, centralDifference: true,
+        minValues, maxValues
+      });
+      iterations = result.iterations;
+      const fitted = result.parameterValues;
+      const scaledFit = scaledX.map(model(fitted));
+      const scaledResiduals = scaledY.map((value, i) => value - scaledFit[i]);
+      const ssRes = scaledResiduals.reduce((sum, value) => sum + value ** 2, 0);
+      if (!Number.isFinite(ssRes) || !fitted.every(Number.isFinite)) return failure('The solver returned a non-finite result.');
+      if (fitted.some((value, i) => i % stride === 2 && value <= minValues[i] * (1 + 1e-6))) {
+        return failure('A fitted width collapsed to the numerical lower limit. Select a different region or peak model.');
+      }
+      const J = this.calculateJacobian(scaledX, fitted, model);
 
-      // Calculate Rigorous Statistical Errors via SVD
-      const J = this.calculateJacobian(x, fittedParams, model);
-      const errorResult = this.calculateErrorsSVD(J, residuals, fittedParams.length);
-      
+      // Noisy fits retain residuals. Test the gradient along feasible parameter
+      // directions instead of treating a solver return or iteration cap as success.
+      const residualNorm = Math.sqrt(ssRes);
+      if (residualNorm > 1e-6 && fitted.some((value, column) => {
+        let gradient = 0;
+        let normSquared = 0;
+        for (let row = 0; row < scaledResiduals.length; row++) {
+          const derivative = J.get(row, column);
+          gradient += derivative * scaledResiduals[row];
+          normSquared += derivative ** 2;
+        }
+        if ((value <= minValues[column] && gradient <= 0) || (value >= maxValues[column] && gradient >= 0)) return false;
+        return !(normSquared > 0) || !Number.isFinite(gradient) ||
+          Math.abs(gradient) > 1e-4 * residualNorm * Math.sqrt(normSquared);
+      })) return failure('The solver stopped before converging. Try a different region or peak model.');
+
+      const fitY = scaledFit.map(value => value * yScale);
+      const residuals = y.map((value, i) => value - fitY[i]);
+      if (!fitY.every(Number.isFinite) || !residuals.every(Number.isFinite)) return failure('The fitted signal exceeds the supported numerical range.');
+
+      const uncertainty = this.calculateErrorsSVD(J, scaledResiduals, fitted.length);
+      const e = uncertainty.errors;
       const peaks: PeakFit[] = [];
-      for (let i = 0; i < numPeaks; i++) {
-        const idx = i * paramsPerPeak;
-        const e = errorResult.errors;
-        
+      for (let i = 0; i < fitted.length; i += stride) {
         peaks.push({
-          amplitude: { value: fittedParams[idx], error: e ? e[idx] : null },
-          center: { value: fittedParams[idx + 1], error: e ? e[idx + 1] : null },
-          fwhm: { value: fittedParams[idx + 2], error: e ? e[idx + 2] : null },
-          shape: type === 'voigt' ? { value: fittedParams[idx + 3], error: e ? e[idx + 3] : null } : undefined,
+          amplitude: { value: fitted[i] * yScale, error: e ? e[i] * yScale : null },
+          center: { value: Math.min(xMin + xSpan, Math.max(xMin, xMin + fitted[i + 1] * xSpan)), error: e ? e[i + 1] * xSpan : null },
+          fwhm: { value: Math.max(1e-6, Math.min(1e7, fitted[i + 2] * xSpan)), error: e ? e[i + 2] * xSpan : null },
+          shape: type === 'voigt' ? { value: fitted[i + 3], error: e ? e[i + 3] : null } : undefined,
           type,
-          yFit: x.map(xv => {
-            const a = fittedParams[idx];
-            const c = fittedParams[idx + 1];
-            const w = fittedParams[idx + 2];
-            if (type === 'voigt') return this.voigt(xv, a, c, w, fittedParams[idx + 3]);
-            if (type === 'gaussian') return this.gaussian(xv, a, c, w);
-            return this.lorentzian(xv, a, c, w);
-          })
+          yFit: scaledX.map(value => profile(value, fitted, i) * yScale)
         });
       }
 
-      const meanY = y.reduce((a, b) => a + b, 0) / y.length;
-      const ssRes = residuals.reduce((a, b) => a + b * b, 0);
-      const ssTot = y.reduce((a, b) => a + Math.pow(b - meanY, 2), 0);
-      const r2 = ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
-      const reducedChi2 = ssRes / (y.length - fittedParams.length);
-
+      const meanY = scaledY.reduce((sum, value) => sum + value, 0) / y.length;
+      const ssTot = scaledY.reduce((sum, value) => sum + (value - meanY) ** 2, 0);
+      const r2 = ssTot > 0 ? 1 - ssRes / ssTot : null;
+      const residualVariance = (ssRes / (y.length - fitted.length)) * yScale ** 2;
       return {
-        peaks,
-        r2,
-        reducedChi2,
-        residuals,
-        fitX: x,
-        fitY,
-        iterations: result.iterations,
-        convergence_status: 'converged',
-        statistical_uncertainty_status: errorResult.status
+        peaks, r2: Number.isFinite(r2) ? r2 : null,
+        reducedChi2: Number.isFinite(residualVariance) ? residualVariance : null,
+        residuals, fitX: x, fitY, iterations, convergence_status: 'converged',
+        statistical_uncertainty_status: uncertainty.status
       };
-    } catch (err: any) {
-      // Convergence Failure (e.g. hit max iterations without converging, or threw an error)
-      return {
-        peaks: [],
-        r2: null,
-        reducedChi2: null,
-        residuals: [],
-        fitX: [],
-        fitY: [],
-        iterations: 0,
-        convergence_status: 'failed',
-        statistical_uncertainty_status: null,
-        errorMsg: err.message
-      };
+    } catch (error) {
+      return failure(error instanceof Error ? error.message : 'Fitting failed.');
     }
   }
 

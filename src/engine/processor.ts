@@ -32,7 +32,8 @@ export class SpectralProcessor {
       
       // Modified Z-score: 0.6745 * (x - median) / MAD
       // Using a threshold of ~6 for aggressive spike detection
-      const score = mad === 0 ? 0 : 0.6745 * (y[i] - median) / mad;
+      const scale = Math.max(mad, Number.EPSILON * Math.max(1, Math.abs(median), Math.abs(y[i])));
+      const score = 0.6745 * (y[i] - median) / scale;
       
       if (score > threshold) {
         // Spike detected! Heal using the median of neighbors
@@ -296,50 +297,47 @@ export class SpectralProcessor {
    * Checks for Silicon calibration peak at ~520.7 cm-1.
    */
   static siliconCalibrationCheck(data: SpectralData): { measuredPeak: number; expectedPeak: number; offset: number; status: 'OK' | 'DRIFTED' | 'NOT_FOUND' } {
-    const SI_EXPECTED = 520.7;
-    const windowStart = 510;
-    const windowEnd = 535;
-    const x = data.wavenumberData;
-    const y = data.intensityData;
+    const expectedPeak = 520.7;
+    const notFound = { measuredPeak: 0, expectedPeak, offset: 0, status: 'NOT_FOUND' as const };
+    const points = data.wavenumberData.flatMap((x, i) =>
+      x >= 510 && x <= 535 && Number.isFinite(data.intensityData[i]) ? [{ x, y: data.intensityData[i] }] : []);
+    if (points.length < 3 || points.some(({ x }, i) => i > 0 && x <= points[i - 1].x)) return notFound;
 
-    // Find indices within the window
-    let startIdx = 0; while (startIdx < x.length && x[startIdx] < windowStart) startIdx++;
-    let endIdx = x.length - 1; while (endIdx >= 0 && x[endIdx] > windowEnd) endIdx--;
-
-    if (startIdx >= endIdx) return { measuredPeak: 0, expectedPeak: SI_EXPECTED, offset: 0, status: 'NOT_FOUND' };
-
-    const windowX = x.slice(startIdx, endIdx + 1);
-    const windowY = y.slice(startIdx, endIdx + 1);
-
-    // Find local max in this window
-    let maxVal = -Infinity, maxIdx = -1;
-    for (let i = 0; i < windowY.length; i++) {
-      if (windowY[i] > maxVal) { maxVal = windowY[i]; maxIdx = i; }
-    }
-
-    if (maxIdx === -1 || maxVal <= 0) return { measuredPeak: 0, expectedPeak: SI_EXPECTED, offset: 0, status: 'NOT_FOUND' };
-
-    // Refine peak with parabolic interpolation if possible
-    let refinedX = windowX[maxIdx];
-    if (maxIdx > 0 && maxIdx < windowY.length - 1) {
-      const alpha = windowY[maxIdx - 1], beta = windowY[maxIdx], gamma = windowY[maxIdx + 1];
-      const denom = alpha - 2 * beta + gamma;
-      if (Math.abs(denom) > 1e-12) {
-        const p = 0.5 * (alpha - gamma) / denom;
-        refinedX = windowX[maxIdx] + p * (windowX[maxIdx] - windowX[maxIdx - 1]);
+    const y = points.map(point => point.y);
+    const changes = y.slice(1).map((value, i) => Math.abs(value - y[i])).sort((a, b) => a - b);
+    const minimumProminence = 3 * (changes[Math.floor((changes.length - 1) / 2)] + changes[Math.floor(changes.length / 2)]) / 2;
+    const rightMinima = [...y];
+    for (let i = y.length - 2; i >= 0; i--) rightMinima[i] = Math.min(y[i], rightMinima[i + 1]);
+    let leftMinimum = y[0];
+    let best = -1;
+    let bestProminence = minimumProminence;
+    for (let i = 1; i < y.length - 1; i++) {
+      leftMinimum = Math.min(leftMinimum, y[i - 1]);
+      if (!(y[i] >= y[i - 1] && y[i] > y[i + 1])) continue;
+      const prominence = y[i] - Math.max(leftMinimum, rightMinima[i + 1]);
+      if (prominence > bestProminence) {
+        bestProminence = prominence;
+        best = i;
       }
     }
+    if (best === -1) return notFound;
 
-    const offset = refinedX - SI_EXPECTED;
-    const absOffset = Math.abs(offset);
-    let status: 'OK' | 'DRIFTED' | 'NOT_FOUND' = 'OK';
-    if (absOffset > 1.0) status = 'DRIFTED';
-    
+    // Three-point quadratic vertex for unequal measured shifts.
+    const peak = points[best];
+    const left = points[best - 1];
+    const right = points[best + 1];
+    const before = peak.x - left.x;
+    const after = right.x - peak.x;
+    const rising = (peak.y - left.y) / before;
+    const falling = (right.y - peak.y) / after;
+    const curvature = (falling - rising) / (before + after);
+    const vertex = curvature < 0 ? -(rising + curvature * before) / (2 * curvature) : 0;
+    const refined = peak.x + Math.min(after, Math.max(-before, vertex));
+    const offset = refined - expectedPeak;
     return {
-      measuredPeak: parseFloat(refinedX.toFixed(2)),
-      expectedPeak: SI_EXPECTED,
-      offset: parseFloat(offset.toFixed(2)),
-      status
+      measuredPeak: Number(refined.toFixed(2)), expectedPeak, offset: Number(offset.toFixed(2)),
+      status: Math.abs(offset) > 1 ? 'DRIFTED' : 'OK'
     };
   }
+
 }

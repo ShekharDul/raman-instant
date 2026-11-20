@@ -191,7 +191,7 @@
         
         <h3>How it works</h3>
         <p>Automatic mode estimates the baseline using iterative clipping (SNIP). Manual mode interpolates between your selected anchors. Compare the corrected spectrum with the original data: baseline choices can affect peak heights and areas.</p>
-        <p>After baseline subtraction, negative corrected intensities are set to zero. A centered nine-point moving average smooths the result; the four points at each edge retain their corrected values. Normalisation follows smoothing. Automatic detection uses a 2% threshold of maximum processed intensity, merges candidates within 2.5 cm⁻¹, and retains up to 50 peaks.</p>
+        <p>After baseline subtraction, the default pipeline clips negative corrected intensities and applies a centered nine-point moving average. You can retain negative values, change the odd window size from 3 to 51 points, or turn smoothing off. Values near the edges retain their corrected intensities. Normalisation follows smoothing. Automatic detection uses a 2% threshold of maximum processed intensity, merges candidates within 2.5 cm⁻¹, and retains up to 50 peaks.</p>
         
         <div class="info-box">
           <p><strong>Iterations:</strong> You can use the slider in the sidebar to adjust how much background to remove. More iterations generally mean a smoother, deeper baseline removal.</p>
@@ -277,7 +277,8 @@
       <section id="protocols">
         <h2>Saved analysis protocols</h2>
         <p>Use Import analysis protocol to load an .irp or .json protocol. New protocols record the source file, worksheet, column and row choices, units, conversion settings, and a hash of the selected spectrum. A matching workbook alone is insufficient: the selected spectrum must also match before settings are applied.</p>
-        <p>Manual baseline anchors, moving-average smoothing, and negative-value clipping are included in new exports. Older protocols without a selected-spectrum hash remain readable for manual review; automatic application is disabled. Keep the original CSV or Excel file. Import details remain available beside each spectrum in the Spectra list.</p>
+        <p>Manual baseline anchors, moving-average smoothing, and negative-value clipping are included in new exports. Fitted results belong to the selected spectrum and are cleared when its preprocessing changes. Older protocols without a selected-spectrum hash remain readable for manual review. Keep the original TXT, CSV, or Excel file. Import details remain available beside each spectrum in the Spectra list.</p>
+        <p>The latest workspace is saved in this browser, including imported spectra, annotations, fitting results, and report snapshots. Clear workspace removes that saved data. Replicate averages require identical Raman-shift grids and normalization settings. Figure downloads preserve the plots shown in the workstation, including grid panels, replicate bands, and fitting residuals.</p>
       </section>
 
       <section id="citation">

@@ -4,6 +4,7 @@ import { FittingEngine } from '../src/engine/fitting.ts';
 import { UniversalParser } from '../src/parsers/universalParser.ts';
 import { ProtocolManager } from '../src/engine/protocol.ts';
 import { SpectralProcessor } from '../src/engine/processor.ts';
+import { ReplicateEngine } from '../src/engine/replicates.ts';
 import { REPORT_TEMPLATE } from '../src/ui/reportTemplate.ts';
 
 const x = Array.from({length:201},(_,i)=>900+i);
@@ -18,6 +19,42 @@ for (const model of ['lorentzian','gaussian','voigt'] as const) {
   const replay = FittingEngine.fit(x,y,initial,model);
   assert.deepEqual(replay.fitY,fit.fitY);
 }
+
+const noisyX = Array.from({ length: 101 }, (_, i) => 950 + i);
+const noisyY = noisyX.map((shift, i) => FittingEngine.gaussian(shift, 70, 985, 12)
+  + FittingEngine.gaussian(shift, 50, 1015, 22) + ((i * 73) % 17 - 8) * 2);
+const noisy = FittingEngine.fit(noisyX, noisyY, [65, 983, 13, 48, 1017, 20], 'gaussian');
+assert.equal(noisy.convergence_status, 'converged', noisy.errorMsg);
+assert.ok(noisy.r2! > 0.8);
+assert.ok(Math.abs(noisy.peaks[0].center.value! - 985) < 0.5);
+assert.ok(Math.abs(noisy.peaks[1].center.value! - 1015) < 0.5);
+const unconstrainedSeeds = FittingEngine.estimateInitial(noisyX, noisyY, 'gaussian');
+const seeded = FittingEngine.fit(noisyX, noisyY, unconstrainedSeeds, 'gaussian');
+assert.equal(seeded.convergence_status, 'failed', 'Collapsed components must not be reported as converged');
+assert.equal(FittingEngine.fit([1, 2, 3], [1, 5, 2], [5, 2, 1], 'gaussian').convergence_status, 'failed');
+
+const replicate = (wavenumberData: number[], intensityData: number[]) => {
+  const spectrum = { wavenumberData, intensityData };
+  return { raw: spectrum, processed: spectrum, peaks: [] };
+};
+const firstGrid = replicate([500, 501, 502], [1, 10, 1]);
+const paired = ReplicateEngine.compute([firstGrid, replicate([500, 501, 502], [1, 20, 1])]);
+assert.deepEqual(paired.mean.intensityData, [1, 15, 1]);
+assert.deepEqual(paired.sd, [0, 5, 0]);
+assert.throws(() => ReplicateEngine.compute([firstGrid, replicate([501, 502, 503], [1, 20, 1])]), /identical/);
+assert.throws(() => ReplicateEngine.compute([firstGrid, replicate([500, 501], [1, 20])]), /identical/);
+assert.throws(() => ReplicateEngine.compute([replicate([500, 500, 501], [1, 20, 1])]), /duplicate/);
+
+const siliconX = Array.from({ length: 51 }, (_, i) => 510 + 0.5 * i);
+assert.equal(SpectralProcessor.siliconCalibrationCheck(replicate(siliconX, siliconX.map(() => 100)).raw).status, 'NOT_FOUND');
+assert.equal(SpectralProcessor.siliconCalibrationCheck(replicate(siliconX, siliconX.map(value => value + 100)).raw).status, 'NOT_FOUND');
+const siliconPeak = (center: number) => replicate(siliconX, siliconX.map(value => 100 + FittingEngine.gaussian(value, 80, center, 3))).raw;
+assert.equal(SpectralProcessor.siliconCalibrationCheck(siliconPeak(520.7)).status, 'OK');
+assert.equal(SpectralProcessor.siliconCalibrationCheck(siliconPeak(523)).status, 'DRIFTED');
+const spikeX = Array.from({ length: 31 }, (_, i) => i);
+const spike = SpectralProcessor.rejectCosmicRays({ wavenumberData: spikeX, intensityData: spikeX.map(i => i === 15 ? 100 : 0) });
+assert.equal(spike.replacedCount, 1);
+assert.equal(spike.cleaned.intensityData[15], 0);
 const parsed = UniversalParser.parseText('100,10\n200,20\n300,15\n','test.csv',785,'shift');
 assert.deepEqual(parsed.wavenumberData,[100,200,300]);
 assert.deepEqual(parsed.intensityData,[10,20,15]);

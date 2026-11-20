@@ -67,6 +67,7 @@ test('protocol metadata is displayed safely and dangerous iteration counts fail 
   await expect(page.locator('#protocol-summary-content')).toContainText(attack);
   await expect(page.locator('#protocol-summary-content img')).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).uploadPwned)).toBeUndefined();
+  await page.locator('#btn-cancel-protocol').click();
   protocol.processing_steps[1].parameters.iterations = 1e9;
   const alertPromise = page.waitForEvent('dialog').then(async dialog => { const message = dialog.message(); await dialog.dismiss(); return message; });
   await page.locator('#protocol-file-input').setInputFiles({ name: 'bad.irp', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(protocol)) });

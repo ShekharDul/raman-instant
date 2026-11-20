@@ -59,7 +59,7 @@ const PAPER_LAYOUT: any = {
     ticklen: 12,
     zeroline: false,
     mirror: true,
-    rangemode: 'nonnegative'
+    rangemode: 'normal'
   },
   yaxis: { 
     title: { text: '<b>Intensity (a.u.)</b>', font: { size: 18, color: '#000' } }, 
@@ -71,7 +71,7 @@ const PAPER_LAYOUT: any = {
     ticklen: 12,
     zeroline: false,
     mirror: true,
-    rangemode: 'nonnegative'
+    rangemode: 'normal'
   },
   hovermode: 'x unified' as const
 };
@@ -105,7 +105,12 @@ const GRID_LAYOUT: any = {
 
 
 import type { SpectralData, Peak, CustomLabel } from '../engine/types.ts';
-import { FittingEngine, type PeakFit } from '../engine/fitting.ts';
+import type { PeakFit } from '../engine/fitting.ts';
+
+function intensityRange(min: number, max: number) {
+  const span = max - min || Math.abs(max) || 1;
+  return [min - span * 0.05, max + span * 0.15];
+}
 
 export class ChartRenderer {
 
@@ -167,32 +172,32 @@ export class ChartRenderer {
     const xData = raw.wavenumberData;
     const yData = processed.intensityData;
     
-    const stateMaxX = (window as any).state?.maxXData || 4000;
     if (!range && xData.length > 0) {
       const minX = Math.min(xData[0], xData[xData.length - 1]);
       const maxX = Math.max(xData[0], xData[xData.length - 1]);
-      layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, maxX)];
+      layout.xaxis.range = [minX, maxX];
     } else if (range) {
-      layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
+      layout.xaxis.range = range;
     }
 
     if (yData.length > 0) {
       // Robust Y-Scaling: Use only visible points if zoomed
-      let visibleY = yData;
+      const plottedValues = [yData, ...(showUnprocessed ? [raw.intensityData] : []), ...(showBaseline ? [_baseline.intensityData] : [])];
+      let visibleY = plottedValues.flat();
       if (layout.xaxis.range) {
         const [xMin, xMax] = layout.xaxis.range;
-        const indices = [];
+        const indices: number[] = [];
         for (let i = 0; i < xData.length; i++) {
           if (xData[i] >= xMin && xData[i] <= xMax) indices.push(i);
         }
         if (indices.length > 0) {
-          visibleY = indices.map(idx => yData[idx]);
+          visibleY = plottedValues.flatMap(values => indices.map(idx => values[idx]));
         }
       }
       
       const maxY = visibleY.reduce((a, b) => Math.max(a, b), -Infinity);
       const minY = visibleY.reduce((a, b) => Math.min(a, b), Infinity);
-      layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
+      layout.yaxis.range = intensityRange(minY, maxY);
     }
 
     // Ratio Markers
@@ -253,12 +258,10 @@ export class ChartRenderer {
     layout.yaxis.showgrid = showGrid;
     
     datasets.forEach((d, i) => {
-      const offset = isWaterfall ? (i * ((window as any).state?.stackOffset || 0)) : 0;
-      
       if (showUnprocessed && d.raw) {
         traces.push({
           x: d.raw.wavenumberData, 
-          y: d.raw.intensityData.map((v) => v + offset),
+          y: d.raw.intensityData,
           mode: 'lines', 
           name: `Raw (${escapeHTML(d.name)})`,
           line: { color: '#94a3b8', width: 1 },
@@ -271,7 +274,7 @@ export class ChartRenderer {
       if (showBaseline && d.baseline) {
         traces.push({
           x: d.baseline.wavenumberData, 
-          y: d.baseline.intensityData.map((v) => v + offset),
+          y: d.baseline.intensityData,
           mode: 'lines', 
           name: `Baseline (${escapeHTML(d.name)})`,
           line: { color: '#94a3b8', width: 1, dash: 'dot' },
@@ -283,7 +286,7 @@ export class ChartRenderer {
 
       traces.push({
         x: d.data.wavenumberData, 
-        y: d.data.intensityData.map((v) => v + offset),
+        y: d.data.intensityData,
         mode: 'lines', name: escapeHTML(d.name),
         line: { color: d.color || COLORS.trace[i % COLORS.trace.length], width: 2.5 },
         hoverinfo: 'x+y+name'
@@ -292,7 +295,7 @@ export class ChartRenderer {
 
     layout.shapes = [];
     layout.annotations = [];
-    if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
+    if (range) layout.xaxis.range = range;
 
     // Apply Axis Styling
     layout.font.size = fontSize;
@@ -375,12 +378,10 @@ export class ChartRenderer {
       layout.margin.t = Math.max(layout.margin.t, 80 + (peakAnnotations.maxStack * 25));
     }
 
-    // Add per-trace custom labels (handling waterfall offsets)
-    datasets.forEach((d, i) => {
+    // Coordinates have already been transformed for the selected layout.
+    datasets.forEach(d => {
       if (d.labels && d.labels.length > 0) {
-        const offset = isWaterfall ? (i * ((window as any).state?.stackOffset || 0)) : 0;
-        const offsetLabels = d.labels.map(l => ({ ...l, y: l.y + offset }));
-        layout.annotations.push(...this.createCustomLabelAnnotations(offsetLabels));
+        layout.annotations.push(...this.createCustomLabelAnnotations(d.labels));
       }
     });
 
@@ -397,29 +398,22 @@ export class ChartRenderer {
       const minX = Math.min(...minsX, ...maxsX);
       const absMaxX = Math.max(...minsX, ...maxsX);
 
-      const stateMaxX = (window as any).state?.maxXData || 4000;
-      if (!range) {
-        layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, absMaxX)];
-      } else {
-        layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
-      }
+      layout.xaxis.range = range ?? [minX, absMaxX];
 
       // Robust Y-Scaling for Overlay
       const [curXMin, curXMax] = layout.xaxis.range;
       let globalMinY = Infinity;
       let globalMaxY = -Infinity;
 
-      datasets.forEach(d => {
-        const x = d.data.wavenumberData;
-        const y = isWaterfall ? d.data.intensityData.map((v) => v + (datasets.indexOf(d) * ((window as any).state?.stackOffset || 0))) : d.data.intensityData;
-        
-        for (let i = 0; i < x.length; i++) {
-          if (x[i] >= curXMin && x[i] <= curXMax) {
-            if (y[i] < globalMinY) globalMinY = y[i];
-            if (y[i] > globalMaxY) globalMaxY = y[i];
+      for (const trace of traces) {
+        if (trace.visible === false || trace.visible === 'legendonly') continue;
+        for (let i = 0; i < trace.x.length; i++) {
+          if (trace.x[i] >= curXMin && trace.x[i] <= curXMax) {
+            globalMinY = Math.min(globalMinY, trace.y[i]);
+            globalMaxY = Math.max(globalMaxY, trace.y[i]);
           }
         }
-      });
+      }
 
       if (globalMaxY === -Infinity) {
         // Fallback if no points visible
@@ -427,7 +421,7 @@ export class ChartRenderer {
         globalMinY = 0;
       }
 
-      layout.yaxis.range = [Math.max(0, globalMinY - (globalMaxY * 0.05)), globalMaxY * 1.15];
+      layout.yaxis.range = intensityRange(globalMinY, globalMaxY);
     }
 
     if (isWaterfall) {
@@ -492,7 +486,7 @@ export class ChartRenderer {
 
     layout.shapes = [];
     layout.annotations = [];
-    if (range) layout.xaxis.range = [Math.max(0, range[0]), range[1]];
+    if (range) layout.xaxis.range = range;
 
     if (peaksToShow.length > 0) {
       const peakAnnotations = this.createPeakAnnotations(peaksToShow);
@@ -510,26 +504,21 @@ export class ChartRenderer {
       const minX = Math.min(x[0], x[x.length - 1]);
       const absMaxX = Math.max(x[0], x[x.length - 1]);
 
-      const stateMaxX = (window as any).state?.maxXData || 4000;
-      if (!range) {
-        layout.xaxis.range = [Math.max(0, minX), Math.min(stateMaxX, absMaxX)];
-      } else {
-        layout.xaxis.range = [Math.max(0, range[0]), Math.min(stateMaxX, range[1])];
-      }
+      layout.xaxis.range = range ?? [minX, absMaxX];
 
       // Robust Y-Scaling for Replicate
       const [curXMin, curXMax] = layout.xaxis.range;
       let visibleY = [];
       for (let i = 0; i < x.length; i++) {
         if (x[i] >= curXMin && x[i] <= curXMax) {
-          visibleY.push(meanY[i]);
+          visibleY.push(meanY[i] - sdY[i], meanY[i] + sdY[i]);
         }
       }
 
       if (visibleY.length > 0) {
         const maxY = visibleY.reduce((a, b) => Math.max(a, b), -Infinity);
         const minY = visibleY.reduce((a, b) => Math.min(a, b), Infinity);
-        layout.yaxis.range = [Math.max(0, minY - (maxY * 0.05)), maxY * 1.15];
+        layout.yaxis.range = intensityRange(minY, maxY);
       }
     }
 
@@ -544,56 +533,17 @@ export class ChartRenderer {
     return `${r},${g},${b}`;
   }
 
-  private static async triggerDownload(dataUrl: string, filename: string) {
-    try {
-      // Direct data URL to blob conversion for better reliability with large files
-      let blob: Blob;
-      if (dataUrl.startsWith('data:')) {
-        const parts = dataUrl.split(',');
-        const contentType = parts[0].split(':')[1].split(';')[0];
-        const byteString = atob(parts[1]);
-        const arrayBuffer = new ArrayBuffer(byteString.length);
-        const uint8Array = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < byteString.length; i++) {
-          uint8Array[i] = byteString.charCodeAt(i);
-        }
-        blob = new Blob([arrayBuffer], { type: contentType });
-      } else {
-        const response = await fetch(dataUrl);
-        blob = await response.blob();
-      }
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-    } catch (err) {
-      console.error('[Instant Raman] Download trigger failed:', err);
-      // Fallback to direct link click
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = dataUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  }
-
-  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], showXLabels = true, showGrid = true) {
+  static renderFit(container: HTMLElement | string, rawX: number[], rawY: number[], fitX: number[], fitY: number[], showXLabels = true, showGrid = true, peaks: PeakFit[] = [], name?: string) {
     const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
     layout.xaxis.showgrid = layout.yaxis.showgrid = showGrid;
     layout.xaxis.showticklabels = showXLabels;
     Plotly.react(container, [
-      { x: rawX, y: rawY, mode: 'markers', name: 'Processed data', marker: {size: 4} },
-      { x: fitX, y: fitY, mode: 'lines', name: 'Fit', line: {color: COLORS.main} }
+      { x: rawX, y: rawY, mode: 'markers', name: name ? escapeHTML(name) + ' (processed)' : 'Processed data', marker: {size: 4} },
+      { x: fitX, y: fitY, mode: 'lines', name: 'Fit', line: {color: COLORS.main} },
+      ...peaks.map((peak, i) => ({
+        x: fitX, y: peak.yFit, mode: 'lines', name: `Component ${i + 1} (${peak.center.value?.toFixed(1)} cm⁻¹)`,
+        line: { color: COLORS.trace[i % COLORS.trace.length], dash: 'dot' }
+      }))
     ], layout, CONFIG);
   }
 
@@ -609,7 +559,7 @@ export class ChartRenderer {
     layout.yaxis.title.text = 'Δ (a.u.)';
     
     // Zero-center calculation
-    const absMax = Math.max(...data.intensityData.map(Math.abs));
+    const absMax = Math.max(...data.intensityData.map(Math.abs)) || 1;
     layout.yaxis.range = [-absMax * 1.2, absMax * 1.2];
     
     if (range) layout.xaxis.range = range;
@@ -619,300 +569,6 @@ export class ChartRenderer {
       line: { color: '#be123c', width: 1 }, 
       fill: 'tozeroy', fillcolor: 'rgba(190,18,60,0.05)'
     }], layout, { ...CONFIG, displayModeBar: false });
-  }
-
-  static async exportPublicationFigure(state: any, files: any[], format: 'png' | 'svg' = 'png', normLabel?: string, ratio?: { p1: Peak | null, p2: Peak | null } | null, fontSize = 16, showBox = true, showDirectLabels = false, showUnprocessed = true, showBaseline = false, showGrid = true) {
-    if (typeof (window as any).Plotly === 'undefined') return;
-    const Plotly = (window as any).Plotly;
-    
-    const isFitting = state.fittingMode && state.fitResult;
-    const isMatrix = state.layoutMode === 'grid2x2';
-    const isVertical = state.layoutMode === 'grid2x1';
-    const isStacked = state.layoutMode === 'stacked';
-    
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'fixed';
-    tempDiv.style.left = '-9999px';
-    document.body.appendChild(tempDiv);
-
-    try {
-      const citation = {
-        text: 'INSTANT RAMAN — OPEN RESEARCH',
-        xref: 'paper', yref: 'paper',
-        x: 1, y: 0, 
-        yshift: -100, // Fixed offset below X-axis
-        showarrow: false,
-        font: { size: 9, color: '#94a3b8', family: 'Arial' },
-        xanchor: 'right', yanchor: 'top'
-      };
-
-      const filename = `Raman_Fig_${Date.now()}.${format}`;
-      
-      // Calculate Dimensions
-      // Standard: 1200x800 (96 DPI)
-      // Journal: mm to pixels at 96 DPI
-      const exportW = 1200;
-      const exportH = 800;
-      const exportScale = 2; // Fixed high-quality scale for PNGs
-
-      const exportOptions: any = { 
-        format, 
-        width: exportW, 
-        height: exportH, 
-        scale: format === 'png' ? exportScale : 1 
-      };
-
-      // Transparency logic moved to after plot initialization inside branches
-      const applyTransparency = async () => {
-        if (format === 'png' && state.exportTransparent) {
-          await Plotly.relayout(tempDiv, { 
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)'
-          });
-        }
-      };
-
-      if (isFitting) {
-        const result = state.fitResult;
-        const traces: any[] = [];
-        
-        // 1. Fit Traces (Row 1)
-        traces.push({
-          x: result.fitX,
-          y: result.fitX.map((_: any, i: number) => result.fitY[i] + result.residuals[i]),
-          mode: 'markers',
-          name: 'Experimental Data',
-          marker: { color: '#94a3b8', size: 4, opacity: 0.6 },
-          xaxis: 'x', yaxis: 'y'
-        });
-        
-        traces.push({
-          x: result.fitX,
-          y: result.fitY,
-          mode: 'lines',
-          name: 'Cumulative Fit',
-          line: { color: '#0f172a', width: 2.5 },
-          xaxis: 'x', yaxis: 'y'
-        });
-        
-        result.peaks.forEach((p: PeakFit, i: number) => {
-          const y = result.fitX.map((xv: number) => {
-            const c = p.center.value || 0;
-            const a = p.amplitude.value || 0;
-            const f = p.fwhm.value || 0;
-            if (p.type === 'voigt') return FittingEngine.voigt(xv, a, c, f, p.shape?.value || 0.5);
-            if (p.type === 'gaussian') return FittingEngine.gaussian(xv, a, c, f);
-            return FittingEngine.lorentzian(xv, a, c, f);
-          });
-          traces.push({
-            x: result.fitX,
-            y,
-            mode: 'lines',
-            name: `Peak ${i + 1} (${(p.center.value || 0).toFixed(1)})`,
-            line: { color: COLORS.trace[i % COLORS.trace.length], width: 1.5 },
-            fill: 'tozeroy',
-            fillcolor: `rgba(${this.hexToRgb(COLORS.trace[i % COLORS.trace.length])}, 0.1)`,
-            xaxis: 'x', yaxis: 'y'
-          });
-        });
-        
-        // 2. Residual Trace (Row 2)
-        traces.push({
-          x: result.fitX,
-          y: result.residuals,
-          mode: 'lines',
-          name: 'Residual',
-          line: { color: '#be123c', width: 1 },
-          fill: 'tozeroy',
-          fillcolor: 'rgba(190,18,60,0.05)',
-          xaxis: 'x', yaxis: 'y2'
-        });
-        
-        const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-        layout.grid = { rows: 2, columns: 1, pattern: 'independent' };
-        layout.width = exportW;
-        layout.height = exportH;
-        layout.margin = { l: 90, r: 160, t: 80, b: 140 };
-        
-        // Fit View (Top)
-        layout.yaxis = { ...PAPER_LAYOUT.yaxis, domain: [0.3, 1], anchor: 'x', title: { text: '<b>Intensity (a.u.)</b>' } };
-        
-        // Residual View (Bottom)
-        layout.yaxis2 = { ...PAPER_LAYOUT.yaxis, domain: [0, 0.2], anchor: 'x', title: { text: '<b>Δ (a.u.)</b>' } };
-        
-        // Shared X-Axis
-        layout.xaxis = { ...PAPER_LAYOUT.xaxis, anchor: 'y2' };
-        
-        const xRange = [Math.min(...result.fitX), Math.max(...result.fitX)];
-        layout.xaxis.range = xRange;
-        
-        const absMax = Math.max(...result.residuals.map(Math.abs));
-        layout.yaxis2.range = [-absMax * 1.2, absMax * 1.2];
-        
-        layout.annotations = [...(layout.annotations || []), citation];
-        
-        await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
-        await applyTransparency();
-        
-        const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
-        await this.triggerDownload(dataUrl, filename);
-      } else if (!isMatrix && !isVertical && !isStacked) {
-        const f = files[0];
-        const rawNormalized = { 
-          wavenumberData: f.raw.wavenumberData, 
-          intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
-        };
-        const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
-        this.renderSingle(tempDiv, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, (state as any).viewRange || undefined, false, (state as any).hideYAxis, normLabel, ratio, fontSize, showBox, showUnprocessed, showBaseline, showGrid, f.labels);
-        
-        // Apply sizing and transparency after plot creation
-        await Plotly.relayout(tempDiv, { 
-          width: exportW, 
-          height: exportH,
-          'margin.b': 140 // Ensure enough space for citation
-        });
-
-        await applyTransparency();
-
-        const layout = (tempDiv as any).layout;
-        layout.annotations = [...(layout.annotations || []), citation];
-        await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        
-        const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
-        await this.triggerDownload(dataUrl, filename);
-      } else if (isStacked) {
-        const datasets = files.map((f, i) => {
-          let displayData = f.processed;
-          if (state.normalizationMode === 'none') {
-            displayData = (window as any).SpectralProcessor.normalizeMax(f.processed).normalized;
-          }
-          const offset = i * state.stackOffset;
-          const offsetData = {
-            wavenumberData: displayData.wavenumberData,
-            intensityData: displayData.intensityData.map((v: number) => v + offset)
-          };
-          return { name: f.name, data: offsetData, color: f.color, labels: f.labels };
-        });
-        
-        // For stacked view, we show peaks of the active file or first file if not specified
-        const activeFile = files.find((f: any) => f.id === state.activeFileId) || files[0];
-        const filteredPeaks = activeFile.peaks.filter((p: any) => activeFile.selectedPeakX.has(p.x));
-        
-        this.renderOverlay(tempDiv, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, filteredPeaks, ratio, fontSize, showBox, showDirectLabels, showUnprocessed, showBaseline, showGrid);
-        
-        await Plotly.relayout(tempDiv, { 
-          width: exportW, 
-          height: exportH,
-          'margin.b': 140 
-        });
-
-        await applyTransparency();
-
-        const layout = (tempDiv as any).layout;
-        layout.annotations = [...(layout.annotations || []), citation];
-        await Plotly.relayout(tempDiv, { annotations: layout.annotations });
-        
-        const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
-        await this.triggerDownload(dataUrl, filename);
-      } else {
-        const cols = isMatrix ? 2 : 1;
-        const rows = isMatrix ? 2 : files.length;
-        const traces: any[] = [];
-        const layout = JSON.parse(JSON.stringify(PAPER_LAYOUT));
-        layout.shapes = [];
-        layout.annotations = [];
-        layout.grid = { rows, columns: cols, pattern: 'independent' };
-        layout.showlegend = false;
-        
-        // Systematic Fix: Grid visibility for grid exports
-        layout.xaxis.showgrid = showGrid;
-        layout.yaxis.showgrid = showGrid;
-        
-        // Adjust for journal sizing if needed
-        layout.width = exportW;
-        layout.height = exportH;
-        
-        layout.margin = { l: 80, r: 40, t: 80, b: 120 };
-
-        files.slice(0, cols * rows).forEach((f, i) => {
-          const axisIdx = i === 0 ? '' : (i + 1);
-          const rawNormalized = { 
-            wavenumberData: f.raw.wavenumberData, 
-            intensityData: f.raw.intensityData.map((v: number) => v * (f.normFactor || 1)) 
-          };
-          traces.push({
-            x: rawNormalized.wavenumberData, y: rawNormalized.intensityData, mode: 'lines', name: 'Raw', line: { color: COLORS.raw, width: 1 },
-            xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
-          });
-          traces.push({
-            x: f.processed.wavenumberData, y: f.processed.intensityData, mode: 'lines', name: 'Processed', line: { color: f.color || COLORS.main, width: 2.5 },
-            xaxis: `x${axisIdx}`, yaxis: `y${axisIdx}`, hoverinfo: 'skip'
-          });
-          
-          const filteredPeaks = f.peaks.filter((p: any) => f.selectedPeakX.has(p.x));
-          if (filteredPeaks.length > 0) {
-            const peakAnnotations = (this as any).createPeakAnnotations(filteredPeaks);
-            layout.shapes = layout.shapes || [];
-            layout.shapes.push(...peakAnnotations.shapes.map((s: any) => ({
-              ...s,
-              xref: axisIdx ? `x${axisIdx}` : 'x',
-              yref: axisIdx ? `y${axisIdx} domain` : 'y domain'
-            })));
-            layout.annotations = layout.annotations || [];
-            layout.annotations.push(...peakAnnotations.labels.map((a: any) => ({ 
-              ...a, 
-              xref: axisIdx ? `x${axisIdx}` : 'x', 
-              yref: axisIdx ? `y${axisIdx} domain` : 'y domain' 
-            })));
-          }
-
-          if (f.labels && f.labels.length > 0) {
-            const customAnnos = (this as any).createCustomLabelAnnotations(f.labels);
-            layout.annotations.push(...customAnnos.map((a: any) => ({
-              ...a,
-              xref: axisIdx ? `x${axisIdx}` : 'x',
-              yref: axisIdx ? `y${axisIdx}` : 'y'
-            })));
-          }
-
-          const panelLabel = String.fromCharCode(65 + i);
-          layout[`xaxis${axisIdx}`] = { ...PAPER_LAYOUT.xaxis, title: { text: `Shift (cm⁻¹)`, font: { size: 14 } }, tickfont: { size: 12 } };
-          layout[`yaxis${axisIdx}`] = { ...PAPER_LAYOUT.yaxis, title: { text: `Int`, font: { size: 14 } }, tickfont: { size: 12 } };
-          
-          if (state.hideYAxis) {
-            layout[`yaxis${axisIdx}`].showticklabels = false;
-            layout[`yaxis${axisIdx}`].title.text = '';
-            layout[`yaxis${axisIdx}`].ticks = '';
-          }
-
-          if (!layout.annotations) layout.annotations = [];
-          if (normLabel) {
-            layout.annotations.push({
-              text: `NORM: ${normLabel.toUpperCase()}`,
-              xref: `x${axisIdx} domain`, yref: `y${axisIdx} domain`,
-              x: 1, y: 1.1, showarrow: false, xanchor: 'right', font: { size: 10, color: '#64748b' }
-            });
-          }
-          layout.annotations.push({
-            text: `<b>(${panelLabel}) ${escapeHTML(f.name)}</b>`, font: { size: 18 },
-            xref: `x${axisIdx} domain`, yref: `y${axisIdx} domain`,
-            x: 0, y: 1.1, showarrow: false, xanchor: 'left'
-          });
-        });
-
-        layout.annotations = layout.annotations || [];
-        layout.annotations.push(citation); 
-        layout.margin.b = 140;
-
-        await Plotly.newPlot(tempDiv, traces, layout, CONFIG);
-        await applyTransparency();
-        
-        const dataUrl = await Plotly.toImage(tempDiv, exportOptions);
-        await this.triggerDownload(dataUrl, filename);
-      }
-    } finally {
-      document.body.removeChild(tempDiv);
-    }
   }
 
   /**

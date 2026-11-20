@@ -119,7 +119,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation, onTrySample }) =>
           <p className="research-section-intro">The settings you choose affect the result. Check the processed spectrum against your original data.</p>
           <details>
             <summary>How the spectrum is processed</summary>
-            <p>Optional spike removal uses a local median-based test. Baselines are estimated with iterative clipping (SNIP) or interpolated between manually selected anchors. After subtraction, negative corrected intensities are set to zero, then a nine-point moving average smooths the spectrum. Raw imported values are retained.</p>
+            <p>Optional spike removal uses a local median-based test. Baselines are estimated with iterative clipping (SNIP) or interpolated between manually selected anchors. The defaults clip negative corrected values and apply a nine-point moving average. You can change the window, turn smoothing off, or retain negative values. Raw imported values are retained.</p>
             <p>You can normalise intensities by their maximum, integrated area, or a selected reference point. Baseline and normalisation choices can change peak heights and areas.</p>
           </details>
           <details>
@@ -134,7 +134,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterWorkstation, onTrySample }) =>
           </details>
           <details>
             <summary>Data handling</summary>
-            <p>Spectrum parsing and analysis run in your browser. The site uses Google Analytics for usage events; uploaded file names and protocol identifiers are excluded from these events. External analytics and fonts are loaded.</p>
+            <p>Spectrum parsing and analysis run in your browser. The most recent workspace is saved on this browser, where you can remove it using Clear workspace. The site uses Google Analytics for usage events. Uploaded file names and protocol identifiers are excluded from these events. External analytics and fonts are loaded.</p>
           </details>
           <a className="research-text-link research-docs-link" href={`${import.meta.env.BASE_URL}docs.html`}>Read the documentation</a>
         </section>

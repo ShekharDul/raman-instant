@@ -5,11 +5,12 @@ A browser workstation for processing Raman spectra, creating consistent figures,
 ## Current scope
 
 - Import spectral files and process multiple datasets.
-- Cosmic-ray filtering, SNIP or manual baseline correction, smoothing, and normalization.
+- Cosmic-ray filtering, SNIP or manual baseline correction, adjustable smoothing and negative-value clipping, and normalization.
 - Peak detection, integration, basic Gaussian/Lorentzian/pseudo-Voigt fitting, and residual plots.
 - Overlay, stacked, grid, and replicate comparisons; labels and figure styling.
 - PNG/SVG figures, Excel data, and standalone HTML snapshot reports.
 - Export/import analysis settings as .irp protocols linked to the source file by SHA-256.
+- Restore the latest workspace from this browser, including imported spectra, fits, and snapshots.
 
 ## Product direction
 
@@ -17,7 +18,9 @@ The next product layer is a natural-language assistant that creates explicit, re
 
 ## Reproduction limits
 
-Keep the original data file with its .irp protocol. Protocols do not embed raw data or every plot setting. Legacy advanced-analysis fields may be present in older files; the app no longer runs model-ensemble diagnostics or Monte Carlo propagation. Basic fitting uses the saved model, region, and peak estimates. Re-fitting is a new numerical calculation, not a byte-for-byte guarantee. Manual baseline anchors are not stored by the legacy protocol format.
+Keep the original TXT, CSV, or Excel file with its .irp protocol. Protocols store preprocessing settings and a fit associated with that spectrum. Re-fitting uses the saved model, region, and peak estimates and performs a new numerical calculation. Legacy protocols without a selected-spectrum hash can be reviewed manually. Protocols leave out raw data and plot layout.
+
+Replicate averaging requires identical, strictly increasing Raman-shift grids and the same normalization. The browser autosaves the most recent workspace locally. Use **Clear workspace** to remove the saved data from the browser.
 
 ## Development
 

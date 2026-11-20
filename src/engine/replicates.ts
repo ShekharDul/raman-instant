@@ -22,7 +22,7 @@ export interface ReplicateStats {
 export class ReplicateEngine {
   /**
    * Computes mean and SD for a set of spectra.
-   * Assumes all spectra share the same X-axis for simplicity in v1.
+   * Requires a shared, strictly increasing grid so each row represents the same shift.
    */
   static compute(datasets: { raw: SpectralData, processed: SpectralData, peaks: Peak[] }[]): ReplicateStats {
     if (datasets.length === 0) throw new Error("No datasets provided for replicate analysis.");
@@ -30,6 +30,15 @@ export class ReplicateEngine {
     const x = datasets[0].raw.wavenumberData;
     const n = datasets.length;
     const m = x.length;
+    if (m < 2 || x.some((value, i) => !Number.isFinite(value) || (i > 0 && value <= x[i - 1]))) {
+      throw new Error('Replicates require a strictly increasing Raman-shift grid without duplicate points.');
+    }
+    for (const { processed } of datasets) {
+      if (processed.wavenumberData.length !== m || processed.intensityData.length !== m ||
+        x.some((value, i) => processed.wavenumberData[i] !== value || !Number.isFinite(processed.intensityData[i]))) {
+        throw new Error('Replicates must have identical Raman-shift grids and finite intensities. Align or resample them before grouping.');
+      }
+    }
 
     const meanY = new Array(m).fill(0);
     const sd = new Array(m).fill(0);
@@ -54,24 +63,19 @@ export class ReplicateEngine {
 
 
     // 3. Compute Peak Stats
-    const allPeaks = datasets.flatMap(d => d.peaks);
+    const allPeaks = datasets.flatMap((d, spectrum) => d.peaks.map(peak => ({ peak, spectrum })));
     const groupedPeaks: Peak[][] = [];
-    
-    const sortedPeaks = allPeaks.sort((a, b) => a.x - b.x);
-    
-    if (sortedPeaks.length > 0) {
-      let currentGroup = [sortedPeaks[0]];
-      for (let i = 1; i < sortedPeaks.length; i++) {
-        if (Math.abs(sortedPeaks[i].x - currentGroup[currentGroup.length - 1].x) < 5) {
-          currentGroup.push(sortedPeaks[i]);
-        } else {
-          if (currentGroup.length >= n / 2) { 
-            groupedPeaks.push(currentGroup);
-          }
-          currentGroup = [sortedPeaks[i]];
-        }
+
+    allPeaks.sort((a, b) => a.peak.x - b.peak.x);
+    for (let i = 0; i < allPeaks.length;) {
+      const start = allPeaks[i].peak.x;
+      const group = new Map<number, Peak>();
+      while (i < allPeaks.length && allPeaks[i].peak.x - start < 5) {
+        const { spectrum, peak } = allPeaks[i++];
+        const prior = group.get(spectrum);
+        if (!prior || peak.y > prior.y) group.set(spectrum, peak);
       }
-      if (currentGroup.length >= n / 2) groupedPeaks.push(currentGroup);
+      if (group.size >= Math.max(2, Math.ceil(n / 2))) groupedPeaks.push([...group.values()]);
     }
 
     const peakStats = groupedPeaks.map(group => {

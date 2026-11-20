@@ -6,13 +6,15 @@ import { escapeHTML } from './security/text.ts';
  * Instant Raman v2.1 — Research Workstation Engine
  * Optimized for robustness, performance, and commercial reliability.
  */
-const APP_VERSION = 'v2.1.0';
+const APP_VERSION = 'v2.2.0';
 import { SpectralProcessor } from './engine/processor.ts';
 import { UniversalParser } from './parsers/universalParser.ts';
 import { createSampleSpectrumFile } from './engine/sampleSpectrum.ts';
 import { previewImport } from './ui/importPreview.ts';
 import { showImportDetails } from './ui/importDetails.ts';
 import { ChartRenderer } from './ui/charts.ts';
+import { exportFigure as exportRenderedFigure } from './ui/figureExport.ts';
+import { WorkspaceStorage } from './ui/workspaceStorage.ts';
 import { ReplicateEngine } from './engine/replicates.ts';
 import type { ReplicateStats } from './engine/replicates.ts';
 import { ReportGenerator } from './ui/reportGenerator.ts';
@@ -22,6 +24,16 @@ import { ProtocolManager, type InstantRamanProtocol } from './engine/protocol.ts
 import * as XLSX from 'xlsx';
 
 // ── Types ──
+interface ProcessingSettings {
+  snip: number;
+  sg: number;
+  clipNegative: boolean;
+  mode: 'auto' | 'manual';
+  norm: NormalizationMode;
+  cosmic: boolean;
+  normTarget: number | null;
+}
+
 interface ProcessedFile {
   id: string;
   name: string;
@@ -34,7 +46,7 @@ interface ProcessedFile {
   selectedPeakX: Set<number>;
   variance: VarianceResult;
   spikesRemoved: number;
-  params: { snip: number; sg: number; mode: 'auto' | 'manual'; timestamp: string; norm: NormalizationMode; cosmic: boolean; normTarget: number | null };
+  params: ProcessingSettings;
   anchors: { x: number; y: number }[];
   labels: CustomLabel[];
   color: string;
@@ -42,6 +54,7 @@ interface ProcessedFile {
   isReproduced?: boolean;
   protocolId?: string;
   reproducedSteps?: Set<string>;
+  fit?: FitResult;
 }
 
 interface AppState {
@@ -64,13 +77,11 @@ interface AppState {
   showAxisBox: boolean;
   showDirectLabels: boolean;
   viewHistory: ([number, number] | null)[];
-  maxXData: number;
   showUnprocessed: boolean;
   showBaseline: boolean;
   showGrid: boolean;
   cosmicRayRemoval: boolean;
-  fitResult: FitResult | null;
-  fittingMode: boolean;
+  fitViewFileId: string | null;
   selectingROI: boolean;
   labelMode: boolean;
   freeLabelMode: boolean;
@@ -100,13 +111,11 @@ const state: AppState = {
   showAxisBox: true,
   showDirectLabels: false,
   viewHistory: [],
-  maxXData: 4000,
   showUnprocessed: false,
   showBaseline: false,
   showGrid: true,
   cosmicRayRemoval: true,
-  fitResult: null,
-  fittingMode: false,
+  fitViewFileId: null,
   selectingROI: false,
   labelMode: false,
   freeLabelMode: false,
@@ -114,6 +123,12 @@ const state: AppState = {
   snapshots: [],
   visibleTableFileId: null,
 };
+
+const emptyWorkspace = structuredClone(state);
+let workspaceStorage: WorkspaceStorage<AppState> | undefined;
+let workspaceWrites = Promise.resolve();
+let workspaceSaveQueued = false;
+let workspaceClearing = false;
 
 const COLOR_PALETTE = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255'];
 
@@ -182,7 +197,7 @@ function initCalibration() {
     const active = state.files.get(state.activeFileId || '');
     if (!active) return;
 
-    const result = SpectralProcessor.siliconCalibrationCheck(active.processed);
+    const result = SpectralProcessor.siliconCalibrationCheck(active.raw);
     const container = UI.get('cal-status-container');
     const badge = UI.get('cal-badge');
 
@@ -206,6 +221,7 @@ function initUpload() {
     protocolInput.value = '';
   });
   window.addEventListener('sample-spectrum-requested', () => {
+    if (workspaceClearing) return;
     importQueue = importQueue.then(async () => {
       try {
         const id = 'synthetic-demo-spectrum';
@@ -214,9 +230,9 @@ function initUpload() {
           const raw = await UniversalParser.parseFile(file);
           checkSession([...state.files.values()].reduce((n, f) => n + f.raw.wavenumberData.length, 0), state.files.size, raw.wavenumberData.length, 1);
           const hash = await ProtocolManager.computeHash(await file.arrayBuffer());
-          processAndStore(id, file.name, raw, hash);
+          storeProcessedSpectra([processSpectrum({ id, name: file.name, raw, fileHash: hash }, processingSettings())]);
         }
-        state.activeFileId = id;
+        selectSpectrum(id);
         updateUI();
         UI.text('system-status', 'READY');
         showToast('Synthetic demonstration spectrum loaded. This is not an experimental measurement.');
@@ -238,6 +254,10 @@ function initUpload() {
 let importQueue: Promise<void> = Promise.resolve();
 let queuedFiles = 0, queuedBytes = 0;
 function handleFiles(fileList: FileList) {
+  if (workspaceClearing) {
+    showToast('Wait for the workspace to finish clearing before importing.');
+    return;
+  }
   const files = Array.from(fileList);
   const bytes = files.reduce((n, file) => n + file.size, 0);
   try {
@@ -275,13 +295,15 @@ async function importFiles(files: File[]) {
       checkSession([...state.files.values()].reduce((n, f) => n + f.raw.wavenumberData.length, 0), state.files.size,
         imported.spectra.reduce((n, s) => n + s.wavenumberData.length, 0), imported.spectra.length);
       const fileHash = await ProtocolManager.computeHash(buffer);
-      for (const parsed of imported.spectra) {
-        const id = `file-${Math.random().toString(36).slice(2, 9)}`;
+      const settings = processingSettings();
+      const processed = imported.spectra.map(raw => {
+        const id = crypto.randomUUID();
         const name = imported.spectra.length > 1 || document.format !== 'CSV'
-          ? `${file.name} — ${parsed.metadata.sheetName} — ${parsed.metadata.seriesName}` : file.name;
-        processAndStore(id, name, parsed, fileHash);
-        if (state.files.size === 1) state.activeFileId = id;
-      }
+          ? [file.name, raw.metadata.sheetName, raw.metadata.seriesName].filter(Boolean).join(' — ') : file.name;
+        return processSpectrum({ id, name, raw, fileHash }, settings);
+      });
+      storeProcessedSpectra(processed);
+      if (!state.activeFileId) selectSpectrum(processed[0]?.id ?? null);
 
       trackEvent('file_uploaded', {
         file_size: file.size,
@@ -298,105 +320,63 @@ async function importFiles(files: File[]) {
   }
 }
 
-function updateMaxXData() {
-  if (state.files.size === 0) {
-    state.maxXData = 4000;
-    return;
-  }
-  let max = 0;
-  state.files.forEach(f => {
-    const fileMax = f.raw.wavenumberData[f.raw.wavenumberData.length - 1];
-    if (fileMax > max) max = fileMax;
-  });
-  state.maxXData = max;
+function processingSettings(): ProcessingSettings {
+  const norm = state.normalizationMode === 'point' && state.normTargetX === null ? 'none' : state.normalizationMode;
+  return {
+    snip: Number(UI.val('slider-snip')), sg: Number(UI.val('select-smoothing')),
+    clipNegative: (UI.get('check-clip-negative') as HTMLInputElement).checked,
+    mode: state.baselineMode, cosmic: state.cosmicRayRemoval, norm, normTarget: state.normTargetX
+  };
 }
 
-function processAndStore(id: string, name: string, raw: NormalizedSpectrum, fileHash?: string) {
-  const existing = state.files.get(id);
-  const snip = parseInt(UI.val('slider-snip') || '25');
-  const sg = 9;
-  const mode = state.baselineMode;
-  const anchors = existing?.anchors || [];
+type SpectrumInput = Pick<ProcessedFile, 'id' | 'name' | 'raw' | 'fileHash'> &
+  Partial<Pick<ProcessedFile, 'anchors' | 'selectedPeakX' | 'labels' | 'color'>>;
 
-  // Store fileHash temporarily on existing if needed, or we can just append it to ProcessedFile
-  const currentHash = fileHash || (existing as any)?.fileHash || '';
-
-  // Cosmic Ray Rejection
-  let cleaned = raw;
-  let replacedCount = 0;
-  if (state.cosmicRayRemoval) {
-    const result = SpectralProcessor.rejectCosmicRays(raw);
-    cleaned = { ...raw, intensityData: result.cleaned.intensityData };
-    replacedCount = result.replacedCount;
-
-    if (replacedCount > 0) {
-      showToast(`CLEANED: Removed ${replacedCount} cosmic ray spikes from ${name}`);
-    }
-  }
-
-  // Baseline Estimation
-  let baseline: SpectralData;
-  if (mode === 'manual') {
-    baseline = SpectralProcessor.baselineManual(cleaned, anchors);
-  } else {
-    baseline = SpectralProcessor.baselineSNIP(cleaned, snip);
-  }
-
-  // Final Processing: Correction and Smoothing
-  const corrected: SpectralData = {
+function processSpectrum(input: SpectrumInput, params: ProcessingSettings): ProcessedFile {
+  const { id, name, raw, fileHash, anchors = [], labels = [] } = input;
+  const { snip, sg, clipNegative, mode, norm, normTarget } = params;
+  const { cleaned, replacedCount } = params.cosmic
+    ? SpectralProcessor.rejectCosmicRays(raw) : { cleaned: raw, replacedCount: 0 };
+  const baseline = mode === 'manual'
+    ? SpectralProcessor.baselineManual(cleaned, anchors) : SpectralProcessor.baselineSNIP(cleaned, snip);
+  const corrected = {
     wavenumberData: raw.wavenumberData,
-    intensityData: cleaned.intensityData.map((v, i) => Math.max(0, v - baseline.intensityData[i]))
+    intensityData: cleaned.intensityData.map((v, i) => {
+      const value = v - baseline.intensityData[i];
+      return clipNegative ? Math.max(0, value) : value;
+    })
   };
+  const smoothed = sg === 1 ? corrected : SpectralProcessor.movingAverage(corrected, sg);
+  let normalization = { normalized: smoothed, factor: 1 };
+  if (norm === 'max') normalization = SpectralProcessor.normalizeMax(smoothed);
+  else if (norm === 'area') normalization = SpectralProcessor.normalizeArea(smoothed);
+  else if (norm === 'point' && normTarget !== null) normalization = SpectralProcessor.normalizeToPoint(smoothed, normTarget);
 
-  const smoothed = SpectralProcessor.movingAverage(corrected, sg);
-
-  // Normalization
-  let processed = smoothed;
-  let normFactor = 1.0;
-  const normMode = state.normalizationMode;
-
-  if (normMode === 'max') {
-    const res = SpectralProcessor.normalizeMax(smoothed);
-    processed = res.normalized;
-    normFactor = res.factor;
-  } else if (normMode === 'area') {
-    const res = SpectralProcessor.normalizeArea(smoothed);
-    processed = res.normalized;
-    normFactor = res.factor;
-  } else if (normMode === 'point' && state.normTargetX !== null) {
-    const res = SpectralProcessor.normalizeToPoint(smoothed, state.normTargetX);
-    processed = res.normalized;
-    normFactor = res.factor;
-  }
-
-  const peaks = SpectralProcessor.findPeaks(processed);
+  const { normalized: processed, factor: normFactor } = normalization;
   const variance = SpectralProcessor.calculateVariance(cleaned, baseline);
-  if (![...processed.intensityData, ...baseline.intensityData, normFactor, variance.sigPct, variance.bslPct].every(Number.isFinite)) {
+  if (!processed.intensityData.every(Number.isFinite) || !baseline.intensityData.every(Number.isFinite) ||
+    ![normFactor, variance.sigPct, variance.bslPct].every(Number.isFinite)) {
     throw new Error('These data and processing settings exceed the supported numerical range.');
   }
+  const peaks = SpectralProcessor.findPeaks(processed);
+  return {
+    id, name, raw, fileHash, corrected, baseline, processed, normFactor, peaks,
+    selectedPeakX: new Set(peaks.filter(p => input.selectedPeakX?.has(p.x)).map(p => p.x)),
+    variance, spikesRemoved: replacedCount, params, anchors, labels, color: input.color ?? ''
+  };
+}
 
-  trackEvent('peak_detection_run', {
-    peak_count: peaks.length,
-    file_id: id,
-    baseline_mode: mode
-  });
-
-  state.files.set(id, {
-    id, name, raw, corrected, baseline, processed, normFactor, peaks,
-    selectedPeakX: existing?.selectedPeakX || new Set(),
-    variance,
-    spikesRemoved: replacedCount,
-    params: { snip, sg, mode, timestamp: new Date().toISOString(), norm: normMode, cosmic: state.cosmicRayRemoval, normTarget: state.normTargetX },
-    anchors,
-    color: existing?.color || COLOR_PALETTE[state.files.size % COLOR_PALETTE.length],
-    labels: existing?.labels || [],
-    fileHash: currentHash,
-    isReproduced: existing?.isReproduced,
-    protocolId: existing?.protocolId,
-    reproducedSteps: existing?.reproducedSteps
-  });
-
-  updateMaxXData();
+function storeProcessedSpectra(spectra: ProcessedFile[]) {
+  for (const file of spectra) {
+    if (state.activeFileId === file.id && state.files.has(file.id)) {
+      resetFitView();
+      state.ratioMode = false;
+      state.ratioSelection = { p1: null, p2: null };
+    }
+    if (!file.color) file.color = COLOR_PALETTE[state.files.size % COLOR_PALETTE.length];
+    state.files.set(file.id, file);
+    trackEvent('peak_detection_run', { peak_count: file.peaks.length, baseline_mode: file.params.mode });
+  }
 }
 
 function hexToRgb(hex: string) {
@@ -406,7 +386,7 @@ function hexToRgb(hex: string) {
     '45, 212, 191';
 }
 
-function updateUI() {
+function updateUI(save = true) {
   renderFileList();
   renderPlots();
   renderAnchorList();
@@ -426,7 +406,6 @@ function updateUI() {
       app.style.setProperty('--active-color-rgb', hexToRgb(active.color));
     }
 
-    UI.get('cal-status-container')?.classList.remove('hidden');
   } else {
     UI.get('cal-status-container')?.classList.add('hidden');
     if (app) {
@@ -450,13 +429,13 @@ function updateUI() {
 
   // Update Footer Stats
   const totalFiles = state.files.size;
-  const activeCount = state.comparisonIds.size || (state.activeFileId ? 1 : 0);
+  const activeCount = plottedSpectra().length;
   UI.text('footer-stats', `SPECTRA: ${totalFiles} ; ACTIVE SPECTRA: ${activeCount}`);
 
   // Update Ratio Results visibility
-  if (state.ratioSelection.p1 || state.ratioSelection.p2) {
-    UI.get('ratio-results')?.classList.remove('hidden');
-  }
+  UI.get('ratio-results')?.classList.toggle('hidden', !state.ratioSelection.p1 && !state.ratioSelection.p2);
+  UI.text('btn-mode-ratio', state.ratioMode ? 'Ratio mode: active (pick 2 peaks)' : 'Enable ratio selection');
+  UI.get('btn-mode-ratio')?.classList.toggle('active-compare', state.ratioMode);
 
   // Update Ratio Results if both p1 and p2 selected
   if (state.ratioSelection.p1 && state.ratioSelection.p2) {
@@ -493,6 +472,7 @@ function updateUI() {
       btnFit.style.color = '';
     }
   }
+  if (save) scheduleWorkspaceSave();
 }
 
 function renderLabelList() {
@@ -611,8 +591,7 @@ function renderFileList() {
       if ((e.target as HTMLElement).closest('.compare-checkbox') || (e.target as HTMLElement).closest('.btn-del-file') || (e.target as HTMLElement).closest('.btn-edit-name')) {
         return;
       }
-      state.activeFileId = id;
-      UI.get('cal-status-container')?.classList.add('hidden');
+      selectSpectrum(id);
       updateUI();
     });
 
@@ -629,16 +608,84 @@ function renderFileList() {
 function toggleComp(id: string) {
   if (state.comparisonIds.has(id)) state.comparisonIds.delete(id);
   else state.comparisonIds.add(id);
+  clearReplicates();
   updateUI();
+}
+
+function plottedSpectra() {
+  const ids = new Set(state.comparisonIds);
+  if (state.activeFileId) ids.add(state.activeFileId);
+  return [...ids].flatMap(id => {
+    const file = state.files.get(id);
+    return file ? [file] : [];
+  });
+}
+
+function visibleFit() {
+  return state.fitViewFileId && state.fitViewFileId === state.activeFileId
+    ? state.files.get(state.fitViewFileId)?.fit : undefined;
+}
+
+function spectrumNormalizationLabel(params?: ProcessedFile['params']) {
+  if (params?.norm === 'max') return 'Max Intensity';
+  if (params?.norm === 'area') return 'Total Area';
+  if (params?.norm === 'point') return `Point (${params.normTarget?.toFixed(1)} cm⁻¹)`;
+  return '';
+}
+
+let pendingFit: ReturnType<typeof setTimeout> | undefined;
+
+function resetFitView() {
+  clearTimeout(pendingFit);
+  pendingFit = undefined;
+  state.selectingROI = false;
+  state.fitViewFileId = null;
+}
+
+function clearReplicates() {
+  if (state.layoutMode === 'replicate') state.layoutMode = state.previousLayoutMode;
+  state.replicateGroup = null;
+}
+
+function applyProcessingControls(params: ProcessedFile['params']) {
+  state.baselineMode = params.mode;
+  state.cosmicRayRemoval = params.cosmic;
+  state.normalizationMode = params.norm;
+  state.normTargetX = params.normTarget;
+  (UI.get('check-cosmic-ray') as HTMLInputElement).checked = params.cosmic;
+  (UI.get('check-clip-negative') as HTMLInputElement).checked = params.clipNegative;
+  UI.setVal('select-smoothing', String(params.sg));
+  UI.setVal('slider-snip', String(params.snip));
+  UI.text('val-snip', String(params.snip));
+  UI.setVal('select-norm', params.norm);
+  UI.setVal('input-norm-target', params.normTarget?.toString() ?? '');
+  UI.get('norm-point-info')?.classList.toggle('hidden', params.norm !== 'point');
+  UI.text('norm-target-display', params.normTarget === null ? 'Ref: --- cm⁻¹' : `Ref: ${params.normTarget.toFixed(1)} cm⁻¹`);
+  UI.get('snip-controls')?.classList.toggle('hidden', params.mode !== 'auto');
+  UI.get('manual-controls')?.classList.toggle('hidden', params.mode !== 'manual');
+  UI.get('btn-mode-snip')?.classList.toggle('active-compare', params.mode === 'auto');
+  UI.get('btn-mode-manual')?.classList.toggle('active-compare', params.mode === 'manual');
+}
+
+function selectSpectrum(id: string | null) {
+  if (id === state.activeFileId) return;
+  state.activeFileId = id;
+  resetFitView();
+  clearReplicates();
+  state.ratioMode = false;
+  state.ratioSelection = { p1: null, p2: null };
+  UI.get('cal-status-container')?.classList.add('hidden');
+  const selected = id === null ? undefined : state.files.get(id);
+  if (selected) applyProcessingControls(selected.params);
 }
 
 function deleteFile(id: string) {
   state.files.delete(id);
   state.comparisonIds.delete(id);
+  clearReplicates();
   if (state.activeFileId === id) {
-    state.activeFileId = state.files.size > 0 ? Array.from(state.files.keys())[0] : null;
+    selectSpectrum(state.files.keys().next().value ?? null);
   }
-  updateMaxXData();
   updateUI();
 }
 
@@ -666,12 +713,7 @@ function renderPlots() {
   }
 
   // Unified Filtering: Always show active file + all comparison selections
-  const fileIdsToRender = new Set(state.comparisonIds);
-  if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
-
-  let filesToRender = Array.from(fileIdsToRender)
-    .map(id => state.files.get(id))
-    .filter(f => !!f) as ProcessedFile[];
+  const filesToRender = plottedSpectra();
 
   const activeFile = state.files.get(state.activeFileId || '');
   const peaksForPlot = activeFile ? activeFile.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) : [];
@@ -695,20 +737,20 @@ function renderPlots() {
     return;
   }
 
-  if (state.fittingMode && state.fitResult) {
+  const fit = visibleFit();
+  UI.setVal('select-layout', state.layoutMode === 'replicate' ? state.previousLayoutMode : state.layoutMode);
+  UI.get('btn-view-fit')?.classList.toggle('hidden', !!fit || !activeFile?.fit);
+  if (fit) {
     UI.get('btn-start-fit-mode')?.classList.add('hidden');
     UI.get('btn-exit-fit')?.classList.remove('hidden');
-    renderFitResults();
+    renderFitResults(fit);
     return;
   } else {
     UI.get('btn-start-fit-mode')?.classList.remove('hidden');
     UI.get('btn-exit-fit')?.classList.add('hidden');
   }
 
-  const normLabel = state.normalizationMode === 'none' ? '' :
-    state.normalizationMode === 'max' ? 'Max Intensity' :
-      state.normalizationMode === 'area' ? 'Total Area' :
-        `Point (${state.normTargetX?.toFixed(0)})`;
+  const normLabel = spectrumNormalizationLabel(activeFile?.params);
 
   if (state.layoutMode === 'stacked' && filesToRender.length > 1) {
     const div = document.createElement('div');
@@ -718,7 +760,7 @@ function renderPlots() {
       let displayData = f.processed;
       let currentFactor = f.normFactor;
 
-      if (state.normalizationMode === 'none') {
+      if (f.params.norm === 'none') {
         const res = SpectralProcessor.normalizeMax(f.processed);
         displayData = res.normalized;
         currentFactor = res.factor;
@@ -734,24 +776,34 @@ function renderPlots() {
         wavenumberData: f.raw.wavenumberData,
         intensityData: f.raw.intensityData.map(v => (v * currentFactor) + offset)
       };
+      const baselineScaled = {
+        wavenumberData: f.baseline.wavenumberData,
+        intensityData: f.baseline.intensityData.map(v => v * currentFactor + offset)
+      };
 
       return {
-        name: f.name, data: offsetData, color: f.color, raw: rawScaled, labels: f.labels
+        name: f.name, data: offsetData, color: f.color, raw: rawScaled, baseline: baselineScaled,
+        labels: f.labels.map(label => ({ ...label, y: label.y * (f.params.norm === 'none' ? currentFactor : 1) + offset }))
       };
     });
     requestAnimationFrame(() => {
-      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, normLabel, peaksForPlot, null, 16, true, false, state.showUnprocessed, state.showBaseline, state.showGrid);
+      if (!div.isConnected) return;
+      const waterfallLabels = new Set(filesToRender.map(f => spectrumNormalizationLabel(f.params) || 'Max Intensity'));
+      const waterfallNorm = waterfallLabels.size === 1 ? [...waterfallLabels][0] : 'Mixed normalization';
+      ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, true, state.hideYAxis, waterfallNorm, peaksForPlot, null, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
       attachManualBaselineListener(div);
       attachLabelClickListener(div);
       attachFreeLabelListener(div);
     });
   } else if (state.layoutMode === 'replicate' && state.replicateGroup) {
+    const group = state.replicateGroup;
     const div = document.createElement('div');
     div.className = 'plot-container';
     container.appendChild(div);
     requestAnimationFrame(() => {
-      const statsPeaks: Peak[] = state.replicateGroup?.peakStats
-        .filter(ps => state.replicateGroup?.selectedPeakX.has(ps.xMean))
+      if (!div.isConnected) return;
+      const statsPeaks: Peak[] = group.peakStats
+        .filter(ps => group.selectedPeakX.has(ps.xMean))
         .map(ps => ({
           x: ps.xMean,
           y: ps.yMean,
@@ -759,11 +811,13 @@ function renderPlots() {
           relIntensity: 0,
           area: 0
         })) || [];
-      ChartRenderer.renderReplicate(div, state.replicateGroup!.mean, state.replicateGroup!.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks, state.showGrid, activeFile?.labels || []);
+      ChartRenderer.renderReplicate(div, group.mean, group.sd, "Replicate Group", "#332288", state.viewRange || undefined, statsPeaks, state.showGrid);
     });
   } else if (state.layoutMode.startsWith('grid')) {
     const limit = state.layoutMode === 'grid2x1' ? 2 : 4;
-    filesToRender.slice(0, limit).forEach((f) => {
+    const panelFiles = activeFile && !filesToRender.slice(0, limit).includes(activeFile)
+      ? [...filesToRender.slice(0, limit - 1), activeFile] : filesToRender.slice(0, limit);
+    panelFiles.forEach((f) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'plot-item';
       wrapper.innerHTML = `<div class="plot-item-title">${escapeHTML(f.name)}</div><div class="plot-container" style="flex:1; min-height:0;"></div>`;
@@ -776,13 +830,15 @@ function renderPlots() {
       };
 
       requestAnimationFrame(() => {
+        if (!plotEl.isConnected) return;
         const filteredPeaks = f.peaks.filter(p => f.selectedPeakX.has(p.x));
-        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, f.baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
+        const baseline = { wavenumberData: f.baseline.wavenumberData, intensityData: f.baseline.intensityData.map(y => y * f.normFactor) };
+        ChartRenderer.renderSingle(plotEl, rawNormalized, f.processed, baseline, filteredPeaks, f.color, state.viewRange || undefined, true, state.hideYAxis, spectrumNormalizationLabel(f.params), f.id === state.activeFileId ? state.ratioSelection : null, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
         attachManualBaselineListener(plotEl);
         attachLabelClickListener(plotEl);
         attachFreeLabelListener(plotEl);
         // Systematic Fix: Ensure grid plots also get the fit listener if in selection mode
-        if (state.fittingMode || state.selectingROI) attachFitListener(plotEl);
+        if (state.selectingROI && f.id === state.activeFileId) attachFitListener(plotEl, f.id);
       });
     });
   } else {
@@ -792,16 +848,21 @@ function renderPlots() {
 
     if (filesToRender.length > 1) {
       const datasets = filesToRender.map(f => ({
-        name: f.name, data: f.processed, color: f.color, labels: f.labels, raw: {
+        name: f.name, data: f.processed, color: f.color, labels: f.labels,
+        baseline: { wavenumberData: f.baseline.wavenumberData, intensityData: f.baseline.intensityData.map(y => y * f.normFactor) },
+        raw: {
           wavenumberData: f.raw.wavenumberData,
           intensityData: f.raw.intensityData.map(v => v * f.normFactor)
         }
       }));
       requestAnimationFrame(() => {
-        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, normLabel, peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
+        if (!div.isConnected) return;
+        const labels = new Set(filesToRender.map(f => spectrumNormalizationLabel(f.params)));
+        ChartRenderer.renderOverlay(div, datasets, state.viewRange || undefined, false, state.hideYAxis, labels.size === 1 ? normLabel : 'Mixed normalization', peaksForPlot, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
         attachManualBaselineListener(div);
         attachLabelClickListener(div);
         attachFreeLabelListener(div);
+        if (state.selectingROI && activeFile) attachFitListener(div, activeFile.id);
       });
     } else {
       const f = filesToRender[0];
@@ -810,18 +871,20 @@ function renderPlots() {
         intensityData: f.raw.intensityData.map(v => v * f.normFactor)
       };
       requestAnimationFrame(() => {
+        if (!div.isConnected) return;
         const filteredPeaks = activeFile?.peaks.filter(p => activeFile.selectedPeakX.has(p.x)) || [];
-        ChartRenderer.renderSingle(div, rawNormalized, activeFile!.processed, activeFile!.baseline, filteredPeaks, activeFile!.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, activeFile!.labels);
+        const baseline = { wavenumberData: f.baseline.wavenumberData, intensityData: f.baseline.intensityData.map(y => y * f.normFactor) };
+        ChartRenderer.renderSingle(div, rawNormalized, f.processed, baseline, filteredPeaks, f.color, state.viewRange || undefined, false, state.hideYAxis, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showUnprocessed, state.showBaseline, state.showGrid, f.labels);
         attachManualBaselineListener(div);
         attachLabelClickListener(div);
         attachFreeLabelListener(div);
-        if (state.fittingMode || state.selectingROI) attachFitListener(div);
+        if (state.selectingROI) attachFitListener(div, f.id);
       });
     }
   }
 }
 
-function attachFitListener(el: HTMLElement) {
+function attachFitListener(el: HTMLElement, fileId: string) {
   const Plotly = (window as any).Plotly;
   const plotEl = el as any;
   if (!plotEl || !Plotly) return;
@@ -829,6 +892,7 @@ function attachFitListener(el: HTMLElement) {
   // Force box selection mode
   // Force box selection mode (with safety timeout to ensure Plotly is ready)
   const setDragMode = () => {
+    if (!el.isConnected || !state.selectingROI) return;
     if (plotEl._fullLayout) {
       Plotly.relayout(plotEl, { dragmode: 'select' });
     } else {
@@ -838,8 +902,8 @@ function attachFitListener(el: HTMLElement) {
   setDragMode();
 
   plotEl.on('plotly_selected', (data: any) => {
-    if (!data) return;
-    const range = data.range.x;
+    const range = data?.range?.x;
+    if (!range || !el.isConnected || !state.selectingROI || state.activeFileId !== fileId) return;
     state.selectingROI = false; // Turn off selection mode once fit starts
     runFitting(range[0], range[1]);
   });
@@ -851,26 +915,9 @@ function attachManualBaselineListener(el: HTMLElement) {
     plotEl.on('plotly_relayout', (data: any) => {
       // Handle Zoom/Pan
       if (data['xaxis.range[0]'] !== undefined) {
-        const newMinX = Math.max(0, data['xaxis.range[0]']);
-        const newMaxX = Math.min(state.maxXData, data['xaxis.range[1]']);
-
-        // Prevent infinite loop by checking if change is needed
-        let needsFix = false;
-        const fix: any = {};
-
-        if (data['xaxis.range[0]'] < 0) {
-          fix['xaxis.range[0]'] = 0;
-          needsFix = true;
-        }
-        if (data['xaxis.range[1]'] > state.maxXData) {
-          fix['xaxis.range[1]'] = state.maxXData;
-          needsFix = true;
-        }
-
-        if (needsFix) {
-          const Plotly = (window as any).Plotly;
-          if (Plotly) Plotly.relayout(plotEl, fix);
-        }
+        const newMinX = data['xaxis.range[0]'];
+        const newMaxX = data['xaxis.range[1]'];
+        if (!Number.isFinite(newMinX) || !Number.isFinite(newMaxX)) return;
 
         // Save current view to history before updating if it's a significant change
         if (!state.viewRange || Math.abs(state.viewRange[0] - newMinX) > 1 || Math.abs(state.viewRange[1] - newMaxX) > 1) {
@@ -878,18 +925,15 @@ function attachManualBaselineListener(el: HTMLElement) {
           if (state.viewHistory.length > 20) state.viewHistory.shift();
         }
         state.viewRange = [newMinX, newMaxX];
+        scheduleWorkspaceSave();
       }
 
-      // Clamp Y-axis if it goes negative during manual zoom/pan
-      if (data['yaxis.range[0]'] !== undefined && data['yaxis.range[0]'] < 0) {
-        const Plotly = (window as any).Plotly;
-        if (Plotly) Plotly.relayout(plotEl, { 'yaxis.range[0]': 0 });
-      }      // Handle Double-Click / Reset
-      else if (data['xaxis.autorange'] === true || data['autosize'] === true) {
+      if (data['xaxis.autorange'] === true && state.viewRange) {
         if (state.viewRange) {
           state.viewHistory.push([...state.viewRange]);
         }
         state.viewRange = null;
+        scheduleWorkspaceSave();
         // Fix "Flat Line" issue: force Y-axis to also reset to auto-range
         const Plotly = (window as any).Plotly;
         if (Plotly) {
@@ -924,9 +968,6 @@ function attachManualBaselineListener(el: HTMLElement) {
             } else if (!state.ratioSelection.p2) {
               state.ratioSelection.p2 = nearest;
               state.ratioMode = false;
-              const btn = UI.get('btn-ratio-mode') as HTMLButtonElement;
-              btn.innerText = 'ENABLE RATIO SELECTION';
-              btn.classList.remove('active-compare');
               // Auto-select for table inclusion
               activeFile.selectedPeakX.add(nearest.x);
             }
@@ -973,8 +1014,7 @@ function addAnchor(x: number, y: number) {
   const active = state.files.get(state.activeFileId || '');
   if (active) {
     if (active.anchors.length >= LIMITS.anchors) { showToast('Maximum 256 baseline anchors reached.'); return; }
-    active.anchors.push({ x, y });
-    reprocessActive();
+    reprocessActive([...active.anchors, { x, y }]);
   }
 }
 
@@ -985,7 +1025,7 @@ function renderAnchorList() {
   body.innerHTML = '';
   if (!active || state.baselineMode !== 'manual') return;
 
-  active.anchors.sort((a, b) => a.x - b.x).forEach((a, idx) => {
+  [...active.anchors].sort((a, b) => a.x - b.x).forEach((a, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding:4px;">${a.x.toFixed(1)}</td>
@@ -993,8 +1033,7 @@ function renderAnchorList() {
       <td style="padding:4px;"><button class="btn-del-anchor" data-idx="${idx}" style="background:none; border:none; cursor:pointer;">✕</button></td>
     `;
     tr.querySelector('.btn-del-anchor')?.addEventListener('click', () => {
-      active.anchors.splice(idx, 1);
-      reprocessActive();
+      reprocessActive(active.anchors.filter(anchor => anchor !== a));
     });
     body.appendChild(tr);
   });
@@ -1003,6 +1042,14 @@ function renderAnchorList() {
 
 
 function initBaselineControls() {
+  const smoothing = UI.get('select-smoothing') as HTMLSelectElement;
+  const defaultWindow = smoothing.options[1];
+  for (let points = 3; points <= 51; points += 2) {
+    if (points !== 9) smoothing.add(new Option(String(points), String(points)), points < 9 ? defaultWindow : null);
+  }
+  for (const id of ['select-smoothing', 'check-clip-negative']) {
+    UI.get(id)?.addEventListener('change', reprocessAll);
+  }
   UI.get('btn-mode-snip')?.addEventListener('click', () => {
     state.baselineMode = 'auto';
     UI.get('btn-mode-snip')?.classList.add('active-compare');
@@ -1011,7 +1058,6 @@ function initBaselineControls() {
     UI.get('manual-controls')?.classList.add('hidden');
 
     trackEvent('baseline_correction_applied', { mode: 'auto' });
-    markManualChange('Baseline Correction');
     reprocessAll();
   });
 
@@ -1023,15 +1069,13 @@ function initBaselineControls() {
     UI.get('manual-controls')?.classList.remove('hidden');
 
     trackEvent('baseline_correction_applied', { mode: 'manual' });
-    markManualChange('Baseline Correction');
     reprocessAll();
   });
 
   UI.get('btn-clear-anchors')?.addEventListener('click', () => {
     const active = state.files.get(state.activeFileId || '');
     if (active) {
-      active.anchors = [];
-      reprocessActive();
+      reprocessActive([]);
     }
   });
 }
@@ -1090,9 +1134,7 @@ function initDrawerToggle() {
         target.classList.contains('data-grid') || 
         target.classList.contains('analysis-drawer')) {
       // Trigger the expensive renders only AFTER the smooth transition is complete
-      updateUI();
-      // Ensure Plotly specifically handles the new container size
-      renderPlots();
+      updateUI(false);
     }
   });
 }
@@ -1186,33 +1228,15 @@ function renderDataGrid() {
 function initLayoutControls() {
   const selectLayout = UI.get('select-layout') as HTMLSelectElement;
   selectLayout?.addEventListener('change', (e) => {
-    const val = (e.target as HTMLSelectElement).value as any;
-    state.layoutMode = val;
-    if (state.layoutMode !== 'replicate') {
-      state.previousLayoutMode = state.layoutMode as any;
-    }
+    resetFitView();
+    clearReplicates();
+    state.layoutMode = state.previousLayoutMode = (e.target as HTMLSelectElement).value as AppState['previousLayoutMode'];
     updateUI();
   });
   UI.get('btn-group-replicates')?.addEventListener('click', () => {
-    const selectedIds = Array.from(state.comparisonIds);
-    if (state.activeFileId) selectedIds.push(state.activeFileId);
-
-    const uniqueIds = Array.from(new Set(selectedIds));
-    if (uniqueIds.length < 2) {
-      alert("Please select at least 2 files (using COMP buttons) to calculate a statistical average.");
-      return;
-    }
-
-    const datasets = uniqueIds.map(id => {
-      const f = state.files.get(id)!;
-      return { raw: f.raw, processed: f.processed, peaks: f.peaks };
-    });
-
     try {
-      if (state.layoutMode !== 'replicate') {
-        state.previousLayoutMode = state.layoutMode as any;
-      }
-      state.replicateGroup = ReplicateEngine.compute(datasets);
+      state.replicateGroup = calculateReplicates();
+      resetFitView();
       state.layoutMode = 'replicate';
       updateUI();
     } catch (err: any) {
@@ -1221,31 +1245,73 @@ function initLayoutControls() {
   });
 
   UI.get('btn-start-fit-mode')?.addEventListener('click', () => {
-    state.selectingROI = !state.selectingROI;
+    const selecting = !state.selectingROI;
+    clearReplicates();
+    if (state.layoutMode === 'stacked') state.layoutMode = state.previousLayoutMode = 'single';
+    state.selectingROI = selecting;
     if (state.selectingROI) {
-      showToast("Drag on the plot to select your fitting region.");
+      showToast("Drag on the active spectrum's plot to select your fitting region.");
     }
+    updateUI();
+  });
+
+  UI.get('btn-view-fit')?.addEventListener('click', () => {
+    resetFitView();
+    clearReplicates();
+    state.fitViewFileId = state.activeFileId;
+    updateUI();
+  });
+  UI.get('btn-exit-fit')?.addEventListener('click', () => {
+    resetFitView();
     updateUI();
   });
 
   UI.get('btn-undo-replicates')?.addEventListener('click', () => {
-    state.layoutMode = state.previousLayoutMode;
-    state.replicateGroup = null;
+    clearReplicates();
     updateUI();
   });
 }
 
+function calculateReplicates() {
+  const spectra = plottedSpectra();
+  if (spectra.length < 2) throw new Error('Check a second spectrum in the Spectra tab to group replicates.');
+  const first = spectra[0].params;
+  if (spectra.some(({ params }) => params.norm !== first.norm ||
+    (params.norm === 'point' && params.normTarget !== first.normTarget))) {
+    throw new Error('Replicates must use the same normalization settings.');
+  }
+  return ReplicateEngine.compute(spectra);
+}
+
+function refreshReplicates() {
+  if (state.layoutMode !== 'replicate') return;
+  try {
+    const selected = state.replicateGroup?.selectedPeakX;
+    const group = calculateReplicates();
+    group.selectedPeakX = new Set(group.peakStats.filter(peak => selected?.has(peak.xMean)).map(peak => peak.xMean));
+    state.replicateGroup = group;
+  } catch (error) {
+    clearReplicates();
+    showToast((error as Error).message);
+  }
+}
+
 function initNormalization() {
+  const target = UI.get('input-norm-target') as HTMLInputElement;
+  const setTarget = () => {
+    state.normTargetX = Number.isFinite(target.valueAsNumber) && target.validity.valid ? target.valueAsNumber : null;
+    UI.text('norm-target-display', state.normTargetX === null ? 'Ref: --- cm⁻¹' : `Ref: ${state.normTargetX.toFixed(1)} cm⁻¹`);
+  };
+  target.addEventListener('change', () => {
+    if (state.normalizationMode !== 'point') return;
+    setTarget();
+    reprocessAll();
+  });
   UI.get('select-norm')?.addEventListener('change', (e) => {
     state.normalizationMode = (e.target as HTMLSelectElement).value as NormalizationMode;
-    markManualChange('Normalization');
-    if (state.normalizationMode === 'point') {
-      UI.get('norm-point-info')?.classList.remove('hidden');
-    } else {
-      UI.get('norm-point-info')?.classList.add('hidden');
-      reprocessAll();
-    }
-    updateUI();
+    UI.get('norm-point-info')?.classList.toggle('hidden', state.normalizationMode !== 'point');
+    if (state.normalizationMode === 'point') setTarget();
+    if (state.normalizationMode !== 'point' || state.normTargetX !== null) reprocessAll();
   });
 }
 
@@ -1279,7 +1345,6 @@ function initSliders() {
       lastSnipTrack = now;
     }
 
-    markManualChange('Baseline Correction');
     reprocessAll();
   });
   UI.get('slider-stack')?.addEventListener('input', (e) => {
@@ -1308,27 +1373,27 @@ function initSliders() {
 
   UI.get('check-export-transparent')?.addEventListener('change', (e) => {
     state.exportTransparent = (e.target as HTMLInputElement).checked;
+    scheduleWorkspaceSave();
   });
 
   UI.get('check-show-unprocessed')?.addEventListener('change', (e) => {
     state.showUnprocessed = (e.target as HTMLInputElement).checked;
-    renderPlots();
+    updateUI();
   });
 
   UI.get('check-show-baseline')?.addEventListener('change', (e) => {
     state.showBaseline = (e.target as HTMLInputElement).checked;
-    renderPlots();
+    updateUI();
   });
 
   UI.get('check-hide-grid')?.addEventListener('change', (e) => {
     // Note: Variable is 'showGrid', but checkbox is 'hide-grid' (inverted logic)
     state.showGrid = !(e.target as HTMLInputElement).checked;
-    renderPlots();
+    updateUI();
   });
 
   UI.get('check-cosmic-ray')?.addEventListener('change', (e) => {
     state.cosmicRayRemoval = (e.target as HTMLInputElement).checked;
-    markManualChange('Cosmic Ray');
     reprocessAll();
   });
 
@@ -1340,38 +1405,6 @@ function initSliders() {
     const btn = UI.get('btn-copy-caption') as HTMLButtonElement;
     btn.innerText = 'Copied!';
     setTimeout(() => btn.innerText = 'Copy to clipboard', 2000);
-  });
-
-  // Feature 6 - Axis Customization
-  UI.get('btn-apply-range')?.addEventListener('click', () => {
-    const min = parseFloat((UI.get('input-range-min') as HTMLInputElement).value);
-    const max = parseFloat((UI.get('input-range-max') as HTMLInputElement).value);
-    if (!isNaN(min) && !isNaN(max)) {
-      state.viewRange = [min, max];
-      renderPlots();
-    }
-  });
-
-  UI.get('btn-reset-range')?.addEventListener('click', () => {
-    state.viewRange = null;
-    (UI.get('input-range-min') as HTMLInputElement).value = '';
-    (UI.get('input-range-max') as HTMLInputElement).value = '';
-    renderPlots();
-  });
-
-  UI.get('select-axis-font')?.addEventListener('change', (e) => {
-    state.axisFontSize = parseInt((e.target as HTMLSelectElement).value);
-    renderPlots();
-  });
-
-  UI.get('check-axis-box')?.addEventListener('change', (e) => {
-    state.showAxisBox = (e.target as HTMLInputElement).checked;
-    renderPlots();
-  });
-
-  UI.get('check-direct-labels')?.addEventListener('change', (e) => {
-    state.showDirectLabels = (e.target as HTMLInputElement).checked;
-    renderPlots();
   });
 
   // Tab Logic
@@ -1682,26 +1715,39 @@ function attachFreeLabelListener(el: HTMLElement) {
   });
 }
 
-function reprocessActive() {
+function reprocessActive(anchors?: ProcessedFile['anchors']) {
   const active = state.files.get(state.activeFileId || '');
-  if (active) {
-    processAndStore(active.id, active.name, active.raw);
+  if (!active) return;
+  try {
+    const file = processSpectrum({ ...active, anchors: anchors ?? active.anchors }, processingSettings());
+    storeProcessedSpectra([file]);
+    refreshReplicates();
     updateUI();
+  } catch (error) {
+    applyProcessingControls(active.params);
+    showToast((error as Error).message);
   }
 }
 
 function reprocessAll() {
-  state.files.forEach((f, id) => processAndStore(id, f.name, f.raw));
-  updateUI();
+  try {
+    const settings = processingSettings();
+    storeProcessedSpectra([...state.files.values()].map(file => processSpectrum(file, settings)));
+    refreshReplicates();
+    updateUI();
+  } catch (error) {
+    const active = state.files.get(state.activeFileId || '');
+    if (active) applyProcessingControls(active.params);
+    showToast((error as Error).message);
+  }
 }
 
 async function exportExcel() {
-  const fileIds = state.comparisonIds.size > 0 ? Array.from(state.comparisonIds) : [state.activeFileId].filter(id => id) as string[];
-  if (fileIds.length === 0) return;
+  const files = plottedSpectra();
+  if (files.length === 0) return;
 
   try {
     const wb = XLSX.utils.book_new();
-    const params = { snip: parseInt(UI.val('slider-snip')), sg: 9 };
 
     // 1. Methodology Sheet
     const summaryData = [
@@ -1709,8 +1755,7 @@ async function exportExcel() {
       ['Workstation', `Instant Raman ${APP_VERSION}`],
       ['Export Date', new Date().toISOString()],
       ['Baseline', 'See each spectrum sheet for mode and settings'],
-      ['Smoothing (moving average)', 'Window size ' + params.sg],
-      ['Negative corrected intensities', 'Set to zero before smoothing'],
+      ['Smoothing and clipping', 'See each spectrum sheet'],
       ['Peak Detection Threshold', '2% of maximum processed intensity'],
       ['Software', 'raman-instant.com']
     ];
@@ -1739,15 +1784,13 @@ async function exportExcel() {
     }
 
     // 2. Spectral Data Sheets
-    const sheetNames = new Set();
-    for (const id of fileIds) {
-      const file = state.files.get(id)!;
-
-      let baseName = file.name.substring(0, 25).replace(/[\\\/\?\*\[\]]/g, '_');
+    const sheetNames = new Set(wb.SheetNames.map(name => name.toLowerCase()));
+    for (const file of files) {
+      const baseName = file.name.substring(0, 25).replace(/[\\/:?*\[\]]/g, '_');
       let sheetName = baseName;
       let counter = 1;
-      while (sheetNames.has(sheetName)) { sheetName = `${baseName}_${counter++}`; }
-      sheetNames.add(sheetName);
+      while (sheetNames.has(sheetName.toLowerCase())) { sheetName = `${baseName}_${counter++}`; }
+      sheetNames.add(sheetName.toLowerCase());
 
       const spectralData: any[][] = [
         ['File Name', file.name],
@@ -1759,6 +1802,8 @@ async function exportExcel() {
         ['Baseline Mode', file.params.mode.toUpperCase()],
         ['Cosmic Ray Spikes Removed', file.spikesRemoved],
         ['SNIP Iterations', file.params.mode === 'auto' ? file.params.snip : 'N/A'],
+        ['Moving average (points)', file.params.sg === 1 ? 'Off' : file.params.sg],
+        ['Negative corrected intensities', file.params.clipNegative ? 'Clipped to zero' : 'Retained'],
         ['Manual Anchors Count', file.params.mode === 'manual' ? file.anchors.length : 0]
       ];
 
@@ -1771,7 +1816,7 @@ async function exportExcel() {
       const normLabel = file.params.norm === 'none' ? 'None' :
         file.params.norm === 'max' ? 'Max Intensity' :
           file.params.norm === 'area' ? 'Total Area (AUC)' :
-            `Point Ref (${state.normTargetX?.toFixed(1)} cm⁻¹)`;
+            `Point Ref (${file.params.normTarget?.toFixed(1)} cm⁻¹)`;
 
       spectralData.push(['Raman Shift (cm-1)', 'Raw Intensity', 'Baseline Corrected', `Normalized (${normLabel})`]);
 
@@ -1794,7 +1839,7 @@ async function exportExcel() {
       });
 
       // Add Ratios if selected
-      if (state.ratioSelection.p1 && state.ratioSelection.p2) {
+      if (file.id === state.activeFileId && state.ratioSelection.p1 && state.ratioSelection.p2) {
         const p1 = state.ratioSelection.p1;
         const p2 = state.ratioSelection.p2;
         spectralData.push([]);
@@ -1835,29 +1880,13 @@ async function exportExcel() {
 }
 
 
-// Expose processor to window for the chart renderer's Waterfall export
-(window as any).SpectralProcessor = SpectralProcessor;
-
 async function exportFigure(format: 'png' | 'svg') {
-  let filesToRender = Array.from(state.comparisonIds)
-    .map(id => state.files.get(id))
-    .filter(f => !!f) as ProcessedFile[];
-
-  if (filesToRender.length === 0 && state.activeFileId) {
-    const active = state.files.get(state.activeFileId);
-    if (active) filesToRender = [active];
-  }
-
-  if (filesToRender.length === 0) return;
-
+  const workspace = UI.get('workspace-container');
+  if (!workspace) return;
   try {
-    const normLabel = state.normalizationMode === 'none' ? '' :
-      state.normalizationMode === 'max' ? 'Max Intensity' :
-        state.normalizationMode === 'area' ? 'Total Area' :
-          `Point (${state.normTargetX?.toFixed(0)})`;
-    await ChartRenderer.exportPublicationFigure(state, filesToRender, format, normLabel, state.ratioSelection, state.axisFontSize, state.showAxisBox, state.showDirectLabels, state.showUnprocessed, state.showBaseline, state.showGrid);
-  } catch (err) {
-    console.error('[raman — instant] Export Error:', err);
+    await exportRenderedFigure(workspace, format, format === 'png' && state.exportTransparent);
+  } catch (error) {
+    showToast('Figure export failed: ' + (error as Error).message);
   }
 }
 
@@ -1874,7 +1903,9 @@ function getScientificNarrative(file: ProcessedFile) {
   if (norm === 'point') normDesc = `normalization to the selected point at ${params.normTarget?.toFixed(1)} cm⁻¹`;
 
   const baselineDescription = params.mode === 'manual' ? `linear interpolation between ${file.anchors.length} manual anchors` : `iterative clipping (SNIP, ${snip} iterations) [1]`;
-  return `Raman spectrum of ${file.name}. Processed using Instant Raman (${APP_VERSION}). ${params.cosmic ? `Median-based spike removal replaced ${file.spikesRemoved} points.` : 'Spike removal was disabled.'} Baseline subtraction used ${baselineDescription}. Negative corrected intensities were set to zero, followed by moving-average smoothing (window size ${sg}) [2] and ${normDesc}. Local maxima detection with three-point parabolic refinement and a 2% threshold of maximum processed intensity identified ${peakCount} candidate peaks. Keep the original data file and import settings with the exported protocol.`;
+  const clipping = params.clipNegative ? 'set to zero' : 'retained';
+  const smoothing = sg === 1 ? 'Smoothing was disabled' : 'A ' + sg + '-point moving average [2] was applied';
+  return `Raman spectrum of ${file.name}. Processed using Instant Raman (${APP_VERSION}). ${params.cosmic ? `Median-based spike removal replaced ${file.spikesRemoved} points.` : 'Spike removal was disabled.'} Baseline subtraction used ${baselineDescription}. Negative corrected intensities were ${clipping}. ${smoothing}, with ${normDesc}. Local maxima detection with three-point parabolic refinement and a 2% threshold of maximum processed intensity identified ${peakCount} candidate peaks. Keep the original data file and import settings with the exported protocol.`;
 }
 
 function generateCaption() {
@@ -1948,13 +1979,12 @@ async function exportProtocol(activeFile: ProcessedFile) {
       }
     };
 
-    const protocolId = (activeFile as any).protocolId || generateId();
-    if (!(activeFile as any).protocolId) (activeFile as any).protocolId = protocolId;
+    const protocolId = activeFile.protocolId || generateId();
 
     // 1. Metadata
     const metadata: any = {
       instant_raman_version: APP_VERSION,
-      protocol_version: "1.1.0",
+      protocol_version: "1.2.0",
       protocol_id: protocolId,
       created_at: new Date().toISOString(),
       created_by: "Instant Raman User"
@@ -1972,7 +2002,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
       },
       wavenumber_spacing: (activeFile.raw.wavenumberData[1] - activeFile.raw.wavenumberData[0]) || 1,
       number_of_data_points: activeFile.raw.wavenumberData.length,
-      file_hash: (activeFile as any).fileHash || "unknown"
+      file_hash: activeFile.fileHash
     };
 
     // 3. Processing Steps
@@ -1996,8 +2026,8 @@ async function exportProtocol(activeFile: ProcessedFile) {
         parameters: {
           algorithm: activeFile.params.mode === 'manual' ? 'linear_anchor_interpolation' : 'SNIP',
           anchors: activeFile.anchors,
-          smoothing: { algorithm: 'moving_average', window: 9 },
-          clip_negative_corrected: true,
+          smoothing: { algorithm: 'moving_average', window: activeFile.params.sg },
+          clip_negative_corrected: activeFile.params.clipNegative,
           iterations: activeFile.params.snip,
           mode: activeFile.params.mode
         }
@@ -2028,15 +2058,16 @@ async function exportProtocol(activeFile: ProcessedFile) {
     ];
 
     // 4. Fitting Record
-    const fittingRecord = state.fittingMode && state.fitResult ? state.fitResult.peaks.map((p, i) => ({
+    const fit = activeFile.fit;
+    const fittingRecord = fit?.peaks.map((p, i) => ({
       peak_id: i + 1, nominal_center: p.center.value,
-      boundary_left: state.fitResult!.fitX[0], boundary_right: state.fitResult!.fitX.at(-1),
+      boundary_left: fit.fitX[0], boundary_right: fit.fitX.at(-1),
       best_fit_model: p.type, fitted_center: p.center.value,
       fitted_fwhm: p.fwhm.value, fitted_amplitude: p.amplitude.value,
       fitted_shape: p.shape?.value ?? null,
       fitted_center_statistical_error: p.center.error,
-      r_squared: state.fitResult!.r2, convergence_status: state.fitResult!.convergence_status
-    })) : null;
+      r_squared: fit.r2, convergence_status: fit.convergence_status
+    })) ?? null;
 
     const protocol: any = {
       protocol_metadata: metadata,
@@ -2049,6 +2080,7 @@ async function exportProtocol(activeFile: ProcessedFile) {
 
     // Validation check
     ProtocolManager.validateSchema(protocol);
+    activeFile.protocolId = protocolId;
 
     // Download
     const blob = new Blob([JSON.stringify(protocol, null, 2)], { type: 'application/json' });
@@ -2123,6 +2155,7 @@ async function saveSnapshot(title: string) {
   let traces: any[] = [];
   let tableData: any[] = [];
   let tableType: 'peaks' | 'fit' | 'replicate' = 'peaks';
+  const fit = visibleFit();
   let type: 'general' | 'fitting' | 'replicate' = 'general';
 
   // 1. Plot State Capture (Grid-Aware)
@@ -2171,18 +2204,16 @@ async function saveSnapshot(title: string) {
         fwhm: ps.fwhmMean,
         fwhmSD: ps.fwhmSD
       }));
-  } else if (state.fittingMode && state.fitResult) {
+  } else if (fit) {
     type = 'fitting';
     tableType = 'fit';
-    tableData = state.fitResult.peaks;
+    tableData = fit.peaks;
     const residualPlot = UI.get("fit-residual") as any;
     if (residualPlot?.data) traces = [...traces, ...residualPlot.data.map((t: any) => ({ ...t, yaxis: "y2" }))];
   } else {
     type = 'general';
     tableType = 'peaks';
-    const fileIdsToRender = new Set(state.comparisonIds);
-    if (state.activeFileId) fileIdsToRender.add(state.activeFileId);
-    const filesToRender = Array.from(fileIdsToRender).map(id => state.files.get(id)).filter(f => !!f) as ProcessedFile[];
+    const filesToRender = plottedSpectra();
 
     // Group peaks by filename
     tableData = filesToRender.map(f => ({
@@ -2212,7 +2243,8 @@ async function saveSnapshot(title: string) {
     });
 
     if (globalMaxY !== -Infinity) {
-      yRange = [Math.max(0, globalMinY - (globalMaxY * 0.05)), globalMaxY * 1.15];
+      const padding = (globalMaxY - globalMinY || Math.abs(globalMaxY) || 1) * 0.05;
+      yRange = [globalMinY - padding, globalMaxY + padding];
     }
   }
 
@@ -2278,73 +2310,65 @@ async function saveSnapshot(title: string) {
 }
 
 
-async function runFitting(minX: number, maxX: number) {
-  const active = state.files.get(state.activeFileId || '');
+function fittingRegion(data: SpectralData, left: number, right: number) {
+  const x: number[] = [], y: number[] = [];
+  data.wavenumberData.forEach((shift, i) => {
+    if (shift >= left && shift <= right) {
+      x.push(shift);
+      y.push(data.intensityData[i]);
+    }
+  });
+  return { x, y };
+}
+
+function runFitting(minX: number, maxX: number) {
+  const active = state.activeFileId ? state.files.get(state.activeFileId) : undefined;
   if (!active) return;
 
-  // Problem 2: Assign Protocol ID before fitting starts
-  (active as any).protocolId = (window as any).crypto.randomUUID();
-
-  const data = active.processed;
-  const roiX: number[] = [];
-  const roiY: number[] = [];
-
-  for (let i = 0; i < data.wavenumberData.length; i++) {
-    const x = data.wavenumberData[i];
-    if (x >= minX && x <= maxX) {
-      roiX.push(x);
-      roiY.push(data.intensityData[i]);
-    }
+  const { x, y } = fittingRegion(active.processed, Math.min(minX, maxX), Math.max(minX, maxX));
+  if (x.length < 5) {
+    showToast('Select at least five points for peak fitting.');
+    updateUI();
+    return;
   }
+  const type = UI.val('select-fit-type') as FitResult['peaks'][number]['type'];
+  const { p1, p2 } = state.ratioSelection;
+  const seedPeaks = p1 && p2 && p1.x !== p2.x && [p1, p2].every(p => p.x >= x[0] && p.x <= x[x.length - 1])
+    ? [p1, p2] : null;
+  const initial = seedPeaks
+    ? seedPeaks.flatMap(p => type === 'voigt' ? [p.y, p.x, p.fwhm || 15, 0.5] : [p.y, p.x, p.fwhm || 15])
+    : FittingEngine.estimateInitial(x, y, type);
 
-  if (roiX.length < 5) return;
-
-  const type = (UI.get('select-fit-type') as HTMLSelectElement).value as any;
-  let initial = FittingEngine.estimateInitial(roiX, roiY, type);
-
-  // Context-Aware Deconvolution: If ratio selection exists, force a 2-peak fit seeded by labels
-  if (state.ratioSelection?.p1 && state.ratioSelection?.p2) {
-    const p1 = state.ratioSelection.p1;
-    const p2 = state.ratioSelection.p2;
-    if (type === 'voigt') {
-      initial = [p1.y, p1.x, p1.fwhm || 15, 0.5, p2.y, p2.x, p2.fwhm || 15, 0.5];
+  clearTimeout(pendingFit);
+  pendingFit = setTimeout(() => {
+    pendingFit = undefined;
+    if (workspaceClearing || state.activeFileId !== active.id || state.files.get(active.id) !== active) return;
+    const fit = FittingEngine.fit(x, y, initial, type);
+    if (fit.convergence_status === 'failed') {
+      showToast(fit.errorMsg || 'Peak fitting failed.');
     } else {
-      initial = [p1.y, p1.x, p1.fwhm || 15, p2.y, p2.x, p2.fwhm || 15];
+      active.fit = fit;
+      active.protocolId = undefined;
+      active.isReproduced = false;
+      active.reproducedSteps = undefined;
+      state.fitViewFileId = active.id;
     }
-  }
-
-  UI.text('system-status', 'Fitting...');
-
-  // Run fit in microtask to not block UI immediately
-  setTimeout(() => {
-    const result = FittingEngine.fit(roiX, roiY, initial, type);
-
-    if (result.convergence_status === 'failed' || result.peaks.length === 0) {
-      showToast(`Fitting failed: ${result.errorMsg || 'Could not converge. Try adjusting the region or peak selection.'}`);
-      state.fitResult = null;
-      state.fittingMode = false;
-      UI.get('btn-exit-fit')?.classList.add('hidden');
-      UI.text('system-status', 'Ready');
-      updateUI();
-      return;
-    }
-
-    state.fitResult = result;
-    state.fittingMode = true;
-    UI.get('btn-exit-fit')?.classList.remove('hidden');
     UI.text('system-status', 'Ready');
     updateUI();
   }, 10);
+  UI.text('system-status', 'Fitting…');
 }
 
-function renderFitResults() {
+function renderFitResults(result: FitResult) {
   const container = UI.get('workspace-container');
-  const result = state.fitResult;
-  if (!container || !result) return;
+  const active = state.files.get(state.activeFileId || '');
+  if (!container || !active) return;
   container.className = 'fit-workspace';
-  container.innerHTML = '<h2>Peak fit</h2><p id="fit-summary"></p><div id="fit-plot" class="plot-container" style="height:420px"></div><div id="fit-residual" style="height:200px"></div>';
-  UI.text('fit-summary', result.peaks.length + ' component(s) · R²: ' + (result.r2?.toFixed(4) ?? 'unavailable') + ' · Review the fit and residuals before using the results.');
-  ChartRenderer.renderFit('fit-plot', result.fitX, result.fitY.map((y,i) => y + result.residuals[i]), result.fitX, result.fitY, true, state.showGrid);
+  container.innerHTML = '<h2 id="fit-heading">Peak fit</h2><p id="fit-summary"></p><div id="fit-plot" class="plot-container" style="height:420px"></div><div id="fit-residual" style="height:200px"></div>';
+  UI.text('fit-heading', 'Peak fit · ' + active.name);
+  const uncertainty = result.statistical_uncertainty_status === 'ill_conditioned' ? ' · Parameter uncertainties unavailable' : '';
+  UI.text('fit-summary', result.peaks.length + ' component(s) · R²: ' + (result.r2?.toFixed(4) ?? 'unavailable') + uncertainty + ' · Review the fit and residuals before using the results.');
+  ChartRenderer.renderFit('fit-plot', result.fitX, result.fitY.map((y,i) => y + result.residuals[i]), result.fitX, result.fitY, true, state.showGrid, result.peaks, active.name);
   ChartRenderer.renderResidual('fit-residual', { wavenumberData: result.fitX, intensityData: result.residuals }, undefined, state.showGrid);
 }
 
@@ -2409,7 +2433,8 @@ async function promptProtocolImport(protocolJson: any) {
   summaryContent.append(importSummary);
 
   // Hash Verification (Global Search)
-  const sourceHash = protocol.source_data_record.file_hash;
+  const applyBtn = UI.get('btn-apply-protocol') as HTMLButtonElement;
+  applyBtn.disabled = true;
   const matches = await ProtocolManager.matchingSpectra(protocol.source_data_record, [...state.files.values()]);
   const matchedFile = matches.find(f => f.id === state.activeFileId) ?? matches[0];
 
@@ -2430,176 +2455,114 @@ async function promptProtocolImport(protocolJson: any) {
   }
 
   // Action Listeners
-  const applyBtn = UI.get('btn-apply-protocol');
-  if (applyBtn instanceof HTMLButtonElement) applyBtn.disabled = !matchedFile;
+  applyBtn.disabled = !matchedFile;
   const cancelBtn = UI.get('btn-cancel-protocol');
-
-  const onApply = () => {
-    applyProtocolDeterministically(protocol);
-    modal.classList.remove('active');
-    applyBtn?.removeEventListener('click', onApply);
-    cancelBtn?.removeEventListener('click', onCancel);
-  };
-
-  const onCancel = () => {
-    modal.classList.remove('active');
-    applyBtn?.removeEventListener('click', onApply);
-    cancelBtn?.removeEventListener('click', onCancel);
-  };
-
-  applyBtn?.addEventListener('click', onApply);
-  cancelBtn?.addEventListener('click', onCancel);
+  const shouldApply = await new Promise<boolean>(resolve => {
+    const listeners = new AbortController();
+    const finish = (apply: boolean) => {
+      listeners.abort();
+      modal.classList.remove('active');
+      resolve(apply);
+    };
+    applyBtn.addEventListener('click', () => finish(true), { signal: listeners.signal });
+    cancelBtn?.addEventListener('click', () => finish(false), { signal: listeners.signal });
+  });
+  if (shouldApply) await applyProtocolDeterministically(protocol);
 }
 
 async function applyProtocolDeterministically(protocol: InstantRamanProtocol) {
-  const sourceHash = protocol.source_data_record.file_hash;
   const matches = await ProtocolManager.matchingSpectra(protocol.source_data_record, [...state.files.values()]);
-  const file = matches.find(f => f.id === state.activeFileId) ?? matches[0];
-  const targetFileId = file?.id;
-  if (!file) {
-    alert(`Protocol Mismatch:\n\nThis protocol belongs to the file "${protocol.source_data_record.original_filename}".\n\nPlease load that file first to apply these analytical parameters.`);
-    return;
-  }
+  const file = matches.find(f => f.id === state.activeFileId && state.files.has(f.id)) ?? matches.find(f => state.files.has(f.id));
+  if (!file) throw new Error('Load the original spectrum before applying this protocol.');
 
-  UI.text('system-status', 'APPLYING PROTOCOL...');
-  state.activeFileId = file.id;
+  const [cosmicStep, baselineStep, normStep] = protocol.processing_steps;
+  const baseline = baselineStep.parameters;
+  const method = normStep.applied ? normStep.parameters?.method : 'none';
+  const params: ProcessedFile['params'] = {
+    snip: baseline?.iterations ?? 25,
+    sg: baseline?.smoothing?.window ?? 9,
+    clipNegative: baseline?.clip_negative_corrected ?? true,
+    mode: !baselineStep.applied || baseline?.mode === 'manual' ? 'manual' : 'auto',
+    cosmic: cosmicStep.applied,
+    norm: method === 'max_intensity' ? 'max' : method === 'total_area' ? 'area' : method === 'reference_peak' ? 'point' : 'none',
+    normTarget: normStep.applied ? normStep.parameters?.reference_wavenumber ?? null : null
+  };
+  const anchors = baselineStep.applied ? baseline?.anchors?.map(anchor => ({ ...anchor })) ?? [] : [];
+  const current = state.files.get(file.id)!;
+  const applied = processSpectrum({ ...current, anchors }, params);
+  selectSpectrum(file.id);
+  resetFitView();
+  clearReplicates();
+  applyProcessingControls(params);
+  storeProcessedSpectra([applied]);
+  applied.isReproduced = true;
+  applied.protocolId = protocol.protocol_metadata.protocol_id;
+  applied.reproducedSteps = new Set(['Spike removal', 'Baseline Correction', 'Corrected intensity', 'Smoothing', 'Normalization', 'Peak Detection']);
 
-  // 1. Reset state to match protocol parameters
-  const steps = protocol.processing_steps;
-
-  // Cosmic Ray
-  const cosmicStep = steps[0];
-  state.cosmicRayRemoval = cosmicStep.applied;
-
-  // Baseline
-  const baselineStep = steps[1];
-  state.baselineMode = baselineStep.parameters?.mode === 'manual' ? 'manual' : 'auto';
-  file.anchors = baselineStep.parameters?.anchors?.map(a => ({ ...a })) ?? [];
-  (UI.get('check-cosmic-ray') as HTMLInputElement).checked = state.cosmicRayRemoval;
-  if (state.baselineMode === 'auto') {
-    UI.setVal('slider-snip', (baselineStep.parameters?.iterations || 25).toString());
-    UI.text('val-snip', (baselineStep.parameters?.iterations || 25).toString());
-  }
-
-  // Normalization
-  const normStep = steps[2];
-  const method = normStep.parameters?.method;
-  state.normalizationMode =
-    method === 'max_intensity' ? 'max' :
-      method === 'total_area' ? 'area' :
-        method === 'reference_peak' ? 'point' : 'none';
-  state.normTargetX = normStep.parameters?.reference_wavenumber || null;
-  UI.setVal('select-norm', state.normalizationMode);
-  UI.get('norm-point-info')?.classList.toggle('hidden', state.normalizationMode !== 'point');
-  UI.get('snip-controls')?.classList.toggle('hidden', state.baselineMode !== 'auto');
-  UI.get('manual-controls')?.classList.toggle('hidden', state.baselineMode !== 'manual');
-  UI.get('btn-mode-snip')?.classList.toggle('active-compare', state.baselineMode === 'auto');
-  UI.get('btn-mode-manual')?.classList.toggle('active-compare', state.baselineMode === 'manual');
-
-  // 2. Reprocess
-  reprocessActive();
-
-  // 3. Peak Fitting / Integration (Auto-reproduce the specific fit)
-  const reproducedFile = state.files.get(targetFileId || '')!;
-  reproducedFile.isReproduced = true;
-  reproducedFile.protocolId = protocol.protocol_metadata.protocol_id;
-  reproducedFile.reproducedSteps = new Set(['Cosmic Ray', 'Baseline Correction', 'Normalization', 'Peak Detection']);
-
-  if (protocol.fitting_record && protocol.fitting_record.length > 0) {
-    const record = protocol.fitting_record[0];
-    const records = protocol.fitting_record;
-    const model = record.best_fit_model || 'lorentzian';
-    const points = reproducedFile.processed.wavenumberData.map((x,i) => ({x, y: reproducedFile.processed.intensityData[i]})).filter(p => p.x >= record.boundary_left && p.x <= record.boundary_right);
+  const records = protocol.fitting_record ?? [];
+  let result: FitResult | undefined;
+  if (records.length) {
+    const { boundary_left, boundary_right, best_fit_model } = records[0];
+    const model = best_fit_model || 'lorentzian';
+    const { x, y } = fittingRegion(applied.processed, boundary_left, boundary_right);
     const initial = records.flatMap(r => model === 'voigt'
       ? [r.fitted_amplitude ?? 100, r.fitted_center ?? r.nominal_center, r.fitted_fwhm ?? 20, r.fitted_shape ?? 0.5]
       : [r.fitted_amplitude ?? 100, r.fitted_center ?? r.nominal_center, r.fitted_fwhm ?? 20]);
-    const result = FittingEngine.fit(points.map(p => p.x), points.map(p => p.y), initial, model);
-    state.fitResult = result;
-    state.fittingMode = result.convergence_status === 'converged';
-    UI.get("btn-exit-fit")?.classList.toggle("hidden", !state.fittingMode);
-    (reproducedFile as any).reproducedFit = result;
-    if (state.fittingMode) reproducedFile.reproducedSteps.add('Peak Fitting');
+    result = FittingEngine.fit(x, y, initial, model);
+    if (result.convergence_status === 'converged') {
+      applied.fit = result;
+      state.fitViewFileId = applied.id;
+    }
   }
 
-  // 4. Verification Report
-  generateVerificationReport(protocol, reproducedFile);
-
+  generateVerificationReport(protocol, result);
   updateUI();
-  UI.text('system-status', 'REPRODUCED');
-  showToast("Protocol applied successfully.");
-  trackEvent('protocol_applied_success', {
-    has_fitting: (protocol.fitting_record?.length || 0) > 0
-  });
+  const fitFailed = result?.convergence_status === 'failed';
+  UI.text('system-status', fitFailed ? 'Processing applied · Fit failed' : 'Processing applied');
+  showToast(fitFailed ? 'Processing settings applied. The saved fit could not be reproduced.' : 'Protocol processing settings applied.');
 }
 
-function generateVerificationReport(protocol: InstantRamanProtocol, file: ProcessedFile) {
+function generateVerificationReport(protocol: InstantRamanProtocol, reproducedFit?: FitResult) {
   const modal = UI.get('modal-verification');
   const content = UI.get('verification-report-content');
   if (!modal || !content) return;
 
-  let reportHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-    <thead style="border-bottom: 1px solid var(--border);">
-      <tr style="text-align: left; color: var(--text-secondary);">
-        <th style="padding: 4px;">Metric</th>
-        <th style="padding: 4px;">Original</th>
-        <th style="padding: 4px;">Reproduced</th>
-        <th style="padding: 4px;">Diff</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  let maxDiff = 0;
-
-  // Peak & Fit Verification
-  const origFits = protocol.fitting_record || [];
-  const reproducedFit = (file as any).reproducedFit;
-
-  origFits.forEach((of, index) => {
-    const origVal = of.fitted_center || 0;
-    // Use the reproduced fit center if available, otherwise fallback to peak detection
-    const reproVal = reproducedFit ? (reproducedFit.peaks[index]?.center.value ?? 0) :
-      (file.peaks.find(p => Math.abs(p.x - of.nominal_center) < 5)?.x || 0);
-
-    const diff = Math.abs(origVal - reproVal);
-    if (diff > maxDiff) maxDiff = diff;
-
-    const warning = diff > 1e-6 ? 'style="color: #be123c; font-weight: bold;"' : '';
-    reportHtml += `
-      <tr>
-        <td style="padding: 4px;">Peak ${of.peak_id} (${escapeHTML(of.best_fit_model)})</td>
-        <td style="padding: 4px;">${origVal.toFixed(6)}</td>
-        <td style="padding: 4px;">${reproVal.toFixed(6)}</td>
-        <td style="padding: 4px;" ${warning}>${diff.toExponential(2)}</td>
-      </tr>
-    `;
-  });
-
-  reportHtml += `</tbody></table>`;
-
-  if (origFits.length === 0) {
-    content.textContent = "Processing settings applied. This protocol has no saved fit results to compare; numerical reproduction has not been verified.";
-    modal.classList.add("active");
-    UI.get("btn-close-verification")?.addEventListener("click", () => modal.classList.remove("active"), { once: true });
+  const records = protocol.fitting_record ?? [];
+  const original = records.flatMap(record => record.fitted_center == null ? [] : [record.fitted_center]);
+  modal.classList.add('active');
+  (UI.get('btn-close-verification') as HTMLButtonElement).onclick = () => modal.classList.remove('active');
+  const replay = reproducedFit?.peaks.flatMap(peak => peak.center.value == null ? [] : [peak.center.value]) ?? [];
+  if (!records.length || reproducedFit?.convergence_status !== 'converged' ||
+    original.length !== records.length || replay.length !== original.length) {
+    content.textContent = !records.length
+      ? 'Processing settings applied. This protocol has no saved fit results to compare.'
+      : reproducedFit?.convergence_status === 'failed'
+        ? 'Processing settings applied. The fit could not be reproduced. ' + reproducedFit.errorMsg
+        : 'Processing settings applied. Saved peak centers are unavailable for verification.';
     return;
   }
 
-  const precisionClass = maxDiff > 1e-6 ? 'style="color: #be123c; margin-top: 16px; font-weight: 700;"' : 'style="color: #059669; margin-top: 16px; font-weight: 700;"';
-  reportHtml += `<div ${precisionClass}>Maximum numerical deviation from original: ${maxDiff.toExponential(4)} cm⁻¹</div>`;
-
-  if (maxDiff > 1e-6) {
-    trackEvent('numerical_verification_failed', { 
-      max_deviation: maxDiff,
-    });
-  } else {
-    trackEvent('numerical_verification_success', { 
-      max_deviation: maxDiff,
-    });
-  }
-
-  content.innerHTML = reportHtml;
-  modal.classList.add('active');
-
-  UI.get('btn-close-verification')?.addEventListener('click', () => modal.classList.remove('active'), { once: true });
+  original.sort((a, b) => a - b);
+  replay.sort((a, b) => a - b);
+  const table = document.createElement('table');
+  table.createTHead().insertRow().append(...['Original (cm⁻¹)', 'New fit (cm⁻¹)', 'Absolute difference'].map(title => {
+    const cell = document.createElement('th');
+    cell.textContent = title;
+    return cell;
+  }));
+  const rows = table.createTBody();
+  let maxDifference = 0;
+  original.forEach((center, i) => {
+    const difference = Math.abs(center - replay[i]);
+    maxDifference = Math.max(maxDifference, difference);
+    const row = rows.insertRow();
+    for (const text of [center.toFixed(6), replay[i].toFixed(6), difference.toExponential(2)]) {
+      row.insertCell().textContent = text;
+    }
+  });
+  const summary = document.createElement('p');
+  summary.textContent = 'Maximum fitted-center deviation: ' + maxDifference.toExponential(4) + ' cm⁻¹';
+  content.replaceChildren(table, summary);
 }
 
 function showToast(message: string) {
@@ -2652,8 +2615,8 @@ function renderTimeline() {
   const steps = [
     { name: 'Spike removal', params: active.params.cosmic ? `Median-based; ${active.spikesRemoved} points replaced` : 'Disabled' },
     { name: 'Baseline Correction', params: active.params.mode === 'manual' ? `Manual (${active.anchors.length} anchors)` : `SNIP (${active.params.snip} iterations)` },
-    { name: 'Corrected intensity', params: 'Negative values set to zero' },
-    { name: 'Smoothing', params: `Moving average (${active.params.sg} points)` },
+    { name: 'Corrected intensity', params: active.params.clipNegative ? 'Negative values clipped to zero' : 'Negative values retained' },
+    { name: 'Smoothing', params: active.params.sg === 1 ? 'Off' : `Moving average (${active.params.sg} points)` },
     { name: 'Normalization', params: active.params.norm === 'none' ? 'None' : active.params.norm.toUpperCase() },
     { name: 'Peak Detection', params: `${active.peaks.length} candidate peaks; threshold 2% of maximum processed intensity` }
   ];
@@ -2672,10 +2635,85 @@ function renderTimeline() {
   `).join('');
 }
 
-function markManualChange(stepName: string) {
+function syncWorkspaceControls() {
   const active = state.files.get(state.activeFileId || '');
-  if (active && active.reproducedSteps) {
-    active.reproducedSteps.delete(stepName);
-    updateUI();
+  applyProcessingControls(active?.params ?? {
+    mode: 'auto', cosmic: true, snip: 25, sg: 9, clipNegative: true, norm: 'none', normTarget: null
+  });
+  UI.setVal('slider-stack', String(state.stackOffset));
+  UI.text('val-stack', state.stackOffset.toFixed(1));
+  UI.setVal('select-axis-font', String(state.axisFontSize));
+  UI.setVal('input-range-min', state.viewRange?.[0].toString() ?? '');
+  UI.setVal('input-range-max', state.viewRange?.[1].toString() ?? '');
+  for (const [id, checked] of [
+    ['check-hide-y', state.hideYAxis], ['check-direct-labels', state.showDirectLabels],
+    ['check-show-unprocessed', state.showUnprocessed], ['check-show-baseline', state.showBaseline],
+    ['check-hide-grid', !state.showGrid], ['check-axis-box', state.showAxisBox],
+    ['check-export-transparent', state.exportTransparent]
+  ] as const) {
+    (UI.get(id) as HTMLInputElement).checked = checked;
+  }
+  UI.text('snapshot-count', String(state.snapshots.length));
+  refreshReplicates();
+  updateUI(false);
+}
+
+function scheduleWorkspaceSave() {
+  if (!workspaceStorage || workspaceSaveQueued || workspaceClearing) return;
+  workspaceSaveQueued = true;
+  workspaceWrites = workspaceWrites.then(async () => {
+    workspaceSaveQueued = false;
+    if (workspaceClearing) return;
+    const saved = state.files.size || state.snapshots.length ? structuredClone({
+      ...state, selectingROI: false, ratioMode: false,
+      labelMode: false, freeLabelMode: false, pendingLabel: null
+    } satisfies AppState) : null;
+    UI.text('workspace-save-status', 'Saving on this browser…');
+    await workspaceStorage!.save(saved);
+    UI.text('workspace-save-status', saved ? 'Workspace saved on this browser' : '');
+  }).catch(error => {
+    UI.text('workspace-save-status', error instanceof Error ? error.message : 'Workspace could not be saved on this browser.');
+  });
+}
+
+async function initWorkspace() {
+  const clearButton = UI.get('btn-clear-workspace') as HTMLButtonElement;
+  try {
+    const storage = new WorkspaceStorage<AppState>();
+    const saved = await storage.load();
+    if (saved) {
+      Object.assign(state, saved);
+      syncWorkspaceControls();
+      UI.text('workspace-save-status', 'Workspace restored from this browser');
+    }
+    workspaceStorage = storage;
+    clearButton.disabled = false;
+    clearButton.addEventListener('click', async () => {
+      if (queuedFiles) {
+        showToast('Finish the current import before clearing the workspace.');
+        return;
+      }
+      if (!confirm('Clear the spectra, fits, and snapshots stored in this browser?')) return;
+      workspaceClearing = true;
+      clearButton.disabled = true;
+      try {
+        await workspaceWrites;
+        await storage.save(null);
+        resetFitView();
+        Object.assign(state, structuredClone(emptyWorkspace));
+        syncWorkspaceControls();
+        UI.text('workspace-save-status', '');
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'The stored workspace could not be cleared.');
+      } finally {
+        workspaceClearing = false;
+        clearButton.disabled = false;
+      }
+    });
+  } catch {
+    UI.text('workspace-save-status', 'Browser storage unavailable');
   }
 }
+
+window.addEventListener('workstation-opened', () => updateUI(false));
+importQueue = importQueue.then(initWorkspace);
